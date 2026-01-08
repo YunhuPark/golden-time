@@ -42,7 +42,7 @@ export const useAuth = () => {
 
     return () => {
       subscription.unsubscribe();
-      if (window.requestIdleCallback && typeof idleCallback === 'number') {
+      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
         window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);

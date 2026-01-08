@@ -1,4 +1,6 @@
 import * as Sentry from '@sentry/react';
+import { useEffect } from 'react';
+import { useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router-dom';
 
 /**
  * Sentry 에러 모니터링 초기화
@@ -29,13 +31,17 @@ export function initializeSentry() {
     environment: import.meta.env.MODE,
 
     // Release 버전 (package.json에서 가져옴)
-    release: `golden-time@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+    release: `golden-time@${import.meta.env['VITE_APP_VERSION'] || '1.0.0'}`,
 
     // Performance Monitoring
     integrations: [
       // React Router 통합
       Sentry.reactRouterV6BrowserTracingIntegration({
-        useEffect: React.useEffect,
+        useEffect,
+        useLocation,
+        useNavigationType,
+        createRoutesFromChildren,
+        matchRoutes,
       }),
       // Replay (세션 녹화 - 디버깅용)
       Sentry.replayIntegration({
@@ -184,19 +190,24 @@ export function startPerformanceTransaction(name: string) {
     return null;
   }
 
-  return Sentry.startTransaction({
+  // Sentry v8+ uses startSpan instead of startTransaction
+  return Sentry.startSpan({
     name,
     op: 'function',
+  }, () => {
+    // Return a simple object for backwards compatibility
+    return { name };
   });
 }
 
 /**
  * 성능 측정 종료
  */
-export function finishPerformanceTransaction(transaction: any) {
+export function finishPerformanceTransaction(_transaction: any) {
   if (import.meta.env.DEV) {
     return;
   }
 
-  transaction?.finish();
+  // In Sentry v8+, spans are automatically finished when the function completes
+  // No manual finish needed
 }
