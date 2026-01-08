@@ -47,35 +47,10 @@
     <!-- Prefetch: 다음에 필요할 리소스 미리 로드 (Idle time에 로드) -->
     <link rel="prefetch" href="https://supabase.co" />
 
-    <!-- Kakao Maps JavaScript SDK (수동 로드) -->
-    <script
-      type="text/javascript"
-      src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9011df3cadc244be7bd29fc8ef1b7836&libraries=services&autoload=false"
-    ></script>
+    <!-- Kakao Maps SDK will be loaded dynamically from main.tsx -->
   </head>
   <body>
     <div id="root"></div>
-    <!-- Kakao SDK 초기화 -->
-    <script>
-      // SDK 수동 로드 및 초기화
-      window.kakaoSDKReady = new Promise((resolve) => {
-        console.log('⏳ Initializing Kakao SDK...');
-
-        // SDK 스크립트가 로드되었는지 먼저 확인
-        if (!window.kakao) {
-          console.error('❌ Kakao SDK script not loaded');
-          resolve(false);
-          return;
-        }
-
-        // maps.load()를 사용하여 수동 초기화
-        window.kakao.maps.load(() => {
-          console.log('✅ Kakao Maps SDK initialized successfully');
-          console.log('   - window.kakao.maps.services exists:', !!window.kakao.maps.services);
-          resolve(true);
-        });
-      });
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
