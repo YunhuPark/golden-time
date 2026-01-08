@@ -6,6 +6,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/egen/:path*",
+      "destination": "https://apis.data.go.kr/B552657/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
