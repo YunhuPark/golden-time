@@ -246,15 +246,25 @@ function main() {
   log('🚀 Golden Time - 환경 변수 검증', 'cyan');
   log(`   모드: ${mode}`, 'cyan');
 
-  // .env 파일 로드
+  // .env 파일 로드 (로컬 환경)
   const envPath = path.resolve(process.cwd(), '.env');
-  const env = loadEnvFile(envPath);
+  let env = loadEnvFile(envPath);
+
+  // Vercel 등 CI/CD 환경에서는 process.env 사용
+  const isCI = process.env.CI === 'true' || process.env.VERCEL === '1';
 
   if (Object.keys(env).length === 0) {
-    log('\n❌ .env 파일이 비어있거나 존재하지 않습니다.', 'red');
-    log('   다음 명령어를 실행하여 .env 파일을 생성하세요:', 'yellow');
-    log('   cp .env.example .env', 'yellow');
-    process.exit(1);
+    if (isCI) {
+      // CI/CD 환경: process.env에서 환경 변수 읽기
+      log('ℹ️  CI/CD 환경 감지: process.env에서 환경 변수 로드', 'blue');
+      env = process.env;
+    } else {
+      // 로컬 환경: .env 파일 필요
+      log('\n❌ .env 파일이 비어있거나 존재하지 않습니다.', 'red');
+      log('   다음 명령어를 실행하여 .env 파일을 생성하세요:', 'yellow');
+      log('   cp .env.example .env', 'yellow');
+      process.exit(1);
+    }
   }
 
   // 환경 변수 검증
