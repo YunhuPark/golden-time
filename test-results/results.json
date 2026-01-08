@@ -1,0 +1,1870 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\박윤후\\Desktop\\golden-time\\playwright.config.ts",
+    "rootDir": "C:/Users/박윤후/Desktop/golden-time/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/박윤후/Desktop/golden-time/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/박윤후/Desktop/golden-time/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/박윤후/Desktop/golden-time/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "C:/Users/박윤후/Desktop/golden-time/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 2,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "exception-cases.spec.ts",
+      "file": "exception-cases.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "예외 케이스 처리 테스트",
+          "file": "exception-cases.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "위치 정보 관련",
+              "file": "exception-cases.spec.ts",
+              "line": 10,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "위치 권한 거부 시 LocationPermissionPrompt 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 17996,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:18:53",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 53,
+                              "line": 18
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 16 |\u001b[39m\n \u001b[90m 17 |\u001b[39m       \u001b[90m// LocationPermissionPrompt가 표시되는지 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 18 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/위치 권한이 필요합니다/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 19 |\u001b[39m\n \u001b[90m 20 |\u001b[39m       \u001b[90m// 기본 위치 안내 확인\u001b[39m\n \u001b[90m 21 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/기본 위치 사용 중/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 53,
+                                "line": 18
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n\n\n  16 |\n  17 |       // LocationPermissionPrompt가 표시되는지 확인\n> 18 |       await expect(page.getByText(/위치 권한이 필요합니다/i)).toBeVisible({ timeout: 10000 });\n     |                                                     ^\n  19 |\n  20 |       // 기본 위치 안내 확인\n  21 |       await expect(page.getByText(/기본 위치 사용 중/i)).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:18:53"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:00:26.547Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 53,
+                            "line": 18
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-7b000a50697704a0dcc3",
+                  "file": "exception-cases.spec.ts",
+                  "line": 11,
+                  "column": 5
+                },
+                {
+                  "title": "위치 권한 허용 시 정상 작동",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 22525,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:35:43",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 43,
+                              "line": 35
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m\n \u001b[90m 34 |\u001b[39m       \u001b[90m// 병원 목록이 로드되는지 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/병원/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m\n \u001b[90m 37 |\u001b[39m       \u001b[90m// 위치 정보 표시 확인\u001b[39m\n \u001b[90m 38 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/현재 위치:/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 43,
+                                "line": 35
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n\n\n  33 |\n  34 |       // 병원 목록이 로드되는지 확인\n> 35 |       await expect(page.getByText(/병원/i)).toBeVisible({ timeout: 15000 });\n     |                                           ^\n  36 |\n  37 |       // 위치 정보 표시 확인\n  38 |       await expect(page.getByText(/현재 위치:/i)).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:35:43"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:00:26.543Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 43,
+                            "line": 35
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-9c1df0328627de72357c",
+                  "file": "exception-cases.spec.ts",
+                  "line": 27,
+                  "column": 5
+                },
+                {
+                  "title": "위치 권한 거부 시 LocationPermissionPrompt 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 13,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 13127,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:18:53",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 53,
+                              "line": 18
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 16 |\u001b[39m\n \u001b[90m 17 |\u001b[39m       \u001b[90m// LocationPermissionPrompt가 표시되는지 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 18 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/위치 권한이 필요합니다/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 19 |\u001b[39m\n \u001b[90m 20 |\u001b[39m       \u001b[90m// 기본 위치 안내 확인\u001b[39m\n \u001b[90m 21 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/기본 위치 사용 중/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 53,
+                                "line": 18
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/위치 권한이 필요합니다/i)\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/위치 권한이 필요합니다/i)\u001b[22m\n\n\n  16 |\n  17 |       // LocationPermissionPrompt가 표시되는지 확인\n> 18 |       await expect(page.getByText(/위치 권한이 필요합니다/i)).toBeVisible({ timeout: 10000 });\n     |                                                     ^\n  19 |\n  20 |       // 기본 위치 안내 확인\n  21 |       await expect(page.getByText(/기본 위치 사용 중/i)).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:18:53"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:41.269Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--c1900-LocationPermissionPrompt-표시-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 53,
+                            "line": 18
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-801b1dc8d4e7c6cdd01d",
+                  "file": "exception-cases.spec.ts",
+                  "line": 11,
+                  "column": 5
+                },
+                {
+                  "title": "위치 권한 허용 시 정상 작동",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 12,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 16867,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nError: strict mode violation: getByText(/병원/i) resolved to 12 elements:\n    1) <div>…</div> aka getByText('총 49개 병원 검색됨(현재 10개 표시)')\n    2) <h3 class=\"text-xl font-bold text-foreground m-0\">강북삼성병원</h3> aka getByRole('heading', { name: '강북삼성병원' })\n    3) <h3 class=\"text-xl font-bold text-foreground m-0\">서울적십자병원</h3> aka getByRole('heading', { name: '서울적십자병원' })\n    4) <h3 class=\"text-xl font-bold text-foreground m-0\">세란병원</h3> aka getByRole('heading', { name: '세란병원' })\n    5) <h3 class=\"text-xl font-bold text-foreground m-0\">연세대학교의과대학세브란스병원</h3> aka getByRole('heading', { name: '연세대학교의과대학세브란스병원' })\n    6) <h3 class=\"text-xl font-bold text-foreground m-0\">서울대학교병원</h3> aka getByRole('heading', { name: '서울대학교병원' })\n    7) <h3 class=\"text-xl font-bold text-foreground m-0\">의료법인동신의료재단동신병원</h3> aka getByRole('heading', { name: '의료법인동신의료재단동신병원' })\n    8) <h3 class=\"text-xl font-bold text-foreground m-0\">순천향대학교 부속 서울병원</h3> aka getByRole('heading', { name: '순천향대학교 부속 서울병원' })\n    9) <h3 class=\"text-xl font-bold text-foreground m-0\">서울특별시동부병원</h3> aka getByRole('heading', { name: '서울특별시동부병원' })\n    10) <h3 class=\"text-xl font-bold text-foreground m-0\">서울성심병원</h3> aka getByRole('heading', { name: '서울성심병원' })\n    ...\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nError: strict mode violation: getByText(/병원/i) resolved to 12 elements:\n    1) <div>…</div> aka getByText('총 49개 병원 검색됨(현재 10개 표시)')\n    2) <h3 class=\"text-xl font-bold text-foreground m-0\">강북삼성병원</h3> aka getByRole('heading', { name: '강북삼성병원' })\n    3) <h3 class=\"text-xl font-bold text-foreground m-0\">서울적십자병원</h3> aka getByRole('heading', { name: '서울적십자병원' })\n    4) <h3 class=\"text-xl font-bold text-foreground m-0\">세란병원</h3> aka getByRole('heading', { name: '세란병원' })\n    5) <h3 class=\"text-xl font-bold text-foreground m-0\">연세대학교의과대학세브란스병원</h3> aka getByRole('heading', { name: '연세대학교의과대학세브란스병원' })\n    6) <h3 class=\"text-xl font-bold text-foreground m-0\">서울대학교병원</h3> aka getByRole('heading', { name: '서울대학교병원' })\n    7) <h3 class=\"text-xl font-bold text-foreground m-0\">의료법인동신의료재단동신병원</h3> aka getByRole('heading', { name: '의료법인동신의료재단동신병원' })\n    8) <h3 class=\"text-xl font-bold text-foreground m-0\">순천향대학교 부속 서울병원</h3> aka getByRole('heading', { name: '순천향대학교 부속 서울병원' })\n    9) <h3 class=\"text-xl font-bold text-foreground m-0\">서울특별시동부병원</h3> aka getByRole('heading', { name: '서울특별시동부병원' })\n    10) <h3 class=\"text-xl font-bold text-foreground m-0\">서울성심병원</h3> aka getByRole('heading', { name: '서울성심병원' })\n    ...\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:35:43",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 43,
+                              "line": 35
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 33 |\u001b[39m\n \u001b[90m 34 |\u001b[39m       \u001b[90m// 병원 목록이 로드되는지 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/병원/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                           \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m\n \u001b[90m 37 |\u001b[39m       \u001b[90m// 위치 정보 표시 확인\u001b[39m\n \u001b[90m 38 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/현재 위치:/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 43,
+                                "line": 35
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/병원/i)\nExpected: visible\nError: strict mode violation: getByText(/병원/i) resolved to 12 elements:\n    1) <div>…</div> aka getByText('총 49개 병원 검색됨(현재 10개 표시)')\n    2) <h3 class=\"text-xl font-bold text-foreground m-0\">강북삼성병원</h3> aka getByRole('heading', { name: '강북삼성병원' })\n    3) <h3 class=\"text-xl font-bold text-foreground m-0\">서울적십자병원</h3> aka getByRole('heading', { name: '서울적십자병원' })\n    4) <h3 class=\"text-xl font-bold text-foreground m-0\">세란병원</h3> aka getByRole('heading', { name: '세란병원' })\n    5) <h3 class=\"text-xl font-bold text-foreground m-0\">연세대학교의과대학세브란스병원</h3> aka getByRole('heading', { name: '연세대학교의과대학세브란스병원' })\n    6) <h3 class=\"text-xl font-bold text-foreground m-0\">서울대학교병원</h3> aka getByRole('heading', { name: '서울대학교병원' })\n    7) <h3 class=\"text-xl font-bold text-foreground m-0\">의료법인동신의료재단동신병원</h3> aka getByRole('heading', { name: '의료법인동신의료재단동신병원' })\n    8) <h3 class=\"text-xl font-bold text-foreground m-0\">순천향대학교 부속 서울병원</h3> aka getByRole('heading', { name: '순천향대학교 부속 서울병원' })\n    9) <h3 class=\"text-xl font-bold text-foreground m-0\">서울특별시동부병원</h3> aka getByRole('heading', { name: '서울특별시동부병원' })\n    10) <h3 class=\"text-xl font-bold text-foreground m-0\">서울성심병원</h3> aka getByRole('heading', { name: '서울성심병원' })\n    ...\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/병원/i)\u001b[22m\n\n\n  33 |\n  34 |       // 병원 목록이 로드되는지 확인\n> 35 |       await expect(page.getByText(/병원/i)).toBeVisible({ timeout: 15000 });\n     |                                           ^\n  36 |\n  37 |       // 위치 정보 표시 확인\n  38 |       await expect(page.getByText(/현재 위치:/i)).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:35:43"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:41.315Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-위치-정보-관련-위치-권한-허용-시-정상-작동-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 43,
+                            "line": 35
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-90856a6117099ee84c65",
+                  "file": "exception-cases.spec.ts",
+                  "line": 27,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "네트워크 관련",
+              "file": "exception-cases.spec.ts",
+              "line": 42,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "오프라인 시 NetworkStatusBanner 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 2581,
+                          "error": {
+                            "message": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:50:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 50
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 48 |\u001b[39m\n \u001b[90m 49 |\u001b[39m       \u001b[90m// 새로고침 트리거\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mreload()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 51 |\u001b[39m\n \u001b[90m 52 |\u001b[39m       \u001b[90m// 오프라인 배너 확인\u001b[39m\n \u001b[90m 53 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/네트워크 연결 없음/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 50
+                              },
+                              "message": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n\n\n  48 |\n  49 |       // 새로고침 트리거\n> 50 |       await page.reload();\n     |                  ^\n  51 |\n  52 |       // 오프라인 배너 확인\n  53 |       await expect(page.getByText(/네트워크 연결 없음/i)).toBeVisible({ timeout: 5000 });\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:50:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:00:59.074Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--74999-라인-시-NetworkStatusBanner-표시-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--74999-라인-시-NetworkStatusBanner-표시-chromium\\video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 50
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-a49c7421bb4f297d377d",
+                  "file": "exception-cases.spec.ts",
+                  "line": 43,
+                  "column": 5
+                },
+                {
+                  "title": "네트워크 복구 시 재연결 배너 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 1119,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:60:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 60
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 58 |\u001b[39m       \u001b[90m// 먼저 오프라인\u001b[39m\n \u001b[90m 59 |\u001b[39m       \u001b[36mawait\u001b[39m context\u001b[33m.\u001b[39msetOffline(\u001b[36mtrue\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 60 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 61 |\u001b[39m\n \u001b[90m 62 |\u001b[39m       \u001b[90m// 다시 온라인\u001b[39m\n \u001b[90m 63 |\u001b[39m       \u001b[36mawait\u001b[39m context\u001b[33m.\u001b[39msetOffline(\u001b[36mfalse\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 60
+                              },
+                              "message": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n\n  58 |       // 먼저 오프라인\n  59 |       await context.setOffline(true);\n> 60 |       await page.goto('/');\n     |                  ^\n  61 |\n  62 |       // 다시 온라인\n  63 |       await context.setOffline(false);\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:60:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:01.802Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-네트워크-관련-네트워크-복구-시-재연결-배너-표시-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-네트워크-관련-네트워크-복구-시-재연결-배너-표시-chromium\\video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 60
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-25aaadb2fadae0616ed3",
+                  "file": "exception-cases.spec.ts",
+                  "line": 57,
+                  "column": 5
+                },
+                {
+                  "title": "오프라인 시 NetworkStatusBanner 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 14,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 2135,
+                          "error": {
+                            "message": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:50:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 50
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 48 |\u001b[39m\n \u001b[90m 49 |\u001b[39m       \u001b[90m// 새로고침 트리거\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 50 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mreload()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 51 |\u001b[39m\n \u001b[90m 52 |\u001b[39m       \u001b[90m// 오프라인 배너 확인\u001b[39m\n \u001b[90m 53 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/네트워크 연결 없음/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 50
+                              },
+                              "message": "Error: page.reload: net::ERR_INTERNET_DISCONNECTED\nCall log:\n\u001b[2m  - waiting for navigation until \"load\"\u001b[22m\n\n\n  48 |\n  49 |       // 새로고침 트리거\n> 50 |       await page.reload();\n     |                  ^\n  51 |\n  52 |       // 오프라인 배너 확인\n  53 |       await expect(page.getByText(/네트워크 연결 없음/i)).toBeVisible({ timeout: 5000 });\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:50:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:59.261Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--74999-라인-시-NetworkStatusBanner-표시-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--74999-라인-시-NetworkStatusBanner-표시-mobile-chrome\\video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 50
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-17d5d13ce71c8fef6b82",
+                  "file": "exception-cases.spec.ts",
+                  "line": 43,
+                  "column": 5
+                },
+                {
+                  "title": "네트워크 복구 시 재연결 배너 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 15,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 1095,
+                          "error": {
+                            "message": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n",
+                            "stack": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:60:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 60
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 58 |\u001b[39m       \u001b[90m// 먼저 오프라인\u001b[39m\n \u001b[90m 59 |\u001b[39m       \u001b[36mawait\u001b[39m context\u001b[33m.\u001b[39msetOffline(\u001b[36mtrue\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 60 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 61 |\u001b[39m\n \u001b[90m 62 |\u001b[39m       \u001b[90m// 다시 온라인\u001b[39m\n \u001b[90m 63 |\u001b[39m       \u001b[36mawait\u001b[39m context\u001b[33m.\u001b[39msetOffline(\u001b[36mfalse\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 60
+                              },
+                              "message": "Error: page.goto: net::ERR_INTERNET_DISCONNECTED at http://localhost:3000/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n\n  58 |       // 먼저 오프라인\n  59 |       await context.setOffline(true);\n> 60 |       await page.goto('/');\n     |                  ^\n  61 |\n  62 |       // 다시 온라인\n  63 |       await context.setOffline(false);\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:60:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:02.911Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-네트워크-관련-네트워크-복구-시-재연결-배너-표시-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-네트워크-관련-네트워크-복구-시-재연결-배너-표시-mobile-chrome\\video.webm"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 60
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-153beb4a75f4097dd814",
+                  "file": "exception-cases.spec.ts",
+                  "line": 57,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "검색 결과 관련",
+              "file": "exception-cases.spec.ts",
+              "line": 73,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "필터 활성화로 결과 0건 시 EmptyHospitalList 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 4,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 18513,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:78:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 78
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 76 |\u001b[39m\n \u001b[90m 77 |\u001b[39m       \u001b[90m// 병원 목록 로드 대기\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 78 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'text=/병원/i'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 79 |\u001b[39m\n \u001b[90m 80 |\u001b[39m       \u001b[90m// 필터 버튼 클릭\u001b[39m\n \u001b[90m 81 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button:has-text(\"필터\")'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 78
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n\n  76 |\n  77 |       // 병원 목록 로드 대기\n> 78 |       await page.waitForSelector('text=/병원/i', { timeout: 15000 });\n     |                  ^\n  79 |\n  80 |       // 필터 버튼 클릭\n  81 |       await page.click('button:has-text(\"필터\")');\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:78:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:06.503Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 78
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-a3ec954b5d732a4f7853",
+                  "file": "exception-cases.spec.ts",
+                  "line": 74,
+                  "column": 5
+                },
+                {
+                  "title": "필터 초기화 시 병원 목록 복구",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 5,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 25331,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:113:56",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 56,
+                              "line": 113
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 111 |\u001b[39m\n \u001b[90m 112 |\u001b[39m       \u001b[90m// 결과 없음 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 113 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/조건에 맞는 병원이 없습니다/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 114 |\u001b[39m\n \u001b[90m 115 |\u001b[39m       \u001b[90m// 필터 초기화\u001b[39m\n \u001b[90m 116 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button:has-text(\"필터 초기화\")'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 56,
+                                "line": 113
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n\n  111 |\n  112 |       // 결과 없음 확인\n> 113 |       await expect(page.getByText(/조건에 맞는 병원이 없습니다/i)).toBeVisible({ timeout: 5000 });\n      |                                                        ^\n  114 |\n  115 |       // 필터 초기화\n  116 |       await page.click('button:has-text(\"필터 초기화\")');\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:113:56"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:06.704Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 56,
+                            "line": 113
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-effee58f2daea0f18e1e",
+                  "file": "exception-cases.spec.ts",
+                  "line": 103,
+                  "column": 5
+                },
+                {
+                  "title": "필터 활성화로 결과 0건 시 EmptyHospitalList 표시",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 16,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 19086,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:94:56",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 56,
+                              "line": 94
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 92 |\u001b[39m\n \u001b[90m 93 |\u001b[39m       \u001b[90m// EmptyHospitalList 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 94 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/조건에 맞는 병원이 없습니다/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 95 |\u001b[39m\n \u001b[90m 96 |\u001b[39m       \u001b[90m// 필터 초기화 버튼 확인\u001b[39m\n \u001b[90m 97 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[35m/필터 초기화/i\u001b[39m }))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 56,
+                                "line": 94
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n\n  92 |\n  93 |       // EmptyHospitalList 확인\n> 94 |       await expect(page.getByText(/조건에 맞는 병원이 없습니다/i)).toBeVisible({ timeout: 5000 });\n     |                                                        ^\n  95 |\n  96 |       // 필터 초기화 버튼 확인\n  97 |       await expect(page.getByRole('button', { name: /필터 초기화/i })).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:94:56"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:05.312Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리--7c6f4-과-0건-시-EmptyHospitalList-표시-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 56,
+                            "line": 94
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-74a3bb77aad7eba07efa",
+                  "file": "exception-cases.spec.ts",
+                  "line": 74,
+                  "column": 5
+                },
+                {
+                  "title": "필터 초기화 시 병원 목록 복구",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 17,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 18627,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:113:56",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 56,
+                              "line": 113
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 111 |\u001b[39m\n \u001b[90m 112 |\u001b[39m       \u001b[90m// 결과 없음 확인\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 113 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/조건에 맞는 병원이 없습니다/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 114 |\u001b[39m\n \u001b[90m 115 |\u001b[39m       \u001b[90m// 필터 초기화\u001b[39m\n \u001b[90m 116 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button:has-text(\"필터 초기화\")'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 56,
+                                "line": 113
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/조건에 맞는 병원이 없습니다/i)\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/조건에 맞는 병원이 없습니다/i)\u001b[22m\n\n\n  111 |\n  112 |       // 결과 없음 확인\n> 113 |       await expect(page.getByText(/조건에 맞는 병원이 없습니다/i)).toBeVisible({ timeout: 5000 });\n      |                                                        ^\n  114 |\n  115 |       // 필터 초기화\n  116 |       await page.click('button:has-text(\"필터 초기화\")');\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:113:56"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:08.178Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-검색-결과-관련-필터-초기화-시-병원-목록-복구-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 56,
+                            "line": 113
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-a4a5d5cc0aa20bcd0a7f",
+                  "file": "exception-cases.spec.ts",
+                  "line": 103,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "UI 인터랙션",
+              "file": "exception-cases.spec.ts",
+              "line": 123,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "119 긴급 호출 버튼 항상 접근 가능",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 6,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 6907,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:129:37",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 37,
+                              "line": 129
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 127 |\u001b[39m       \u001b[90m// 119 버튼 확인\u001b[39m\n \u001b[90m 128 |\u001b[39m       \u001b[36mconst\u001b[39m emergencyButton \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[35m/119/i\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 129 |\u001b[39m       \u001b[36mawait\u001b[39m expect(emergencyButton)\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 130 |\u001b[39m\n \u001b[90m 131 |\u001b[39m       \u001b[90m// 클릭 시 confirm 다이얼로그 표시 (실제 전화는 안 걸림)\u001b[39m\n \u001b[90m 132 |\u001b[39m       page\u001b[33m.\u001b[39mon(\u001b[32m'dialog'\u001b[39m\u001b[33m,\u001b[39m dialog \u001b[33m=>\u001b[39m {\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 37,
+                                "line": 129
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n\n  127 |       // 119 버튼 확인\n  128 |       const emergencyButton = page.getByRole('button', { name: /119/i });\n> 129 |       await expect(emergencyButton).toBeVisible();\n      |                                     ^\n  130 |\n  131 |       // 클릭 시 confirm 다이얼로그 표시 (실제 전화는 안 걸림)\n  132 |       page.on('dialog', dialog => {\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:129:37"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:28.440Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 37,
+                            "line": 129
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-3a3d744075f155b26c81",
+                  "file": "exception-cases.spec.ts",
+                  "line": 124,
+                  "column": 5
+                },
+                {
+                  "title": "지도/리스트 뷰 전환",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 7,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 23201,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:150:48",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 48,
+                              "line": 150
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 148 |\u001b[39m\n \u001b[90m 149 |\u001b[39m       \u001b[90m// 지도가 표시되는지 확인 (Kakao Map)\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 150 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'#kakao-map'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 151 |\u001b[39m\n \u001b[90m 152 |\u001b[39m       \u001b[90m// 리스트 보기로 다시 전환\u001b[39m\n \u001b[90m 153 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button:has-text(\"리스트 보기\")'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 48,
+                                "line": 150
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n\n\n  148 |\n  149 |       // 지도가 표시되는지 확인 (Kakao Map)\n> 150 |       await expect(page.locator('#kakao-map')).toBeVisible({ timeout: 5000 });\n      |                                                ^\n  151 |\n  152 |       // 리스트 보기로 다시 전환\n  153 |       await page.click('button:has-text(\"리스트 보기\")');\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:150:48"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:36.707Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 48,
+                            "line": 150
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-b3b4a5c797d0e4d1042c",
+                  "file": "exception-cases.spec.ts",
+                  "line": 140,
+                  "column": 5
+                },
+                {
+                  "title": "필터 적용 시 카운트 표시",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 19830,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:01:40.655Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-a8d2863f549f17b60158",
+                  "file": "exception-cases.spec.ts",
+                  "line": 159,
+                  "column": 5
+                },
+                {
+                  "title": "119 긴급 호출 버튼 항상 접근 가능",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 18,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 7097,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:129:37",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 37,
+                              "line": 129
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 127 |\u001b[39m       \u001b[90m// 119 버튼 확인\u001b[39m\n \u001b[90m 128 |\u001b[39m       \u001b[36mconst\u001b[39m emergencyButton \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[35m/119/i\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 129 |\u001b[39m       \u001b[36mawait\u001b[39m expect(emergencyButton)\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 130 |\u001b[39m\n \u001b[90m 131 |\u001b[39m       \u001b[90m// 클릭 시 confirm 다이얼로그 표시 (실제 전화는 안 걸림)\u001b[39m\n \u001b[90m 132 |\u001b[39m       page\u001b[33m.\u001b[39mon(\u001b[32m'dialog'\u001b[39m\u001b[33m,\u001b[39m dialog \u001b[33m=>\u001b[39m {\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 37,
+                                "line": 129
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n\n  127 |       // 119 버튼 확인\n  128 |       const emergencyButton = page.getByRole('button', { name: /119/i });\n> 129 |       await expect(emergencyButton).toBeVisible();\n      |                                     ^\n  130 |\n  131 |       // 클릭 시 confirm 다이얼로그 표시 (실제 전화는 안 걸림)\n  132 |       page.on('dialog', dialog => {\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:129:37"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:27.777Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-119-긴급-호출-버튼-항상-접근-가능-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 37,
+                            "line": 129
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-637b4d29baeb8e1c38fb",
+                  "file": "exception-cases.spec.ts",
+                  "line": 124,
+                  "column": 5
+                },
+                {
+                  "title": "지도/리스트 뷰 전환",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 19,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 18882,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:150:48",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 48,
+                              "line": 150
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 148 |\u001b[39m\n \u001b[90m 149 |\u001b[39m       \u001b[90m// 지도가 표시되는지 확인 (Kakao Map)\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 150 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'#kakao-map'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m5000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 151 |\u001b[39m\n \u001b[90m 152 |\u001b[39m       \u001b[90m// 리스트 보기로 다시 전환\u001b[39m\n \u001b[90m 153 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button:has-text(\"리스트 보기\")'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 48,
+                                "line": 150
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#kakao-map')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#kakao-map')\u001b[22m\n\n\n  148 |\n  149 |       // 지도가 표시되는지 확인 (Kakao Map)\n> 150 |       await expect(page.locator('#kakao-map')).toBeVisible({ timeout: 5000 });\n      |                                                ^\n  151 |\n  152 |       // 리스트 보기로 다시 전환\n  153 |       await page.click('button:has-text(\"리스트 보기\")');\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:150:48"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:31.101Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-UI-인터랙션-지도-리스트-뷰-전환-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 48,
+                            "line": 150
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-d2f3cdf64aae34449313",
+                  "file": "exception-cases.spec.ts",
+                  "line": 140,
+                  "column": 5
+                },
+                {
+                  "title": "필터 적용 시 카운트 표시",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 20,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 12922,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:38.144Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-032e419a69e559104dd9",
+                  "file": "exception-cases.spec.ts",
+                  "line": 159,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "성능 및 로딩",
+              "file": "exception-cases.spec.ts",
+              "line": 176,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "초기 로딩 시간 15초 이내",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 8,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 17783,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:183:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 183
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 181 |\u001b[39m\n \u001b[90m 182 |\u001b[39m       \u001b[90m// 병원 목록 로드 완료까지 대기\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 183 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'text=/병원/i'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 184 |\u001b[39m\n \u001b[90m 185 |\u001b[39m       \u001b[36mconst\u001b[39m loadTime \u001b[33m=\u001b[39m \u001b[33mDate\u001b[39m\u001b[33m.\u001b[39mnow() \u001b[33m-\u001b[39m startTime\u001b[33m;\u001b[39m\n \u001b[90m 186 |\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 183
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n\n  181 |\n  182 |       // 병원 목록 로드 완료까지 대기\n> 183 |       await page.waitForSelector('text=/병원/i', { timeout: 15000 });\n      |                  ^\n  184 |\n  185 |       const loadTime = Date.now() - startTime;\n  186 |\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:183:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:01.018Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-초기-로딩-시간-15초-이내-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-초기-로딩-시간-15초-이내-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-초기-로딩-시간-15초-이내-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 183
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-c5d046611e3bab4c3420",
+                  "file": "exception-cases.spec.ts",
+                  "line": 177,
+                  "column": 5
+                },
+                {
+                  "title": "병원 목록 스크롤 성능",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 9,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 17980,
+                          "error": {
+                            "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n",
+                            "stack": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:196:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 196
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 194 |\u001b[39m\n \u001b[90m 195 |\u001b[39m       \u001b[90m// 병원 목록 로드 대기\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 196 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'text=/병원/i'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 197 |\u001b[39m\n \u001b[90m 198 |\u001b[39m       \u001b[90m// 스크롤 테스트\u001b[39m\n \u001b[90m 199 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mevaluate(() \u001b[33m=>\u001b[39m {\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 196
+                              },
+                              "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=/병원/i') to be visible\u001b[22m\n\n\n  194 |\n  195 |       // 병원 목록 로드 대기\n> 196 |       await page.waitForSelector('text=/병원/i', { timeout: 15000 });\n      |                  ^\n  197 |\n  198 |       // 스크롤 테스트\n  199 |       await page.evaluate(() => {\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:196:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:06.045Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-병원-목록-스크롤-성능-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-병원-목록-스크롤-성능-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-성능-및-로딩-병원-목록-스크롤-성능-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 196
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-52f8dc6d1afd54c779aa",
+                  "file": "exception-cases.spec.ts",
+                  "line": 192,
+                  "column": 5
+                },
+                {
+                  "title": "초기 로딩 시간 15초 이내",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 21,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 12593,
+                          "errors": [],
+                          "stdout": [
+                            {
+                              "text": "Initial load time: 11647ms\n"
+                            }
+                          ],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:54.328Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-6eecbebd45d7bd3dac71",
+                  "file": "exception-cases.spec.ts",
+                  "line": 177,
+                  "column": 5
+                },
+                {
+                  "title": "병원 목록 스크롤 성능",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 20,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 12842,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:03:51.515Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-26c29260304e7e12fefb",
+                  "file": "exception-cases.spec.ts",
+                  "line": 192,
+                  "column": 5
+                }
+              ]
+            },
+            {
+              "title": "모바일 UX",
+              "file": "exception-cases.spec.ts",
+              "line": 211,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "모바일에서 터치 인터랙션",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 10,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 11880,
+                          "error": {
+                            "message": "Error: page.tap: The page does not support tap. Use hasTouch context option to enable touch support.",
+                            "stack": "Error: page.tap: The page does not support tap. Use hasTouch context option to enable touch support.\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:221:18",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 18,
+                              "line": 221
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 219 |\u001b[39m\n \u001b[90m 220 |\u001b[39m       \u001b[90m// 필터 버튼 터치\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 221 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mtap(\u001b[32m'button:has-text(\"필터\")'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 222 |\u001b[39m\n \u001b[90m 223 |\u001b[39m       \u001b[90m// BottomSheet 표시 확인\u001b[39m\n \u001b[90m 224 |\u001b[39m       \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/원하는 조건의 병원/i\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 18,
+                                "line": 221
+                              },
+                              "message": "Error: page.tap: The page does not support tap. Use hasTouch context option to enable touch support.\n\n  219 |\n  220 |       // 필터 버튼 터치\n> 221 |       await page.tap('button:has-text(\"필터\")');\n      |                  ^\n  222 |\n  223 |       // BottomSheet 표시 확인\n  224 |       await expect(page.getByText(/원하는 조건의 병원/i)).toBeVisible();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:221:18"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:25.631Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-터치-인터랙션-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-터치-인터랙션-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-터치-인터랙션-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 18,
+                            "line": 221
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-7c52feaf10f5285695e0",
+                  "file": "exception-cases.spec.ts",
+                  "line": 214,
+                  "column": 5
+                },
+                {
+                  "title": "모바일에서 119 긴급 호출 버튼 접근성",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 11,
+                          "parallelIndex": 1,
+                          "status": "failed",
+                          "duration": 6805,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:238:37",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 37,
+                              "line": 238
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 236 |\u001b[39m       \u001b[90m// 119 버튼이 상단에 고정되어 있고 접근 가능한지 확인\u001b[39m\n \u001b[90m 237 |\u001b[39m       \u001b[36mconst\u001b[39m emergencyButton \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[35m/119/i\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 238 |\u001b[39m       \u001b[36mawait\u001b[39m expect(emergencyButton)\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 239 |\u001b[39m\n \u001b[90m 240 |\u001b[39m       \u001b[90m// 버튼 크기 확인 (터치하기 충분히 큰지)\u001b[39m\n \u001b[90m 241 |\u001b[39m       \u001b[36mconst\u001b[39m box \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m emergencyButton\u001b[33m.\u001b[39mboundingBox()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 37,
+                                "line": 238
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n\n  236 |       // 119 버튼이 상단에 고정되어 있고 접근 가능한지 확인\n  237 |       const emergencyButton = page.getByRole('button', { name: /119/i });\n> 238 |       await expect(emergencyButton).toBeVisible();\n      |                                     ^\n  239 |\n  240 |       // 버튼 크기 확인 (터치하기 충분히 큰지)\n  241 |       const box = await emergencyButton.boundingBox();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:238:37"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:02:30.508Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-chromium\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-chromium\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 37,
+                            "line": 238
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-f5f1cb683ec9bcedf851",
+                  "file": "exception-cases.spec.ts",
+                  "line": 233,
+                  "column": 5
+                },
+                {
+                  "title": "모바일에서 터치 인터랙션",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 20,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 12258,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:04:04.400Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-12415d6a761bfa633b63",
+                  "file": "exception-cases.spec.ts",
+                  "line": 214,
+                  "column": 5
+                },
+                {
+                  "title": "모바일에서 119 긴급 호출 버튼 접근성",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "mobile-chrome",
+                      "projectName": "mobile-chrome",
+                      "results": [
+                        {
+                          "workerIndex": 21,
+                          "parallelIndex": 0,
+                          "status": "failed",
+                          "duration": 6607,
+                          "error": {
+                            "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n",
+                            "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:238:37",
+                            "location": {
+                              "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                              "column": 37,
+                              "line": 238
+                            },
+                            "snippet": "\u001b[0m \u001b[90m 236 |\u001b[39m       \u001b[90m// 119 버튼이 상단에 고정되어 있고 접근 가능한지 확인\u001b[39m\n \u001b[90m 237 |\u001b[39m       \u001b[36mconst\u001b[39m emergencyButton \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mgetByRole(\u001b[32m'button'\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m \u001b[35m/119/i\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 238 |\u001b[39m       \u001b[36mawait\u001b[39m expect(emergencyButton)\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 239 |\u001b[39m\n \u001b[90m 240 |\u001b[39m       \u001b[90m// 버튼 크기 확인 (터치하기 충분히 큰지)\u001b[39m\n \u001b[90m 241 |\u001b[39m       \u001b[36mconst\u001b[39m box \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m emergencyButton\u001b[33m.\u001b[39mboundingBox()\u001b[33m;\u001b[39m\u001b[0m"
+                          },
+                          "errors": [
+                            {
+                              "location": {
+                                "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                                "column": 37,
+                                "line": 238
+                              },
+                              "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('button', { name: /119/i })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: /119/i })\u001b[22m\n\n\n  236 |       // 119 버튼이 상단에 고정되어 있고 접근 가능한지 확인\n  237 |       const emergencyButton = page.getByRole('button', { name: /119/i });\n> 238 |       await expect(emergencyButton).toBeVisible();\n      |                                     ^\n  239 |\n  240 |       // 버튼 크기 확인 (터치하기 충분히 큰지)\n  241 |       const box = await emergencyButton.boundingBox();\n    at C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts:238:37"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-01-07T04:04:07.336Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-mobile-chrome\\test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-mobile-chrome\\video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\박윤후\\Desktop\\golden-time\\test-results\\exception-cases-예외-케이스-처리-테스트-모바일-UX-모바일에서-119-긴급-호출-버튼-접근성-mobile-chrome\\error-context.md"
+                            }
+                          ],
+                          "errorLocation": {
+                            "file": "C:\\Users\\박윤후\\Desktop\\golden-time\\e2e\\exception-cases.spec.ts",
+                            "column": 37,
+                            "line": 238
+                          }
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "9aa848e1ba223c066602-7ea21e50163172429db9",
+                  "file": "exception-cases.spec.ts",
+                  "line": 233,
+                  "column": 5
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-01-07T04:00:02.443Z",
+    "duration": 255113.622,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 21,
+    "flaky": 0
+  }
+}

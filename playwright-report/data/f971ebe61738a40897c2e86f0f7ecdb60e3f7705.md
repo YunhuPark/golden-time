@@ -1,0 +1,55 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - heading "🏥 Golden Time" [level=1] [ref=e7]
+      - generic [ref=e8]:
+        - button "☀️ 🌙" [ref=e9] [cursor=pointer]:
+          - generic [ref=e10]: ☀️
+          - generic [ref=e11]: 🌙
+        - button "🔐 로그인" [ref=e12] [cursor=pointer]
+    - paragraph [ref=e13]: 실시간 응급실 병상 현황 및 경로 안내
+  - button "119 긴급 전화" [ref=e14] [cursor=pointer]: 🚨 119 구급대 호출
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: 🔒
+      - generic [ref=e18]:
+        - heading "위치 권한이 필요합니다" [level=3] [ref=e19]
+        - paragraph [ref=e20]: 가장 가까운 응급실을 찾기 위해 위치 정보가 필요합니다.
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 🏢
+        - generic [ref=e24]: 현재 기본 위치 사용 중
+      - paragraph [ref=e25]: 창원시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
+    - generic [ref=e26]:
+      - button "권한 설정 방법 보기" [ref=e27] [cursor=pointer]
+      - button "도움말" [ref=e28] [cursor=pointer]
+  - generic [ref=e29]:
+    - generic [ref=e30]: "✅ 현재 위치: 35.2272, 128.6811"
+    - button "병원 검색 새로고침" [ref=e31] [cursor=pointer]: 🔄 새로고침
+  - button "🔍 필터" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - button "📋 목록 보기" [ref=e35] [cursor=pointer]
+    - button "🗺️ 지도 보기" [active] [ref=e36] [cursor=pointer]
+  - generic [ref=e39]:
+    - img [ref=e42]
+    - generic [ref=e43]:
+      - generic [ref=e46]: 250m
+      - link "Kakao 맵으로 이동(새창열림)" [ref=e48] [cursor=pointer]:
+        - /url: http://map.kakao.com/
+        - img "Kakao 맵으로 이동(새창열림)" [ref=e49]
+    - generic [ref=e50]:
+      - button "확대" [ref=e51] [cursor=pointer]
+      - button "축소" [ref=e59] [cursor=pointer]
+    - img [ref=e62]
+    - generic [ref=e135]:
+      - generic [ref=e138]: 16km
+      - link "Kakao 맵으로 이동(새창열림)" [ref=e140] [cursor=pointer]:
+        - /url: http://map.kakao.com/
+        - img "Kakao 맵으로 이동(새창열림)" [ref=e141]
+    - generic [ref=e142]:
+      - button "확대" [ref=e143] [cursor=pointer]
+      - button "축소" [ref=e151] [cursor=pointer]
+```

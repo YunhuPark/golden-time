@@ -1,0 +1,249 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - heading "🏥 Golden Time" [level=1] [ref=e7]
+      - generic [ref=e8]:
+        - button "☀️ 🌙" [ref=e9] [cursor=pointer]:
+          - generic [ref=e10]: ☀️
+          - generic [ref=e11]: 🌙
+        - button "🔐 로그인" [ref=e12] [cursor=pointer]
+    - paragraph [ref=e13]: 실시간 응급실 병상 현황 및 경로 안내
+  - button "119 긴급 전화" [ref=e14] [cursor=pointer]: 🚨 119 구급대 호출
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]: 🔒
+      - generic [ref=e18]:
+        - heading "위치 권한이 필요합니다" [level=3] [ref=e19]
+        - paragraph [ref=e20]: 가장 가까운 응급실을 찾기 위해 위치 정보가 필요합니다.
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: 🏢
+        - generic [ref=e24]: 현재 기본 위치 사용 중
+      - paragraph [ref=e25]: 창원시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
+    - generic [ref=e26]:
+      - button "권한 설정 방법 보기" [ref=e27] [cursor=pointer]
+      - button "도움말" [ref=e28] [cursor=pointer]
+  - generic [ref=e29]:
+    - generic [ref=e30]: "✅ 현재 위치: 35.2272, 128.6811"
+    - button "병원 검색 새로고침" [ref=e31] [cursor=pointer]: 🔄 새로고침
+  - button "🔍 필터 (2)" [ref=e33] [cursor=pointer]
+  - generic [ref=e34]:
+    - button "📋 목록 보기" [ref=e35] [cursor=pointer]
+    - button "🗺️ 지도 보기" [ref=e36] [cursor=pointer]
+  - generic [ref=e37]:
+    - generic [ref=e38]:
+      - generic [ref=e39]: 정렬 기준
+      - generic [ref=e40]:
+        - button "추천순로 정렬" [pressed] [ref=e41] [cursor=pointer]:
+          - generic [ref=e42]: ⭐
+          - generic [ref=e43]: 추천순
+          - generic [ref=e44]: AI 기반 종합 점수
+        - button "시간순로 정렬" [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]: 🚗
+          - generic [ref=e47]: 시간순
+          - generic [ref=e48]: 빠른 도착 순
+        - button "거리순로 정렬" [ref=e49] [cursor=pointer]:
+          - generic [ref=e50]: 📍
+          - generic [ref=e51]: 거리순
+          - generic [ref=e52]: 가까운 순
+        - button "병상순로 정렬" [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]: 🛏️
+          - generic [ref=e55]: 병상순
+          - generic [ref=e56]: 가용 병상 많은 순
+    - generic [ref=e57]:
+      - text: 총
+      - strong [ref=e58]: 31개
+      - text: 병원 검색됨
+      - generic [ref=e59]: (현재 10개 표시)
+    - list [ref=e60]:
+      - article "창원경상국립대학교병원 병원 정보" [ref=e61] [cursor=pointer]:
+        - generic [ref=e62]:
+          - heading "창원경상국립대학교병원" [level=3] [ref=e63]
+          - generic [ref=e64]:
+            - generic [ref=e65]: 🚗 18분
+            - generic [ref=e66]: 3.9km
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e69]: "7"
+            - generic [ref=e70]: / 26 병상
+          - generic [ref=e71]: 병상 가능
+        - paragraph [ref=e72]: 📍 경남 창원시 성산구 삼정자로 11
+        - generic [ref=e73]: 🏥 응급의학과
+        - generic [ref=e74]: "⏱️ 예상 도착: 오후 01:20"
+        - generic [ref=e75]:
+          - button "즐겨찾기 추가" [ref=e76]: ☆
+          - button "창원경상국립대학교병원 전화 걸기" [ref=e77]: 📞 전화
+          - button "창원경상국립대학교병원 경로 안내" [ref=e78]: 🗺️ 길안내
+      - article "창원한마음병원 병원 정보" [ref=e79] [cursor=pointer]:
+        - generic [ref=e80]:
+          - heading "창원한마음병원" [level=3] [ref=e81]
+          - generic [ref=e82]:
+            - generic [ref=e83]: 🚗 9분
+            - generic [ref=e84]: 2.0km
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]: "4"
+            - generic [ref=e88]: / 16 병상
+          - generic [ref=e89]: 병상 제한
+        - paragraph [ref=e90]: 📍 경남 창원시 의창구 용동로57번길 8
+        - generic [ref=e91]: 🏥 응급의학과
+        - generic [ref=e92]: "⏱️ 예상 도착: 오후 01:11"
+        - generic [ref=e93]:
+          - button "즐겨찾기 추가" [ref=e94]: ☆
+          - button "창원한마음병원 전화 걸기" [ref=e95]: 📞 전화
+          - button "창원한마음병원 경로 안내" [ref=e96]: 🗺️ 길안내
+      - article "창원파티마병원 병원 정보" [ref=e97] [cursor=pointer]:
+        - generic [ref=e98]:
+          - heading "창원파티마병원" [level=3] [ref=e99]
+          - generic [ref=e100]:
+            - generic [ref=e101]: 🚗 12분
+            - generic [ref=e102]: 3.4km
+        - generic [ref=e103]:
+          - generic [ref=e104]:
+            - generic [ref=e105]: "3"
+            - generic [ref=e106]: / 10 병상
+          - generic [ref=e107]: 병상 제한
+        - paragraph [ref=e108]: 📍 경남 창원시 의창구 창이대로 45
+        - generic [ref=e109]: 🏥 응급의학과
+        - generic [ref=e110]: "⏱️ 예상 도착: 오후 01:14"
+        - generic [ref=e111]:
+          - button "즐겨찾기 추가" [ref=e112]: ☆
+          - button "창원파티마병원 전화 걸기" [ref=e113]: 📞 전화
+          - button "창원파티마병원 경로 안내" [ref=e114]: 🗺️ 길안내
+      - article "의료법인환명의료재단 조은금강병원 병원 정보" [ref=e115] [cursor=pointer]:
+        - generic [ref=e116]:
+          - heading "의료법인환명의료재단 조은금강병원" [level=3] [ref=e117]
+          - generic [ref=e118]:
+            - generic [ref=e119]: 🚗 38분
+            - generic [ref=e120]: 16.8km
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: "6"
+            - generic [ref=e124]: / 21 병상
+          - generic [ref=e125]: 병상 가능
+        - paragraph [ref=e126]: 📍 경남 김해시 김해대로 1814-37
+        - generic [ref=e127]: 🏥 응급의학과
+        - generic [ref=e128]: "⏱️ 예상 도착: 오후 01:41"
+        - generic [ref=e129]:
+          - button "즐겨찾기 추가" [ref=e130]: ☆
+          - button "의료법인환명의료재단 조은금강병원 전화 걸기" [ref=e131]: 📞 전화
+          - button "의료법인환명의료재단 조은금강병원 경로 안내" [ref=e132]: 🗺️ 길안내
+      - article "연세에스병원 병원 정보" [ref=e133] [cursor=pointer]:
+        - generic [ref=e134]:
+          - heading "연세에스병원" [level=3] [ref=e135]
+          - generic [ref=e136]:
+            - generic [ref=e137]: 🚗 20분
+            - generic [ref=e138]: 8.2km
+        - generic [ref=e139]:
+          - generic [ref=e140]:
+            - generic [ref=e141]: "3"
+            - generic [ref=e142]: / 13 병상
+          - generic [ref=e143]: 병상 제한
+        - paragraph [ref=e144]: 📍 경남 창원시 진해구 해원로32번길 13
+        - generic [ref=e145]: 🏥 응급의학과
+        - generic [ref=e146]: "⏱️ 예상 도착: 오후 01:22"
+        - generic [ref=e147]:
+          - button "즐겨찾기 추가" [ref=e148]: ☆
+          - button "연세에스병원 전화 걸기" [ref=e149]: 📞 전화
+          - button "연세에스병원 경로 안내" [ref=e150]: 🗺️ 길안내
+      - article "의료법인숭인의료재단 김해복음병원 병원 정보" [ref=e151] [cursor=pointer]:
+        - generic [ref=e152]:
+          - heading "의료법인숭인의료재단 김해복음병원" [level=3] [ref=e153]
+          - generic [ref=e154]:
+            - generic [ref=e155]: 🚗 40분
+            - generic [ref=e156]: 19.3km
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]: "5"
+            - generic [ref=e160]: / 18 병상
+          - generic [ref=e161]: 병상 가능
+        - paragraph [ref=e162]: 📍 경남 김해시 활천로 33
+        - generic [ref=e163]: 🏥 응급의학과
+        - generic [ref=e164]: "⏱️ 예상 도착: 오후 01:42"
+        - generic [ref=e165]:
+          - button "즐겨찾기 추가" [ref=e166]: ☆
+          - button "의료법인숭인의료재단 김해복음병원 전화 걸기" [ref=e167]: 📞 전화
+          - button "의료법인숭인의료재단 김해복음병원 경로 안내" [ref=e168]: 🗺️ 길안내
+      - article "강일병원 병원 정보" [ref=e169] [cursor=pointer]:
+        - generic [ref=e170]:
+          - heading "강일병원" [level=3] [ref=e171]
+          - generic [ref=e172]:
+            - generic [ref=e173]: 🚗 42분
+            - generic [ref=e174]: 17.4km
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - generic [ref=e177]: "5"
+            - generic [ref=e178]: / 18 병상
+          - generic [ref=e179]: 병상 가능
+        - paragraph [ref=e180]: 📍 경남 김해시 가락로 359
+        - generic [ref=e181]: 🏥 응급의학과
+        - generic [ref=e182]: "⏱️ 예상 도착: 오후 01:44"
+        - generic [ref=e183]:
+          - button "즐겨찾기 추가" [ref=e184]: ☆
+          - button "강일병원 전화 걸기" [ref=e185]: 📞 전화
+          - button "강일병원 경로 안내" [ref=e186]: 🗺️ 길안내
+      - article "의료법인합포의료재단에스엠지연세병원 병원 정보" [ref=e187] [cursor=pointer]:
+        - generic [ref=e188]:
+          - heading "의료법인합포의료재단에스엠지연세병원" [level=3] [ref=e189]
+          - generic [ref=e190]:
+            - generic [ref=e191]: 🚗 25분
+            - generic [ref=e192]: 11.8km
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - generic [ref=e195]: "4"
+            - generic [ref=e196]: / 15 병상
+          - generic [ref=e197]: 병상 제한
+        - paragraph [ref=e198]: 📍 경남 창원시 마산합포구 3.15대로 76
+        - generic [ref=e199]: 🏥 응급의학과
+        - generic [ref=e200]: "⏱️ 예상 도착: 오후 01:27"
+        - generic [ref=e201]:
+          - button "즐겨찾기 추가" [ref=e202]: ☆
+          - button "의료법인합포의료재단에스엠지연세병원 전화 걸기" [ref=e203]: 📞 전화
+          - button "의료법인합포의료재단에스엠지연세병원 경로 안내" [ref=e204]: 🗺️ 길안내
+      - article "의료법인갑을의료재단갑을장유병원 병원 정보" [ref=e205] [cursor=pointer]:
+        - generic [ref=e206]:
+          - heading "의료법인갑을의료재단갑을장유병원" [level=3] [ref=e207]
+          - generic [ref=e208]:
+            - generic [ref=e209]: 🚗 27분
+            - generic [ref=e210]: 11.5km
+        - generic [ref=e211]:
+          - generic [ref=e212]:
+            - generic [ref=e213]: "2"
+            - generic [ref=e214]: / 9 병상
+          - generic [ref=e215]: 병상 제한
+        - paragraph [ref=e216]: 📍 경남 김해시 장유로 167-13
+        - generic [ref=e217]: 🏥 응급의학과
+        - generic [ref=e218]: "⏱️ 예상 도착: 오후 01:29"
+        - generic [ref=e219]:
+          - button "즐겨찾기 추가" [ref=e220]: ☆
+          - button "의료법인갑을의료재단갑을장유병원 전화 걸기" [ref=e221]: 📞 전화
+          - button "의료법인갑을의료재단갑을장유병원 경로 안내" [ref=e222]: 🗺️ 길안내
+      - article "경상남도마산의료원 병원 정보" [ref=e223] [cursor=pointer]:
+        - generic [ref=e224]:
+          - heading "경상남도마산의료원" [level=3] [ref=e225]
+          - generic [ref=e226]:
+            - generic [ref=e227]: 🚗 28분
+            - generic [ref=e228]: 10.9km
+        - generic [ref=e229]:
+          - generic [ref=e230]:
+            - generic [ref=e231]: "4"
+            - generic [ref=e232]: / 15 병상
+          - generic [ref=e233]: 병상 제한
+        - paragraph [ref=e234]: 📍 경남 창원시 마산합포구 3.15대로 231
+        - generic [ref=e235]: 🏥 응급의학과
+        - generic [ref=e236]: "⏱️ 예상 도착: 오후 01:30"
+        - generic [ref=e237]:
+          - button "즐겨찾기 추가" [ref=e238]: ☆
+          - button "경상남도마산의료원 전화 걸기" [ref=e239]: 📞 전화
+          - button "경상남도마산의료원 경로 안내" [ref=e240]: 🗺️ 길안내
+    - button "📋 다음 10개 병원 보기 (10/31)" [ref=e241] [cursor=pointer]
+    - generic [ref=e242]:
+      - paragraph [ref=e243]: 실제 병상 가용 현황은 병원에 직접 문의하시기 바랍니다.
+      - paragraph [ref=e244]:
+        - text: 응급 상황 시
+        - strong [ref=e245]: "119"
+        - text: 에 먼저 연락하세요.
+```
