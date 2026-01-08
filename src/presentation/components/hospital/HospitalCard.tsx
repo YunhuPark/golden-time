@@ -78,7 +78,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => checkFavorite(), 100);
 
     return () => {
-      if (window.requestIdleCallback && typeof idleCallback === 'number') {
+      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
         window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
@@ -106,7 +106,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => loadRating(), 100);
 
     return () => {
-      if (window.requestIdleCallback && typeof idleCallback === 'number') {
+      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
         window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
