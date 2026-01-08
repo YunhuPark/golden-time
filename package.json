@@ -1,0 +1,53 @@
+{
+  "name": "golden-time",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "실시간 응급실 가용 현황 및 최단 경로 안내 시스템",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run validate:env:prod && tsc && vite build",
+    "build:dev": "npm run validate:env:dev && tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "validate:env": "node scripts/validate-env.js",
+    "validate:env:dev": "node scripts/validate-env.js --env=development",
+    "validate:env:prod": "node scripts/validate-env.js --env=production",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@sentry/react": "^10.32.1",
+    "@sentry/vite-plugin": "^4.6.1",
+    "@supabase/supabase-js": "^2.89.0",
+    "@types/dompurify": "^3.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dompurify": "^3.2.2",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.2",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.1"
+  }
+}

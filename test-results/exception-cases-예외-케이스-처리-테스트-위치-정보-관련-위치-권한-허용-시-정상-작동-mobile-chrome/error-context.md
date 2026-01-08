@@ -1,0 +1,235 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - heading "🏥 Golden Time" [level=1] [ref=e7]
+      - generic [ref=e8]:
+        - button "☀️ 🌙" [ref=e9] [cursor=pointer]:
+          - generic [ref=e10]: ☀️
+          - generic [ref=e11]: 🌙
+        - button "🔐 로그인" [ref=e12] [cursor=pointer]
+    - paragraph [ref=e13]: 실시간 응급실 병상 현황 및 경로 안내
+  - button "119 긴급 전화" [ref=e14] [cursor=pointer]: 🚨 119 구급대 호출
+  - generic [ref=e15]:
+    - generic [ref=e16]: "✅ 현재 위치: 37.5663, 126.97790"
+    - button "병원 검색 새로고침" [ref=e17] [cursor=pointer]: 🔄 새로고침
+  - button "🔍 필터" [ref=e19] [cursor=pointer]
+  - generic [ref=e20]:
+    - button "📋 목록 보기" [ref=e21] [cursor=pointer]
+    - button "🗺️ 지도 보기" [ref=e22] [cursor=pointer]
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: 정렬 기준
+      - generic [ref=e26]:
+        - button "추천순로 정렬" [pressed] [ref=e27] [cursor=pointer]:
+          - generic [ref=e28]: ⭐
+          - generic [ref=e29]: 추천순
+          - generic [ref=e30]: AI 기반 종합 점수
+        - button "시간순로 정렬" [ref=e31] [cursor=pointer]:
+          - generic [ref=e32]: 🚗
+          - generic [ref=e33]: 시간순
+          - generic [ref=e34]: 빠른 도착 순
+        - button "거리순로 정렬" [ref=e35] [cursor=pointer]:
+          - generic [ref=e36]: 📍
+          - generic [ref=e37]: 거리순
+          - generic [ref=e38]: 가까운 순
+        - button "병상순로 정렬" [ref=e39] [cursor=pointer]:
+          - generic [ref=e40]: 🛏️
+          - generic [ref=e41]: 병상순
+          - generic [ref=e42]: 가용 병상 많은 순
+    - generic [ref=e43]:
+      - text: 총
+      - strong [ref=e44]: 49개
+      - text: 병원 검색됨
+      - generic [ref=e45]: (현재 10개 표시)
+    - list [ref=e46]:
+      - article "강북삼성병원 병원 정보" [ref=e47] [cursor=pointer]:
+        - generic [ref=e48]:
+          - heading "강북삼성병원" [level=3] [ref=e49]
+          - generic [ref=e50]:
+            - generic [ref=e51]: 🚗 5분
+            - generic [ref=e52]: 0.9km
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - generic [ref=e55]: "1"
+            - generic [ref=e56]: / 4 병상
+          - generic [ref=e57]: 병상 제한
+        - paragraph [ref=e58]: 📍 서울 종로구 새문안로 29
+        - generic [ref=e59]: 🏥 응급의학과
+        - generic [ref=e60]: "⏱️ 예상 도착: 오후 01:07"
+        - generic [ref=e61]:
+          - button "즐겨찾기 추가" [ref=e62]: ☆
+          - button "강북삼성병원 전화 걸기" [ref=e63]: 📞 전화
+          - button "강북삼성병원 경로 안내" [ref=e64]: 🗺️ 길안내
+      - article "서울적십자병원 병원 정보" [ref=e65] [cursor=pointer]:
+        - generic [ref=e66]:
+          - heading "서울적십자병원" [level=3] [ref=e67]
+          - generic [ref=e68]:
+            - generic [ref=e69]: 🚗 6분
+            - generic [ref=e70]: 1.0km
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]: "3"
+            - generic [ref=e74]: / 11 병상
+          - generic [ref=e75]: 병상 제한
+        - paragraph [ref=e76]: 📍 서울 종로구 새문안로 9
+        - generic [ref=e77]: 🏥 응급의학과
+        - generic [ref=e78]: "⏱️ 예상 도착: 오후 01:08"
+        - generic [ref=e79]:
+          - button "즐겨찾기 추가" [ref=e80]: ☆
+          - button "서울적십자병원 전화 걸기" [ref=e81]: 📞 전화
+          - button "서울적십자병원 경로 안내" [ref=e82]: 🗺️ 길안내
+      - article "세란병원 병원 정보" [ref=e83] [cursor=pointer]:
+        - generic [ref=e84]:
+          - heading "세란병원" [level=3] [ref=e85]
+          - generic [ref=e86]:
+            - generic [ref=e87]: 🚗 9분
+            - generic [ref=e88]: 2.0km
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - generic [ref=e91]: "2"
+            - generic [ref=e92]: / 8 병상
+          - generic [ref=e93]: 병상 제한
+        - paragraph [ref=e94]: 📍 서울 종로구 통일로 256
+        - generic [ref=e95]: 🏥 응급의학과
+        - generic [ref=e96]: "⏱️ 예상 도착: 오후 01:11"
+        - generic [ref=e97]:
+          - button "즐겨찾기 추가" [ref=e98]: ☆
+          - button "세란병원 전화 걸기" [ref=e99]: 📞 전화
+          - button "세란병원 경로 안내" [ref=e100]: 🗺️ 길안내
+      - article "연세대학교의과대학세브란스병원 병원 정보" [ref=e101] [cursor=pointer]:
+        - generic [ref=e102]:
+          - heading "연세대학교의과대학세브란스병원" [level=3] [ref=e103]
+          - generic [ref=e104]:
+            - generic [ref=e105]: 🚗 12분
+            - generic [ref=e106]: 3.3km
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]: "4"
+            - generic [ref=e110]: / 14 병상
+          - generic [ref=e111]: 병상 제한
+        - paragraph [ref=e112]: 📍 서울 서대문구 연세로 50-1
+        - generic [ref=e113]: 🏥 응급의학과
+        - generic [ref=e114]: "⏱️ 예상 도착: 오후 01:14"
+        - generic [ref=e115]:
+          - button "즐겨찾기 추가" [ref=e116]: ☆
+          - button "연세대학교의과대학세브란스병원 전화 걸기" [ref=e117]: 📞 전화
+          - button "연세대학교의과대학세브란스병원 경로 안내" [ref=e118]: 🗺️ 길안내
+      - article "국립중앙의료원 병원 정보" [ref=e119] [cursor=pointer]:
+        - generic [ref=e120]:
+          - heading "국립중앙의료원" [level=3] [ref=e121]
+          - generic [ref=e122]:
+            - generic [ref=e123]: 🚗 15분
+            - generic [ref=e124]: 2.5km
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - generic [ref=e127]: "3"
+            - generic [ref=e128]: / 13 병상
+          - generic [ref=e129]: 병상 제한
+        - paragraph [ref=e130]: 📍 서울 중구 을지로 245
+        - generic [ref=e131]: 🏥 응급의학과
+        - generic [ref=e132]: "⏱️ 예상 도착: 오후 01:17"
+        - generic [ref=e133]:
+          - button "즐겨찾기 추가" [ref=e134]: ☆
+          - button "국립중앙의료원 전화 걸기" [ref=e135]: 📞 전화
+          - button "국립중앙의료원 경로 안내" [ref=e136]: 🗺️ 길안내
+      - article "서울대학교병원 병원 정보" [ref=e137] [cursor=pointer]:
+        - generic [ref=e138]:
+          - heading "서울대학교병원" [level=3] [ref=e139]
+          - generic [ref=e140]:
+            - generic [ref=e141]: 🚗 13분
+            - generic [ref=e142]: 2.4km
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - generic [ref=e145]: "0"
+            - generic [ref=e146]: / 0 병상
+          - generic [ref=e147]: 정보 없음
+        - paragraph [ref=e148]: 📍 서울 종로구 대학로 101
+        - generic [ref=e149]: 🏥 응급의학과
+        - generic [ref=e150]: "⏱️ 예상 도착: 오후 01:15"
+        - generic [ref=e151]:
+          - button "즐겨찾기 추가" [ref=e152]: ☆
+          - button "서울대학교병원 전화 걸기" [ref=e153]: 📞 전화
+          - button "서울대학교병원 경로 안내" [ref=e154]: 🗺️ 길안내
+      - article "의료법인동신의료재단동신병원 병원 정보" [ref=e155] [cursor=pointer]:
+        - generic [ref=e156]:
+          - heading "의료법인동신의료재단동신병원" [level=3] [ref=e157]
+          - generic [ref=e158]:
+            - generic [ref=e159]: 🚗 20분
+            - generic [ref=e160]: 4.0km
+        - generic [ref=e161]:
+          - generic [ref=e162]:
+            - generic [ref=e163]: "3"
+            - generic [ref=e164]: / 11 병상
+          - generic [ref=e165]: 병상 제한
+        - paragraph [ref=e166]: 📍 서울 서대문구 연희로 272
+        - generic [ref=e167]: 🏥 응급의학과
+        - generic [ref=e168]: "⏱️ 예상 도착: 오후 01:22"
+        - generic [ref=e169]:
+          - button "즐겨찾기 추가" [ref=e170]: ☆
+          - button "의료법인동신의료재단동신병원 전화 걸기" [ref=e171]: 📞 전화
+          - button "의료법인동신의료재단동신병원 경로 안내" [ref=e172]: 🗺️ 길안내
+      - article "순천향대학교 부속 서울병원 병원 정보" [ref=e173] [cursor=pointer]:
+        - generic [ref=e174]:
+          - heading "순천향대학교 부속 서울병원" [level=3] [ref=e175]
+          - generic [ref=e176]:
+            - generic [ref=e177]: 🚗 20분
+            - generic [ref=e178]: 4.3km
+        - generic [ref=e179]:
+          - generic [ref=e180]:
+            - generic [ref=e181]: "4"
+            - generic [ref=e182]: / 16 병상
+          - generic [ref=e183]: 병상 제한
+        - paragraph [ref=e184]: 📍 서울 용산구 대사관로 59
+        - generic [ref=e185]: 🏥 응급의학과
+        - generic [ref=e186]: "⏱️ 예상 도착: 오후 01:22"
+        - generic [ref=e187]:
+          - button "즐겨찾기 추가" [ref=e188]: ☆
+          - button "순천향대학교 부속 서울병원 전화 걸기" [ref=e189]: 📞 전화
+          - button "순천향대학교 부속 서울병원 경로 안내" [ref=e190]: 🗺️ 길안내
+      - article "서울특별시동부병원 병원 정보" [ref=e191] [cursor=pointer]:
+        - generic [ref=e192]:
+          - heading "서울특별시동부병원" [level=3] [ref=e193]
+          - generic [ref=e194]:
+            - generic [ref=e195]: 🚗 21분
+            - generic [ref=e196]: 4.8km
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - generic [ref=e199]: "3"
+            - generic [ref=e200]: / 12 병상
+          - generic [ref=e201]: 병상 제한
+        - paragraph [ref=e202]: 📍 서울 동대문구 무학로 124
+        - generic [ref=e203]: 🏥 응급의학과
+        - generic [ref=e204]: "⏱️ 예상 도착: 오후 01:23"
+        - generic [ref=e205]:
+          - button "즐겨찾기 추가" [ref=e206]: ☆
+          - button "서울특별시동부병원 전화 걸기" [ref=e207]: 📞 전화
+          - button "서울특별시동부병원 경로 안내" [ref=e208]: 🗺️ 길안내
+      - article "서울성심병원 병원 정보" [ref=e209] [cursor=pointer]:
+        - generic [ref=e210]:
+          - heading "서울성심병원" [level=3] [ref=e211]
+          - generic [ref=e212]:
+            - generic [ref=e213]: 🚗 30분
+            - generic [ref=e214]: 6.6km
+        - generic [ref=e215]:
+          - generic [ref=e216]:
+            - generic [ref=e217]: "7"
+            - generic [ref=e218]: / 25 병상
+          - generic [ref=e219]: 병상 가능
+        - paragraph [ref=e220]: 📍 서울 동대문구 왕산로 259
+        - generic [ref=e221]: 🏥 응급의학과
+        - generic [ref=e222]: "⏱️ 예상 도착: 오후 01:32"
+        - generic [ref=e223]:
+          - button "즐겨찾기 추가" [ref=e224]: ☆
+          - button "서울성심병원 전화 걸기" [ref=e225]: 📞 전화
+          - button "서울성심병원 경로 안내" [ref=e226]: 🗺️ 길안내
+    - button "📋 다음 10개 병원 보기 (10/49)" [ref=e227] [cursor=pointer]
+    - generic [ref=e228]:
+      - paragraph [ref=e229]: 실제 병상 가용 현황은 병원에 직접 문의하시기 바랍니다.
+      - paragraph [ref=e230]:
+        - text: 응급 상황 시
+        - strong [ref=e231]: "119"
+        - text: 에 먼저 연락하세요.
+```

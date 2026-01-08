@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO -->
+    <title>Golden Time - 실시간 응급실 내비게이션</title>
+    <meta name="description" content="실시간 응급실 병상 현황 및 최적 경로 안내. 응급 상황에서 가장 빠르게 치료받을 수 있는 병원을 찾아드립니다." />
+    <meta name="keywords" content="응급실, 병원, 응급의료, 119, 병상, 실시간, 경로안내" />
+
+    <!-- Open Graph (소셜 미디어) -->
+    <meta property="og:title" content="Golden Time - 실시간 응급실 내비게이션" />
+    <meta property="og:description" content="응급 상황에서 가장 빠르게 치료받을 수 있는 병원을 찾아드립니다." />
+    <meta property="og:type" content="website" />
+
+    <!-- Mobile Optimization -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#FF3B30" />
+
+    <!-- Security (CSP - Content Security Policy) -->
+    <!-- TEMPORARY: CSP 완전 비활성화 (디버깅용) -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://dapi.kakao.com;
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      font-src 'self' data:;
+      connect-src 'self' https://apis.data.go.kr https://dapi.kakao.com;
+      base-uri 'self';
+      form-action 'self';
+    " /> -->
+
+    <!-- Resource Hints for Performance (LCP < 1.5s 최적화) -->
+    <!-- DNS Prefetch: DNS 조회 미리 수행 -->
+    <link rel="dns-prefetch" href="https://apis.data.go.kr" />
+    <link rel="dns-prefetch" href="https://dapi.kakao.com" />
+    <link rel="dns-prefetch" href="https://supabase.co" />
+
+    <!-- Preconnect: DNS + TCP + TLS 핸드셰이크 미리 수행 (Critical resources) -->
+    <link rel="preconnect" href="https://apis.data.go.kr" crossorigin />
+    <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
+
+    <!-- Prefetch: 다음에 필요할 리소스 미리 로드 (Idle time에 로드) -->
+    <link rel="prefetch" href="https://supabase.co" />
+
+    <!-- Kakao Maps JavaScript SDK (수동 로드) -->
+    <script
+      type="text/javascript"
+      src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9011df3cadc244be7bd29fc8ef1b7836&libraries=services&autoload=false"
+    ></script>
+
+    <!-- Emergency Control Center Global Styles -->
+    <style>
+      /* 기본 리셋 및 다크 모드 */
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: #FFFFFF; /* 기본: 라이트 모드 */
+        color: #212529;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        overflow-x: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* 다크 모드 (body에 data-theme="dark" 속성 추가 시) */
+      body[data-theme="dark"] {
+        background: #0A0E14;
+        color: #E8EAED;
+      }
+
+      /* 스크롤바 스타일링 */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1A1F29;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #2A3140;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00FF66;
+        box-shadow: 0 0 10px #00FF66;
+      }
+
+      /* 펄스 애니메이션 */
+      @keyframes hospital-pulse {
+        0% {
+          transform: scale(0.5);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.5);
+          opacity: 0.3;
+        }
+        100% {
+          transform: scale(2);
+          opacity: 0;
+        }
+      }
+
+      /* ECG 심전도 애니메이션 */
+      @keyframes ecg-line {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      @keyframes ecg-pulse {
+        0%, 100% {
+          opacity: 0.8;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      @keyframes heartbeat {
+        0%, 100% {
+          transform: scale(1);
+        }
+        25% {
+          transform: scale(1.1);
+        }
+        50% {
+          transform: scale(1);
+        }
+      }
+
+      /* 네온 글로우 애니메이션 */
+      @keyframes neon-glow-green {
+        0%, 100% {
+          text-shadow: 0 0 5px #00FF66, 0 0 10px #00FF66, 0 0 15px #00FF66;
+        }
+        50% {
+          text-shadow: 0 0 10px #00FF66, 0 0 20px #00FF66, 0 0 30px #00FF66;
+        }
+      }
+
+      @keyframes neon-glow-red {
+        0%, 100% {
+          text-shadow: 0 0 5px #FF003D, 0 0 10px #FF003D, 0 0 15px #FF003D;
+        }
+        50% {
+          text-shadow: 0 0 10px #FF003D, 0 0 20px #FF003D, 0 0 30px #FF003D;
+        }
+      }
+
+      @keyframes scan-line {
+        0% {
+          top: 0;
+        }
+        100% {
+          top: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Kakao SDK 초기화 -->
+    <script>
+      // SDK 수동 로드 및 초기화
+      window.kakaoSDKReady = new Promise((resolve) => {
+        console.log('⏳ Initializing Kakao SDK...');
+
+        // SDK 스크립트가 로드되었는지 먼저 확인
+        if (!window.kakao) {
+          console.error('❌ Kakao SDK script not loaded');
+          resolve(false);
+          return;
+        }
+
+        // maps.load()를 사용하여 수동 초기화
+        window.kakao.maps.load(() => {
+          console.log('✅ Kakao Maps SDK initialized successfully');
+          console.log('   - window.kakao.maps.services exists:', !!window.kakao.maps.services);
+          resolve(true);
+        });
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
