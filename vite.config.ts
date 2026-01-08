@@ -78,7 +78,7 @@ export default defineConfig({
 
   // 프로덕션 최적화
   esbuild: {
-    // 프로덕션 빌드에서 console.log 제거
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    // console.log 유지 (디버깅용)
+    drop: [],
   },
 });
