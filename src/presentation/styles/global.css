@@ -47,11 +47,11 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    /* Emergency Status Colors */
-    --critical: 348 100% 50%; /* #FF003D - Neon Red */
-    --warning: 51 100% 50%; /* #FFD600 - Neon Yellow */
-    --safe: 145 100% 50%; /* #00FF66 - Neon Green */
-    --info: 188 100% 50%; /* #00D9FF - Neon Cyan */
+    /* Emergency Status Colors - Light Mode (더 진하고 선명한 색상) */
+    --critical: 0 85% 48%; /* #DC2626 - Solid Red (빨강) */
+    --warning: 38 92% 50%; /* #F59E0B - Solid Amber (주황/노랑) */
+    --safe: 142 76% 36%; /* #16A34A - Solid Green (초록) */
+    --info: 199 89% 48%; /* #0284C7 - Solid Blue (파랑) */
 
     /* Border Radius */
     --radius: 0.5rem;
