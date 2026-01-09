@@ -35,7 +35,7 @@ export interface GeolocationState {
 export function useGeolocation(
   options: PositionOptions = {
     enableHighAccuracy: true,
-    timeout: 30000, // 30초로 증가 (이전 10초)
+    timeout: 45000, // 45초로 증가 (데스크톱 브라우저는 더 오래 걸림)
     maximumAge: 30000, // 30초간 캐시 허용
   }
 ): GeolocationState {
@@ -151,7 +151,7 @@ export function useGeolocation(
       // 1차 시도: getCurrentPosition (빠른 응답)
       let timedOut = false;
 
-      // 타임아웃 안전장치: 10초 후에도 응답 없으면 fallback
+      // 타임아웃 안전장치: 20초 후에도 응답 없으면 fallback (데스크톱은 더 오래 걸릴 수 있음)
       const fallbackTimeout = setTimeout(() => {
         timedOut = true;
         console.warn('⚠️ Geolocation taking too long, using fallback location');
@@ -164,7 +164,7 @@ export function useGeolocation(
           isLoading: false,
           accuracy: null,
         });
-      }, 10000); // 10초로 증가
+      }, 20000); // 20초로 증가 (데스크톱 브라우저 대응)
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -179,7 +179,7 @@ export function useGeolocation(
           clearTimeout(fallbackTimeout);
           handleError(error);
         },
-        { ...options, timeout: 10000 } // 10초로 증가
+        { ...options, timeout: 45000 } // 45초로 증가 (데스크톱 대응)
       );
 
     } catch (e) {
