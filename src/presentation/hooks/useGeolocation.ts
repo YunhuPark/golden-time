@@ -53,7 +53,7 @@ export function useGeolocation(
         location: getSeoulCityHall(), // Fallback to default location
         error: {
           type: 'NOT_SUPPORTED',
-          message: '브라우저가 위치 서비스를 지원하지 않습니다. 서울시청을 기본 위치로 설정합니다.',
+          message: '브라우저가 위치 서비스를 지원하지 않습니다. 창원시청을 기본 위치로 설정합니다.',
         },
         isLoading: false,
         accuracy: null,
@@ -159,7 +159,7 @@ export function useGeolocation(
           location: getSeoulCityHall(),
           error: {
             type: 'TIMEOUT',
-            message: '위치 확인이 지연되어 기본 위치(서울시청)를 사용합니다.',
+            message: '위치 확인이 지연되어 기본 위치(창원시청)를 사용합니다.',
           },
           isLoading: false,
           accuracy: null,
@@ -205,10 +205,11 @@ export function useGeolocation(
 }
 
 /**
- * 서울시청 좌표 (기본 위치 - 대한민국 인구 중심)
+ * 창원시청 좌표 (기본 위치 - 개발자 위치 기준)
+ * GPS 실패 시에만 사용되는 fallback 위치
  */
 function getSeoulCityHall(): Coordinates {
-  return new Coordinates(37.5663, 126.9779); // Seoul City Hall (서울시청)
+  return new Coordinates(35.2272, 128.6811); // Changwon City Hall (창원시청)
 }
 
 /**
