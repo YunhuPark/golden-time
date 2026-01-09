@@ -164,14 +164,14 @@ export const LoginModal: React.FC = () => {
             onClick={() => setMode('signin')}
             style={{
               flex: 1,
-              padding: '10px 8px',
-              fontSize: '14px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: mode === 'signin' ? '700' : '400',
               color: mode === 'signin' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
               border: 'none',
               borderBottom:
-                mode === 'signin' ? `3px solid ${theme.status.critical}` : '3px solid transparent',
+                mode === 'signin' ? `2px solid ${theme.status.critical}` : '2px solid transparent',
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
@@ -183,14 +183,14 @@ export const LoginModal: React.FC = () => {
             onClick={() => setMode('signup')}
             style={{
               flex: 1,
-              padding: '10px 8px',
-              fontSize: '14px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: mode === 'signup' ? '700' : '400',
               color: mode === 'signup' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
               border: 'none',
               borderBottom:
-                mode === 'signup' ? `3px solid ${theme.status.critical}` : '3px solid transparent',
+                mode === 'signup' ? `2px solid ${theme.status.critical}` : '2px solid transparent',
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
