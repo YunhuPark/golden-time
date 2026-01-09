@@ -348,8 +348,8 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'rounded-xl p-4 mb-3 transition-all duration-300',
-        'border-4',
+        'rounded-lg sm:rounded-xl p-3 sm:p-4 mb-2 sm:mb-3 transition-all duration-300',
+        'border-2 sm:border-4',
         styles.borderClass,
         styles.bgClass,
         onClick && 'cursor-pointer hover:shadow-lg',
@@ -360,21 +360,21 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       aria-label={`${hospital.name} 병원 정보`}
     >
       {/* 헤더: 병원명 + 소요시간/거리 */}
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-xl font-bold text-foreground m-0">
+      <div className="flex justify-between items-start mb-2 gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-foreground m-0 flex-1 min-w-0 break-words">
           {hospital.name}
         </h3>
-        <div className="flex flex-col items-end gap-0.5">
+        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
           {routeDurationMinutes && (
             <span className={cn(
-              'text-lg font-bold whitespace-nowrap',
+              'text-base sm:text-lg font-bold whitespace-nowrap',
               isDark ? 'text-info' : 'text-[#1E88E5]'
             )}>
               🚗 {routeDurationMinutes}분
             </span>
           )}
           {distance && (
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
+            <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
               {distance}km
             </span>
           )}
@@ -395,18 +395,18 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       )}
 
       {/* 병상 정보 (가장 중요) */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-2 sm:gap-3 mb-3">
         <div className="flex items-baseline gap-1">
-          <span className={cn('text-2xl font-bold', styles.textClass)}>
+          <span className={cn('text-xl sm:text-2xl font-bold', styles.textClass)}>
             {hospital.availableBeds}
           </span>
-          <span className="text-base text-muted-foreground">
+          <span className="text-sm sm:text-base text-muted-foreground">
             / {hospital.totalBeds} 병상
           </span>
         </div>
         <span
           className={cn(
-            'text-sm font-semibold px-2 py-1 rounded text-white',
+            'text-xs sm:text-sm font-semibold px-2 py-1 rounded text-white',
             styles.badgeBg
           )}
         >
@@ -415,13 +415,13 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       </div>
 
       {/* 주소 */}
-      <p className="text-sm text-muted-foreground my-2">
+      <p className="text-xs sm:text-sm text-muted-foreground my-2 break-words">
         📍 {hospital.address}
       </p>
 
       {/* 전문 진료과 */}
       {hospital.specializations.length > 0 && (
-        <div className="text-[13px] text-muted-foreground mb-3">
+        <div className="text-xs sm:text-[13px] text-muted-foreground mb-3 break-words">
           🏥 {hospital.specializations.slice(0, 3).join(', ')}
           {hospital.specializations.length > 3 && ' 외'}
         </div>
@@ -429,7 +429,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
 
       {/* 외상센터 등급 */}
       {hospital.traumaLevel && (
-        <div className="text-[13px] text-muted-foreground mb-3">
+        <div className="text-xs sm:text-[13px] text-muted-foreground mb-3">
           🚑 {hospital.traumaLevel === 1 ? '권역외상센터' : hospital.traumaLevel === 2 ? '지역외상센터' : '지역응급의료센터'}
         </div>
       )}
@@ -437,7 +437,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       {/* 예상 도착 시간 */}
       {estimatedArrivalTime && (
         <div className={cn(
-          'text-sm font-semibold mb-3 p-2 rounded-md',
+          'text-xs sm:text-sm font-semibold mb-3 p-2 rounded-md',
           isDark ? 'text-info bg-info/10' : 'text-[#1E88E5] bg-blue-50'
         )}>
           ⏱️ 예상 도착: {estimatedArrivalTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
@@ -445,14 +445,14 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       )}
 
       {/* 액션 버튼 */}
-      <div className="flex gap-2 mt-3">
+      <div className="flex gap-1.5 sm:gap-2 mt-3">
         <Button
           onClick={handleFavoriteToggle}
           disabled={favoriteLoading}
           variant={isFavorite ? 'destructive' : 'outline'}
           size="lg"
           className={cn(
-            'w-14 h-12 text-xl',
+            'w-12 sm:w-14 h-10 sm:h-12 text-lg sm:text-xl',
             !isFavorite && isDark && 'bg-secondary'
           )}
           aria-label={isFavorite ? '즐겨찾기 제거' : '즐겨찾기 추가'}
@@ -463,7 +463,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
           onClick={handleCall}
           variant="info"
           size="lg"
-          className="flex-1 h-12 text-base font-semibold"
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-semibold"
           aria-label={`${hospital.name} 전화 걸기`}
         >
           📞 전화
@@ -472,7 +472,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
           onClick={handleNavigate}
           variant="warning"
           size="lg"
-          className="flex-1 h-12 text-base font-semibold"
+          className="flex-1 h-10 sm:h-12 text-sm sm:text-base font-semibold"
           aria-label={`${hospital.name} 경로 안내`}
         >
           🗺️ 길안내

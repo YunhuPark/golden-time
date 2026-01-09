@@ -61,8 +61,6 @@ export function useGeolocation(
       return;
     }
 
-    let watchId: number | null = null;
-
     const handleSuccess = (position: GeolocationPosition) => {
       const coords = new Coordinates(
         position.coords.latitude,
@@ -161,7 +159,7 @@ export function useGeolocation(
           location: getSeoulCityHall(),
           error: {
             type: 'TIMEOUT',
-            message: '위치 확인이 지연되어 기본 위치(창원)를 사용합니다.',
+            message: '위치 확인이 지연되어 기본 위치(서울시청)를 사용합니다.',
           },
           isLoading: false,
           accuracy: null,
@@ -173,12 +171,8 @@ export function useGeolocation(
           if (timedOut) return; // 이미 타임아웃된 경우 무시
           clearTimeout(fallbackTimeout);
           handleSuccess(position);
-          // 성공 후 실시간 업데이트를 위해 watchPosition 시작
-          watchId = navigator.geolocation.watchPosition(
-            handleSuccess,
-            (err) => console.warn('Watch position error:', err),
-            { ...options, timeout: 60000 } // watch는 더 긴 timeout
-          );
+          // watchPosition 제거: 자동 새로고침 방지
+          // 사용자가 원할 때만 수동으로 새로고침하도록 변경
         },
         (error) => {
           if (timedOut) return; // 이미 타임아웃된 경우 무시
@@ -201,11 +195,9 @@ export function useGeolocation(
       });
     }
 
-    // Cleanup
+    // Cleanup (watchId는 더 이상 사용하지 않음)
     return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-      }
+      // watchPosition을 사용하지 않으므로 cleanup 불필요
     };
   }, [options.enableHighAccuracy, options.timeout, options.maximumAge]);
 
@@ -213,11 +205,10 @@ export function useGeolocation(
 }
 
 /**
- * 창원시청 좌표 (기본 위치 - 개발자 위치 기준)
+ * 서울시청 좌표 (기본 위치 - 대한민국 인구 중심)
  */
 function getSeoulCityHall(): Coordinates {
-  // FIXME: 실제 배포 시 서울시청(37.5663, 126.9779)으로 변경 필요
-  return new Coordinates(35.2272, 128.6811); // Changwon City Hall (창원시청)
+  return new Coordinates(37.5663, 126.9779); // Seoul City Hall (서울시청)
 }
 
 /**

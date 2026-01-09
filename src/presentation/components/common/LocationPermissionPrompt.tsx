@@ -150,7 +150,7 @@ export const LocationPermissionPrompt: React.FC<LocationPermissionPromptProps> =
           </span>
         </div>
         <p className={cn('text-xs', isDark ? 'text-muted-foreground' : 'text-gray-600')}>
-          창원시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
+          서울시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
         </p>
       </div>
 
