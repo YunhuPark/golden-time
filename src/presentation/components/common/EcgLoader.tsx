@@ -65,11 +65,11 @@ export function EcgLoader({
         <span>ID: {new Date().getTime().toString(36).toUpperCase()}</span>
       </div>
 
-      {/* 로고 + 타이틀 */}
-      <div className="flex items-center mb-12">
+      {/* 로고 + 타이틀 - 모바일 최적화 */}
+      <div className="flex items-center mb-8 px-4">
         <span
           className={cn(
-            'text-[56px] mr-4 animate-[heartbeat_1.5s_ease-in-out_infinite]',
+            'text-[48px] sm:text-[56px] mr-3 sm:mr-4 animate-[heartbeat_1.5s_ease-in-out_infinite]',
             isDark
               ? 'drop-shadow-[0_0_10px_hsl(var(--critical))]'
               : 'drop-shadow-[0_2px_4px_rgba(255,59,48,0.3)]'
@@ -79,7 +79,7 @@ export function EcgLoader({
         </span>
         <h1
           className={cn(
-            'text-[42px] font-black uppercase tracking-[3px] font-mono m-0',
+            'text-[32px] sm:text-[42px] font-black uppercase tracking-[2px] sm:tracking-[3px] font-mono m-0',
             isDark
               ? 'text-neon-safe animate-[neon-glow-green_2s_ease-in-out_infinite]'
               : 'text-critical'
@@ -89,10 +89,10 @@ export function EcgLoader({
         </h1>
       </div>
 
-      {/* ECG 심전도 그래프 */}
+      {/* ECG 심전도 그래프 - 모바일 반응형 */}
       <div
         className={cn(
-          'relative w-[400px] h-[100px] overflow-hidden mb-10 rounded-lg p-2.5',
+          'relative w-[90%] max-w-[400px] h-[80px] sm:h-[100px] overflow-hidden mb-8 sm:mb-10 rounded-lg p-2.5 mx-4',
           isDark
             ? 'bg-card border-2 border-border'
             : 'bg-secondary border-2 border-input'
@@ -100,9 +100,11 @@ export function EcgLoader({
       >
         {/* 배경 그리드 */}
         <svg
-          width="380"
-          height="80"
-          className="absolute top-2.5 left-2.5"
+          width="100%"
+          height="100%"
+          viewBox="0 0 380 80"
+          preserveAspectRatio="xMidYMid meet"
+          className="absolute top-2.5 left-2.5 w-[calc(100%-20px)] h-[calc(100%-20px)]"
         >
           {/* 중앙 수평선 */}
           <line
@@ -130,9 +132,11 @@ export function EcgLoader({
 
         {/* ECG 라인 */}
         <svg
-          width="380"
-          height="80"
-          className="absolute top-2.5 left-2.5"
+          width="100%"
+          height="100%"
+          viewBox="0 0 380 80"
+          preserveAspectRatio="xMidYMid meet"
+          className="absolute top-2.5 left-2.5 w-[calc(100%-20px)] h-[calc(100%-20px)]"
         >
           <polyline
             points="0,40 30,40 35,40 37,15 39,65 41,25 43,40 48,40 80,40 85,40 87,15 89,65 91,25 93,40 98,40 130,40 135,40 137,15 139,65 141,25 143,40 148,40 180,40 185,40 187,15 189,65 191,25 193,40 198,40 230,40 235,40 237,15 239,65 241,25 243,40 248,40 280,40 300,40 305,40 307,15 309,65 311,25 313,40 318,40 350,40 380,40"
@@ -154,7 +158,7 @@ export function EcgLoader({
       {/* 로딩 메시지 */}
       <p
         className={cn(
-          'text-[13px] font-mono uppercase tracking-[2px] m-0 mb-5',
+          'text-[11px] sm:text-[13px] font-mono uppercase tracking-[1.5px] sm:tracking-[2px] m-0 mb-4 sm:mb-5 px-4 text-center',
           'animate-ecg-pulse',
           isDark ? 'text-safe' : 'text-critical'
         )}
@@ -163,7 +167,7 @@ export function EcgLoader({
       </p>
 
       {/* 하단 상태 표시 */}
-      <div className="flex gap-7 text-[11px] font-mono text-muted-foreground uppercase">
+      <div className="flex gap-4 sm:gap-7 text-[10px] sm:text-[11px] font-mono text-muted-foreground uppercase">
         <div className="flex items-center gap-1.5">
           <span className="text-safe">●</span>
           <span>REALTIME</span>
@@ -179,7 +183,7 @@ export function EcgLoader({
       </div>
 
       {/* 하단 서브타이틀 */}
-      <p className="absolute bottom-5 text-[10px] text-muted-foreground/60 m-0 font-mono tracking-wider">
+      <p className="absolute bottom-5 text-[9px] sm:text-[10px] text-muted-foreground/60 m-0 font-mono tracking-wider px-4 text-center">
         EMERGENCY MEDICAL INFORMATION SYSTEM v2.0
       </p>
     </div>
