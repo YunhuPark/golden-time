@@ -312,25 +312,25 @@ export const HomePage: React.FC = () => {
       <div style={{
         maxWidth: '800px',
         margin: '0 auto',
-        padding: '16px',
-        paddingTop: isOffline || justReconnected ? '72px' : '16px', // 배너 높이만큼 여백
+        padding: '12px',
+        paddingTop: isOffline || justReconnected ? '68px' : '12px', // 배너 높이만큼 여백 (모바일 최적화)
         backgroundColor: theme.background.primary,
         minHeight: '100vh',
         transition: 'background-color 0.3s ease, padding-top 0.3s ease',
       }}>
-        {/* 헤더 */}
-      <header style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        {/* 헤더 - 모바일 최적화 */}
+      <header style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <h1 style={{
-            fontSize: '28px',
+            fontSize: '22px',
             fontWeight: '700',
             color: theme.status.critical,
-            margin: '16px 0 8px',
+            margin: '8px 0',
             transition: 'color 0.3s ease',
           }}>
             🏥 Golden Time
           </h1>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* 테마 토글 */}
             <ThemeToggle />
 
@@ -338,31 +338,33 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setShowProfilePage(true)}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
                   fontWeight: '600',
                   backgroundColor: '#007AFF',
                   color: '#fff',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                👤 내 프로필
+                👤 프로필
               </button>
             )}
             {user ? (
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
                   fontWeight: '600',
                   backgroundColor: '#F3F4F6',
                   color: '#374151',
                   border: '2px solid #E5E7EB',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 🚪 로그아웃
@@ -371,14 +373,15 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => openLoginModal()}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
                   fontWeight: '600',
                   backgroundColor: '#FF3B30',
                   color: '#fff',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   cursor: 'pointer',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 🔐 로그인
@@ -386,26 +389,26 @@ export const HomePage: React.FC = () => {
             )}
           </div>
         </div>
-        <p style={{ fontSize: '14px', color: theme.text.secondary, margin: 0, textAlign: 'center', transition: 'color 0.3s ease' }}>
+        <p style={{ fontSize: '13px', color: theme.text.secondary, margin: 0, textAlign: 'center', transition: 'color 0.3s ease' }}>
           실시간 응급실 병상 현황 및 경로 안내
         </p>
       </header>
 
-      {/* 긴급 호출 버튼 (항상 표시) */}
+      {/* 긴급 호출 버튼 (항상 표시) - 모바일 최적화 */}
       <button
         onClick={handleEmergencyCall}
         style={{
           width: '100%',
-          height: '60px',
-          fontSize: '20px',
+          height: '54px',
+          fontSize: '18px',
           fontWeight: '700',
           backgroundColor: '#FF3B30',
           color: '#fff',
           border: 'none',
-          borderRadius: '12px',
-          marginBottom: '24px',
+          borderRadius: '10px',
+          marginBottom: '16px',
           cursor: 'pointer',
-          boxShadow: '0 4px 12px rgba(255, 59, 48, 0.3)',
+          boxShadow: '0 3px 10px rgba(255, 59, 48, 0.3)',
         }}
         aria-label="119 긴급 전화"
       >
@@ -424,26 +427,26 @@ export const HomePage: React.FC = () => {
         <div
           style={{
             backgroundColor: themeMode === 'dark' ? theme.background.secondary : '#E8F5E9',
-            padding: '12px',
+            padding: '10px',
             borderRadius: '8px',
-            marginBottom: '16px',
+            marginBottom: '12px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '12px',
+            gap: '8px',
             transition: 'background-color 0.3s ease',
           }}
         >
-          <div style={{ fontSize: '14px', color: themeMode === 'dark' ? theme.status.safe : '#1B5E20', flex: 1, transition: 'color 0.3s ease' }}>
+          <div style={{ fontSize: '13px', color: themeMode === 'dark' ? theme.status.safe : '#1B5E20', flex: 1, transition: 'color 0.3s ease', wordBreak: 'break-all' }}>
             ✅ 현재 위치: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-            {userLocation.accuracy && <div style={{ fontSize: '12px', marginTop: '4px' }}>정확도: ±{Math.round(userLocation.accuracy)}m</div>}
+            {userLocation.accuracy && <div style={{ fontSize: '11px', marginTop: '2px' }}>정확도: ±{Math.round(userLocation.accuracy)}m</div>}
           </div>
           <button
             onClick={handleRefresh}
             disabled={isLoadingHospitals}
             style={{
-              padding: '8px 12px',
-              fontSize: '14px',
+              padding: '6px 10px',
+              fontSize: '13px',
               fontWeight: '600',
               backgroundColor: isLoadingHospitals ? '#ccc' : '#007AFF',
               color: '#fff',
@@ -451,6 +454,7 @@ export const HomePage: React.FC = () => {
               borderRadius: '6px',
               cursor: isLoadingHospitals ? 'not-allowed' : 'pointer',
               whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
             aria-label="병원 검색 새로고침"
           >
