@@ -61,14 +61,17 @@ export const LoginModal: React.FC = () => {
     try {
       const { error: authError } = await signInWithGoogle();
       if (authError) {
-        setError(authError.message);
+        // authError.message가 null이거나 undefined인 경우를 방지
+        setError(authError.message || 'Google 로그인 중 오류가 발생했습니다.');
       } else {
-        // Google 로그인 성공 시 알림 (리다이렉트 후 자동으로 모달 닫힘)
-        alert('✅ Google 로그인이 완료되었습니다!');
-        closeLoginModal();
+        // Google 로그인은 리다이렉트되므로 모달은 바로 닫지 않음
+        // 페이지가 새로고침되면서 자동으로 닫힘
       }
-    } catch (err) {
-      setError('Google 로그인 중 오류가 발생했습니다.');
+    } catch (err: any) {
+      // 에러 메시지가 없는 경우를 대비한 fallback
+      const errorMessage = err?.message || 'Google 로그인 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      console.error('Google sign-in error:', err);
     } finally {
       setLoading(false);
     }
