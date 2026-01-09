@@ -18,6 +18,18 @@ export const LoginModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 모달 열릴 때 body 스크롤 막기
+  React.useEffect(() => {
+    if (isLoginModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isLoginModalOpen]);
+
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
   const isDark = themeMode === 'dark';
 
@@ -104,9 +116,11 @@ export const LoginModal: React.FC = () => {
           borderRadius: '16px',
           maxWidth: '400px',
           width: '100%',
-          padding: '24px',
+          padding: '20px',
           boxShadow: theme.card.shadow,
           transition: 'all 0.3s ease',
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -150,8 +164,8 @@ export const LoginModal: React.FC = () => {
             onClick={() => setMode('signin')}
             style={{
               flex: 1,
-              padding: '12px',
-              fontSize: '15px',
+              padding: '10px 8px',
+              fontSize: '14px',
               fontWeight: mode === 'signin' ? '700' : '400',
               color: mode === 'signin' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -169,8 +183,8 @@ export const LoginModal: React.FC = () => {
             onClick={() => setMode('signup')}
             style={{
               flex: 1,
-              padding: '12px',
-              fontSize: '15px',
+              padding: '10px 8px',
+              fontSize: '14px',
               fontWeight: mode === 'signup' ? '700' : '400',
               color: mode === 'signup' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -249,8 +263,8 @@ export const LoginModal: React.FC = () => {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '14px',
-              fontSize: '16px',
+              padding: '12px',
+              fontSize: '14px',
               fontWeight: '700',
               color: '#fff',
               backgroundColor: loading ? (isDark ? theme.border.primary : '#D1D5DB') : theme.status.critical,
@@ -288,8 +302,8 @@ export const LoginModal: React.FC = () => {
           disabled={loading}
           style={{
             width: '100%',
-            padding: '14px',
-            fontSize: '15px',
+            padding: '12px',
+            fontSize: '14px',
             fontWeight: '600',
             color: theme.text.primary,
             backgroundColor: isDark ? theme.background.secondary : '#fff',
