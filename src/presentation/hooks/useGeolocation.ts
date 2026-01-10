@@ -47,6 +47,13 @@ export function useGeolocation(
   });
 
   useEffect(() => {
+    // 모바일 vs 데스크톱 감지 (터치스크린 지원 여부로 판단)
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const timeoutDuration = isMobile ? 10000 : 30000; // 모바일: 10초, 데스크톱: 30초
+    const fallbackDuration = isMobile ? 12000 : 35000; // 모바일: 12초, 데스크톱: 35초
+
+    console.log(`🌍 Device: ${isMobile ? 'Mobile' : 'Desktop'}, Timeout: ${timeoutDuration/1000}s, Fallback: ${fallbackDuration/1000}s`);
+
     // Edge Case 1: Geolocation API 미지원
     if (!navigator.geolocation) {
       setState({
@@ -151,12 +158,10 @@ export function useGeolocation(
       // 1차 시도: getCurrentPosition (빠른 응답)
       let timedOut = false;
 
-      console.log('🌍 Requesting geolocation... (timeout: 10s, fallback: 12s)');
-
-      // 타임아웃 안전장치: 12초 후에도 응답 없으면 fallback (응급상황 고려)
+      // 타임아웃 안전장치 (디바이스에 따라 동적 조정)
       const fallbackTimeout = setTimeout(() => {
         timedOut = true;
-        console.warn('⚠️ Geolocation timeout (>12s), using fallback location');
+        console.warn(`⚠️ Geolocation timeout (>${fallbackDuration/1000}s), using fallback location`);
         setState({
           location: getSeoulCityHall(),
           error: {
@@ -166,7 +171,7 @@ export function useGeolocation(
           isLoading: false,
           accuracy: null,
         });
-      }, 12000); // 12초 (응급상황에서는 빠른 응답 필수)
+      }, fallbackDuration);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -193,7 +198,7 @@ export function useGeolocation(
           });
           handleError(error);
         },
-        { ...options, timeout: 10000 } // 10초 (응급상황 고려)
+        { ...options, timeout: timeoutDuration } // 모바일/데스크톱 동적 조정
       );
 
     } catch (e) {
