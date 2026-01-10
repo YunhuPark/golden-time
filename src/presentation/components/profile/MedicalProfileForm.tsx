@@ -162,33 +162,33 @@ export const MedicalProfileForm: React.FC = () => {
   return (
     <div style={{
       backgroundColor: '#fff',
-      borderRadius: '16px',
-      padding: '24px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+      borderRadius: '12px',
+      padding: '16px',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
     }}>
       {/* 헤더 */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', margin: '0 0 6px' }}>
             💊 의료 정보
           </h2>
-          <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
-            응급 상황 시 의료진에게 전달될 정보입니다. 모든 데이터는 암호화되어 안전하게 보관됩니다.
+          <p style={{ fontSize: '13px', color: '#6B7280', margin: 0, lineHeight: '1.4' }}>
+            응급 상황 시 의료진에게 전달될 정보입니다.
           </p>
         </div>
         <button
           onClick={() => setShowQRGenerator(true)}
           style={{
-            padding: '12px 24px',
-            fontSize: '15px',
+            padding: '12px 20px',
+            fontSize: '14px',
             fontWeight: '700',
             backgroundColor: '#FF3B30',
             color: '#fff',
             border: 'none',
-            borderRadius: '10px',
+            borderRadius: '8px',
             cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(255, 59, 48, 0.3)',
+            width: '100%',
+            boxShadow: '0 2px 8px rgba(255, 59, 48, 0.3)',
           }}
         >
           🚨 응급 QR 생성
@@ -226,11 +226,11 @@ export const MedicalProfileForm: React.FC = () => {
       {/* 폼 */}
       <form onSubmit={handleSave}>
         {/* 기본 정보 */}
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
             📋 기본 정보
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
                 혈액형
@@ -300,7 +300,7 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 알레르기 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
             ⚠️ 알레르기 (쉼표로 구분)
           </label>
@@ -321,7 +321,7 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 기저 질환 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
             💊 기저 질환 (쉼표로 구분)
           </label>
@@ -342,7 +342,7 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 복용 약물 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
             💉 복용 중인 약물 (쉼표로 구분)
           </label>
@@ -363,7 +363,7 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 수술 이력 */}
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
             🏥 과거 수술 이력 (쉼표로 구분)
           </label>
@@ -384,11 +384,11 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 응급 연락처 */}
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
             📞 응급 연락처
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
                 이름
@@ -450,7 +450,7 @@ export const MedicalProfileForm: React.FC = () => {
         </div>
 
         {/* 추가 메모 */}
-        <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6B7280', marginBottom: '4px' }}>
             📝 특이사항 (의료진에게 전달할 사항)
           </label>
@@ -477,8 +477,8 @@ export const MedicalProfileForm: React.FC = () => {
           disabled={saving}
           style={{
             width: '100%',
-            padding: '14px',
-            fontSize: '16px',
+            padding: '13px',
+            fontSize: '15px',
             fontWeight: '700',
             color: '#fff',
             backgroundColor: saving ? '#D1D5DB' : '#FF3B30',
@@ -493,13 +493,14 @@ export const MedicalProfileForm: React.FC = () => {
 
       {/* 안내 */}
       <p style={{
-        fontSize: '12px',
+        fontSize: '11px',
         color: '#9CA3AF',
         textAlign: 'center',
-        marginTop: '16px',
+        marginTop: '12px',
         marginBottom: 0,
+        lineHeight: '1.4',
       }}>
-        🔐 모든 의료 정보는 AES-256-GCM 암호화되어 안전하게 저장됩니다
+        🔐 모든 의료 정보는 암호화되어 안전하게 저장됩니다
       </p>
 
       {/* 응급 QR 생성 모달 */}
