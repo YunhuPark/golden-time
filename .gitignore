@@ -7,10 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
+build
 *.local
+
+# Environment variables (CRITICAL: Never commit API keys)
+.env
+.env.local
+.env.development
+.env.production
 
 # Editor directories and files
 .vscode/*
@@ -23,14 +33,21 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables (CRITICAL: Never commit API keys)
-.env
-.env.local
-.env.development
-.env.production
-
 # Testing
 coverage
+test-results/
+playwright-report/
+playwright/.cache/
 
-# Build
-build
+# Claude Code
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS specific
+Thumbs.db
+.AppleDouble
+.LSOverride
