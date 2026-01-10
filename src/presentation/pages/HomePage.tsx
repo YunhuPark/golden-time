@@ -320,17 +320,18 @@ export const HomePage: React.FC = () => {
       }}>
         {/* 헤더 - 모바일 최적화 */}
       <header style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
           <h1 style={{
             fontSize: '22px',
             fontWeight: '700',
             color: theme.status.critical,
             margin: '8px 0',
             transition: 'color 0.3s ease',
+            flexShrink: 0,
           }}>
             🏥 Golden Time
           </h1>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
             {/* 테마 토글 */}
             <ThemeToggle />
 

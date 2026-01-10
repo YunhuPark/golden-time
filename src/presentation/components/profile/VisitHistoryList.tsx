@@ -465,38 +465,38 @@ export const VisitHistoryList: React.FC = () => {
       }}
     >
       {/* 헤더 */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <h2
             style={{
-              fontSize: '22px',
+              fontSize: '18px',
               fontWeight: '700',
               color: '#111827',
-              margin: '0 0 8px',
+              margin: 0,
             }}
           >
             📚 병원 방문 기록
           </h2>
-          <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
-            과거에 방문했던 병원들의 기록입니다.
-          </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{
+              padding: '10px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              backgroundColor: '#007AFF',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            + 수동 추가
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            padding: '12px 20px',
-            fontSize: '15px',
-            fontWeight: '600',
-            backgroundColor: '#007AFF',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          + 수동 추가
-        </button>
+        <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+          과거에 방문했던 병원들의 기록입니다.
+        </p>
       </div>
 
       {/* 통계 */}
