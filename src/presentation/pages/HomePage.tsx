@@ -340,8 +340,9 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setShowProfilePage(true)}
                 style={{
-                  padding: '8px',
-                  fontSize: '18px',
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  fontWeight: '600',
                   backgroundColor: '#007AFF',
                   color: '#fff',
                   border: 'none',
@@ -350,20 +351,20 @@ export const HomePage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minWidth: '36px',
-                  minHeight: '36px',
+                  gap: '3px',
+                  whiteSpace: 'nowrap',
                 }}
-                title="프로필"
               >
-                👤
+                👤 프로필
               </button>
             )}
             {user ? (
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '8px',
-                  fontSize: '18px',
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  fontWeight: '600',
                   backgroundColor: '#F3F4F6',
                   color: '#374151',
                   border: '2px solid #E5E7EB',
@@ -372,12 +373,11 @@ export const HomePage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minWidth: '36px',
-                  minHeight: '36px',
+                  gap: '3px',
+                  whiteSpace: 'nowrap',
                 }}
-                title="로그아웃"
               >
-                🚪
+                🚪 로그아웃
               </button>
             ) : (
               <button
