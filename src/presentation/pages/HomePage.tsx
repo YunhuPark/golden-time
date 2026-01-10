@@ -320,18 +320,19 @@ export const HomePage: React.FC = () => {
       }}>
         {/* 헤더 - 모바일 최적화 */}
       <header style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '6px' }}>
           <h1 style={{
-            fontSize: '22px',
+            fontSize: '20px',
             fontWeight: '700',
             color: theme.status.critical,
             margin: '8px 0',
             transition: 'color 0.3s ease',
-            flexShrink: 0,
+            flexShrink: 1,
+            minWidth: 0,
           }}>
             🏥 Golden Time
           </h1>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
             {/* 테마 토글 */}
             <ThemeToggle />
 
@@ -339,36 +340,44 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setShowProfilePage(true)}
                 style={{
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  fontWeight: '600',
+                  padding: '8px',
+                  fontSize: '18px',
                   backgroundColor: '#007AFF',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '36px',
+                  minHeight: '36px',
                 }}
+                title="프로필"
               >
-                👤 프로필
+                👤
               </button>
             )}
             {user ? (
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  fontWeight: '600',
+                  padding: '8px',
+                  fontSize: '18px',
                   backgroundColor: '#F3F4F6',
                   color: '#374151',
                   border: '2px solid #E5E7EB',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '36px',
+                  minHeight: '36px',
                 }}
+                title="로그아웃"
               >
-                🚪 로그아웃
+                🚪
               </button>
             ) : (
               <button
