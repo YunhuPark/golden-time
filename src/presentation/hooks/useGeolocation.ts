@@ -151,10 +151,12 @@ export function useGeolocation(
       // 1차 시도: getCurrentPosition (빠른 응답)
       let timedOut = false;
 
-      // 타임아웃 안전장치: 20초 후에도 응답 없으면 fallback (데스크톱은 더 오래 걸릴 수 있음)
+      console.log('🌍 Requesting geolocation... (timeout: 45s, fallback: 50s)');
+
+      // 타임아웃 안전장치: 50초 후에도 응답 없으면 fallback (데스크톱 Wi-Fi 기반 위치는 오래 걸림)
       const fallbackTimeout = setTimeout(() => {
         timedOut = true;
-        console.warn('⚠️ Geolocation taking too long, using fallback location');
+        console.warn('⚠️ Geolocation taking too long (>50s), using fallback location');
         setState({
           location: getSeoulCityHall(),
           error: {
@@ -164,12 +166,17 @@ export function useGeolocation(
           isLoading: false,
           accuracy: null,
         });
-      }, 20000); // 20초로 증가 (데스크톱 브라우저 대응)
+      }, 50000); // 50초로 증가 (데스크톱 Wi-Fi 위치 서비스 대응)
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           if (timedOut) return; // 이미 타임아웃된 경우 무시
           clearTimeout(fallbackTimeout);
+          console.log('✅ Geolocation success:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          });
           handleSuccess(position);
           // watchPosition 제거: 자동 새로고침 방지
           // 사용자가 원할 때만 수동으로 새로고침하도록 변경
@@ -177,6 +184,13 @@ export function useGeolocation(
         (error) => {
           if (timedOut) return; // 이미 타임아웃된 경우 무시
           clearTimeout(fallbackTimeout);
+          console.error('❌ Geolocation error:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.PERMISSION_DENIED,
+            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+            TIMEOUT: error.TIMEOUT,
+          });
           handleError(error);
         },
         { ...options, timeout: 45000 } // 45초로 증가 (데스크톱 대응)
