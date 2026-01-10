@@ -26,7 +26,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
         style={{
           minHeight: '100vh',
           backgroundColor: theme.background.primary,
-          padding: '24px',
+          padding: '16px',
           transition: 'background-color 0.3s ease',
         }}
       >
@@ -40,18 +40,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             style={{
               backgroundColor: themeMode === 'dark' ? theme.background.secondary : '#FEF3C7',
               border: `2px solid ${themeMode === 'dark' ? theme.border.primary : '#F59E0B'}`,
-              borderRadius: '16px',
-              padding: '40px',
+              borderRadius: '12px',
+              padding: '24px',
               textAlign: 'center',
               transition: 'background-color 0.3s ease, border-color 0.3s ease',
             }}
           >
             <h2
               style={{
-                fontSize: '28px',
+                fontSize: '22px',
                 fontWeight: '700',
                 color: theme.status.warning,
-                margin: '0 0 12px',
+                margin: '0 0 10px',
                 transition: 'color 0.3s ease',
               }}
             >
@@ -59,10 +59,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             </h2>
             <p
               style={{
-                fontSize: '16px',
+                fontSize: '14px',
                 color: theme.text.primary,
-                marginBottom: '24px',
+                marginBottom: '20px',
                 transition: 'color 0.3s ease',
+                lineHeight: '1.5',
               }}
             >
               의료 정보와 방문 기록을 관리하려면 로그인해주세요.
@@ -70,25 +71,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             <button
               onClick={() => openLoginModal('프로필')}
               style={{
-                padding: '16px 32px',
-                fontSize: '16px',
+                padding: '14px 28px',
+                fontSize: '15px',
                 fontWeight: '700',
                 color: '#fff',
                 backgroundColor: theme.status.critical,
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
+                width: '100%',
+                maxWidth: '300px',
               }}
             >
               로그인하기
             </button>
             <p
               style={{
-                fontSize: '14px',
+                fontSize: '12px',
                 color: theme.text.dim,
-                marginTop: '24px',
+                marginTop: '20px',
                 marginBottom: 0,
                 transition: 'color 0.3s ease',
+                lineHeight: '1.4',
               }}
             >
               💡 로그인 없이도 병원 검색 기능은 사용할 수 있습니다
@@ -104,7 +108,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
       style={{
         minHeight: '100vh',
         backgroundColor: theme.background.primary,
-        padding: '24px',
+        padding: '16px',
         transition: 'background-color 0.3s ease',
       }}
     >
@@ -115,14 +119,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
         }}
       >
         {/* 헤더 */}
-        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
+        <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h1
               style={{
-                fontSize: '32px',
+                fontSize: '24px',
                 fontWeight: '700',
                 color: theme.text.primary,
-                margin: '0 0 8px',
+                margin: '0 0 6px',
                 transition: 'color 0.3s ease',
               }}
             >
@@ -130,10 +134,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             </h1>
             <p
               style={{
-                fontSize: '16px',
+                fontSize: '13px',
                 color: theme.text.secondary,
                 margin: 0,
                 transition: 'color 0.3s ease',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
               {user.email}
@@ -143,8 +150,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             <button
               onClick={onBack}
               style={{
-                padding: '12px 24px',
-                fontSize: '16px',
+                padding: '10px 16px',
+                fontSize: '14px',
                 fontWeight: '600',
                 backgroundColor: theme.background.secondary,
                 color: theme.text.primary,
@@ -152,9 +159,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
-              ← 뒤로가기
+              ← 뒤로
             </button>
           )}
         </div>
