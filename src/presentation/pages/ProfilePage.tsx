@@ -165,17 +165,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
             marginBottom: '24px',
             borderBottom: `2px solid ${theme.border.primary}`,
             transition: 'border-color 0.3s ease',
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '0',
           }}
         >
           <button
             onClick={() => setActiveTab('favorites')}
             style={{
-              padding: '12px 16px',
-              fontSize: '15px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: activeTab === 'favorites' ? '700' : '500',
               color: activeTab === 'favorites' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -187,20 +186,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
               textAlign: 'center',
-              display: 'inline-block',
-              writingMode: 'horizontal-tb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ⭐ 즐겨찾기
+            <span style={{ fontSize: '20px', marginBottom: '2px' }}>⭐</span>
+            <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>즐겨찾기</span>
           </button>
           <button
             onClick={() => setActiveTab('medical')}
             style={{
-              padding: '12px 16px',
-              fontSize: '15px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: activeTab === 'medical' ? '700' : '500',
               color: activeTab === 'medical' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -212,20 +212,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
               textAlign: 'center',
-              display: 'inline-block',
-              writingMode: 'horizontal-tb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            💊 의료정보
+            <span style={{ fontSize: '20px', marginBottom: '2px' }}>💊</span>
+            <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>의료정보</span>
           </button>
           <button
             onClick={() => setActiveTab('visits')}
             style={{
-              padding: '12px 16px',
-              fontSize: '15px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: activeTab === 'visits' ? '700' : '500',
               color: activeTab === 'visits' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -237,20 +238,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
               textAlign: 'center',
-              display: 'inline-block',
-              writingMode: 'horizontal-tb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            📚 방문기록
+            <span style={{ fontSize: '20px', marginBottom: '2px' }}>📚</span>
+            <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>방문기록</span>
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
             style={{
-              padding: '12px 16px',
-              fontSize: '15px',
+              padding: '8px 4px',
+              fontSize: '13px',
               fontWeight: activeTab === 'reviews' ? '700' : '500',
               color: activeTab === 'reviews' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -262,14 +264,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
               textAlign: 'center',
-              display: 'inline-block',
-              writingMode: 'horizontal-tb',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            ✍️ 내리뷰
+            <span style={{ fontSize: '20px', marginBottom: '2px' }}>✍️</span>
+            <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>내리뷰</span>
           </button>
         </div>
 

@@ -291,6 +291,57 @@
   writing-mode: horizontal-tb !important;
 }
 
+/* ECG Loader Animations */
+@keyframes ecg-line {
+  0% {
+    stroke-dasharray: 0 1000;
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dasharray: 1000 0;
+    stroke-dashoffset: -1000;
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  10% {
+    transform: scale(1.1);
+  }
+  20% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ecg-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes neon-glow-green {
+  0%, 100% {
+    text-shadow: 0 0 10px hsl(var(--safe)), 0 0 20px hsl(var(--safe));
+  }
+  50% {
+    text-shadow: 0 0 20px hsl(var(--safe)), 0 0 30px hsl(var(--safe)), 0 0 40px hsl(var(--safe));
+  }
+}
+
 /* Print styles */
 @media print {
   body {
