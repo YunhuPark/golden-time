@@ -484,7 +484,7 @@ export const VisitHistoryList: React.FC = () => {
         <button
           onClick={() => setShowAddModal(true)}
           style={{
-            padding: '12px 24px',
+            padding: '12px 20px',
             fontSize: '15px',
             fontWeight: '600',
             backgroundColor: '#007AFF',

@@ -162,18 +162,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
         {/* 탭 */}
         <div
           style={{
-            display: 'flex',
-            gap: '12px',
             marginBottom: '24px',
             borderBottom: `2px solid ${theme.border.primary}`,
             transition: 'border-color 0.3s ease',
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <button
             onClick={() => setActiveTab('favorites')}
             style={{
-              padding: '12px 24px',
-              fontSize: '16px',
+              padding: '12px 16px',
+              fontSize: '15px',
               fontWeight: activeTab === 'favorites' ? '700' : '500',
               color: activeTab === 'favorites' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -185,6 +187,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              display: 'inline-block',
+              writingMode: 'horizontal-tb',
             }}
           >
             ⭐ 즐겨찾기
@@ -192,8 +199,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
           <button
             onClick={() => setActiveTab('medical')}
             style={{
-              padding: '12px 24px',
-              fontSize: '16px',
+              padding: '12px 16px',
+              fontSize: '15px',
               fontWeight: activeTab === 'medical' ? '700' : '500',
               color: activeTab === 'medical' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -205,15 +212,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              display: 'inline-block',
+              writingMode: 'horizontal-tb',
             }}
           >
-            💊 의료 정보
+            💊 의료정보
           </button>
           <button
             onClick={() => setActiveTab('visits')}
             style={{
-              padding: '12px 24px',
-              fontSize: '16px',
+              padding: '12px 16px',
+              fontSize: '15px',
               fontWeight: activeTab === 'visits' ? '700' : '500',
               color: activeTab === 'visits' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -225,15 +237,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              display: 'inline-block',
+              writingMode: 'horizontal-tb',
             }}
           >
-            📚 방문 기록
+            📚 방문기록
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
             style={{
-              padding: '12px 24px',
-              fontSize: '16px',
+              padding: '12px 16px',
+              fontSize: '15px',
               fontWeight: activeTab === 'reviews' ? '700' : '500',
               color: activeTab === 'reviews' ? theme.status.critical : theme.text.secondary,
               backgroundColor: 'transparent',
@@ -245,9 +262,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
               cursor: 'pointer',
               marginBottom: '-2px',
               transition: 'all 0.3s ease',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              display: 'inline-block',
+              writingMode: 'horizontal-tb',
             }}
           >
-            ⭐ 내 리뷰
+            ✍️ 내리뷰
           </button>
         </div>
 
