@@ -110,8 +110,8 @@ export class KakaoDirectionsClient {
 
   constructor(
     restApiKey = import.meta.env['VITE_KAKAO_REST_API_KEY'] || '',
-    timeout = 5000,
-    maxRetries = 2
+    timeout = 3000, // 3초로 단축 (성능 최적화)
+    maxRetries = 1 // 재시도 1회로 단축 (빠른 실패)
   ) {
     this.restApiKey = restApiKey;
     this.timeout = timeout;

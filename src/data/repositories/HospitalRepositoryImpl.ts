@@ -69,15 +69,27 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       console.log(`✅ Found ${validHospitals.length} hospitals with coordinates (filtered by distance < ${MAX_DISTANCE_KM}km)`);
 
-      // 경로 정보 계산 (모든 병원, 사용자 경험 향상)
-      // 성능 고려: Kakao API는 병렬 요청 가능, 실제 응답 시간은 1-2초 내
+      // 성능 최적화: 초기에는 상위 10개만 경로 정보 계산
+      // 나머지는 직선 거리만 사용하여 빠르게 표시
+      const INITIAL_ROUTE_COUNT = 10;
+      const topHospitals = validHospitals.slice(0, INITIAL_ROUTE_COUNT);
+      const remainingHospitals = validHospitals.slice(INITIAL_ROUTE_COUNT);
+
+      console.log(`🚗 Calculating route info for top ${topHospitals.length} hospitals only (performance optimization)...`);
+
+      // 상위 10개만 경로 정보 계산 (병렬 처리)
       const hospitalsWithRouteInfo = await this.enrichWithRouteInfo(
         coords,
-        validHospitals
+        topHospitals
       );
 
+      // 나머지 병원은 경로 정보 없이 직선 거리만 사용
+      const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
+
       // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankedHospitals = HospitalRankingService.rankHospitals(hospitalsWithRouteInfo);
+      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals);
+
+      console.log(`✅ Returning ${rankedHospitals.length} hospitals (route info for top ${INITIAL_ROUTE_COUNT}, rest use direct distance)`);
 
       return rankedHospitals;
 
