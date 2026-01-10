@@ -164,6 +164,7 @@ export const EmergencyQRGenerator: React.FC<EmergencyQRGeneratorProps> = ({ onCl
             fontWeight: '700',
             color: '#FF3B30',
             margin: '0 0 8px',
+            textAlign: 'center',
           }}
         >
           🚨 응급 QR 코드
@@ -230,6 +231,7 @@ export const EmergencyQRGenerator: React.FC<EmergencyQRGeneratorProps> = ({ onCl
                 cursor: loading ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 12px rgba(255, 59, 48, 0.3)',
                 marginBottom: '16px',
+                textAlign: 'center',
               }}
             >
               {loading ? '생성 중...' : '🚨 응급 QR 생성'}
@@ -285,6 +287,8 @@ export const EmergencyQRGenerator: React.FC<EmergencyQRGeneratorProps> = ({ onCl
                   border: 'none',
                   borderRadius: '10px',
                   cursor: 'pointer',
+                  textAlign: 'center',
+                  width: '100%',
                 }}
               >
                 📥 QR 코드 다운로드
@@ -301,6 +305,8 @@ export const EmergencyQRGenerator: React.FC<EmergencyQRGeneratorProps> = ({ onCl
                   border: 'none',
                   borderRadius: '10px',
                   cursor: 'pointer',
+                  textAlign: 'center',
+                  width: '100%',
                 }}
               >
                 💬 카카오톡으로 공유
@@ -317,6 +323,8 @@ export const EmergencyQRGenerator: React.FC<EmergencyQRGeneratorProps> = ({ onCl
                   border: '2px solid #E5E7EB',
                   borderRadius: '10px',
                   cursor: 'pointer',
+                  textAlign: 'center',
+                  width: '100%',
                 }}
               >
                 📋 링크 복사
