@@ -84,7 +84,7 @@ export const HomePage: React.FC = () => {
   const [showMapView, setShowMapView] = useState(false);
 
   // 프로필 페이지 표시 여부
-  const [showProfilePage, setShowProfilePage] = useState(true); // 테스트용: 원래는 false
+  const [showProfilePage, setShowProfilePage] = useState(false);
 
   // 병원 상세 모달 (리뷰 표시)
   const [showDetailModal, setShowDetailModal] = useState(false);
