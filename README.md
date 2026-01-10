@@ -451,6 +451,18 @@ perf: 성능 개선
 
 ---
 
+## 📚 상세 문서
+
+자세한 설정 및 사용 가이드는 다음 문서를 참조하세요:
+
+- **[📖 전체 문서 목록](./docs/)** - 모든 상세 문서
+- **[🗄️ 데이터베이스 스키마](./supabase/)** - Supabase 스키마 및 마이그레이션
+- **[🚀 빠른 시작](./docs/QUICKSTART.md)** - 5분 안에 프로젝트 실행
+- **[🔐 Supabase 설정](./docs/SUPABASE_SETUP.md)** - 백엔드 초기 설정
+- **[🚢 배포 가이드](./docs/DEPLOYMENT.md)** - Vercel 배포 방법
+
+---
+
 ## 📞 문의
 
 프로젝트 관련 문의사항은 [Issues](https://github.com/YunhuPark/golden-time/issues)에 등록해주세요.
