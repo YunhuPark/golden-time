@@ -29,7 +29,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   /**
    * 특정 좌표 주변의 병원 검색
    */
-  async findNearby(coords: Coordinates): Promise<Hospital[]> {
+  async findNearby(coords: Coordinates, targetDisease?: string): Promise<Hospital[]> {
     try {
       // 좌표를 기반으로 시도/시군구 추론 (간단히 서울 가정, 향후 역지오코딩 API 사용)
       // TODO: Kakao Local API로 좌표 → 행정구역 변환
@@ -87,7 +87,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
 
       // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals);
+      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals, targetDisease);
 
       console.log(`✅ Returning ${rankedHospitals.length} hospitals (route info for top ${INITIAL_ROUTE_COUNT}, rest use direct distance)`);
 

@@ -16,6 +16,7 @@ interface HospitalListProps {
   warning: HospitalSearchWarning | null;
   isLoading: boolean;
   sortOption: SortOption;
+  targetDisease?: string | null;
   onSortChange: (option: SortOption) => void;
   onHospitalClick?: (hospital: Hospital) => void;
 }
@@ -30,6 +31,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   warning,
   isLoading,
   sortOption,
+  targetDisease,
   onSortChange,
   onHospitalClick,
 }) => {
@@ -202,6 +204,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             key={hospital.id}
             hospital={hospital}
             userLocation={userLocation}
+            targetDisease={targetDisease}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}

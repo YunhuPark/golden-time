@@ -9,10 +9,10 @@ export interface IHospitalRepository {
   /**
    * 특정 좌표 주변의 병원 검색
    * @param coords 중심 좌표
-   * @param radiusMeters 검색 반경 (미터, 선택사항)
+   * @param targetDisease 검색할 질환 (선택사항)
    * @returns 병원 목록
    */
-  findNearby(coords: Coordinates, radiusMeters?: number): Promise<Hospital[]>;
+  findNearby(coords: Coordinates, targetDisease?: string): Promise<Hospital[]>;
 
   /**
    * 특정 지역(시도, 시군구)의 병원 검색

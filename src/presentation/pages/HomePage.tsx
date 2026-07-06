@@ -63,6 +63,37 @@ export const HomePage: React.FC = () => {
   // 인증 상태
   const { user: authUser, signOut } = useAuth();
 
+  // URL 쿼리 파라미터 확인 (Medical AI 연동)
+  const [triageLevel, setTriageLevel] = useState<string | null>(null);
+  const [targetDisease, setTargetDisease] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const triage = params.get('triage');
+    const disease = params.get('disease');
+    
+    if (disease) {
+      setTargetDisease(disease);
+    }
+    
+    if (triage) {
+      setTriageLevel(triage);
+      
+      // RED 응급도일 경우 자동 필터링 적용
+      if (triage === 'RED') {
+        // 기존 상태가 초기화되기 전에 약간의 지연 후 필터 적용
+        setTimeout(() => {
+          const store = useAppStore.getState();
+          store.setFilters({
+            ...store.filters,
+            hasAvailableBeds: true,
+            hasSurgery: true, // 수술 가능 병원 우선
+          });
+        }, 100);
+      }
+    }
+  }, []);
+
   // 인증 상태 동기화
   useEffect(() => {
     setUser(authUser);
@@ -182,7 +213,7 @@ export const HomePage: React.FC = () => {
         const repository = new HospitalRepositoryImpl(apiClient);
         const useCase = new GetNearbyHospitals(repository);
 
-        const result = await useCase.execute(userLocation);
+        const result = await useCase.execute(userLocation, targetDisease || undefined);
 
         // API 성공 시 캐시에 저장
         if (result.hospitals.length > 0) {
@@ -404,6 +435,31 @@ export const HomePage: React.FC = () => {
         </p>
       </header>
 
+      {/* Medical AI 연동 알림 배너 */}
+      {triageLevel === 'RED' && (
+        <div style={{
+          backgroundColor: '#ef4444',
+          color: 'white',
+          padding: '12px 16px',
+          borderRadius: '10px',
+          marginBottom: '16px',
+          fontWeight: 'bold',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+          animation: 'pulse 2s infinite'
+        }}>
+          <span style={{ fontSize: '20px' }}>🚨</span>
+          <div>
+            <div style={{ fontSize: '15px' }}>[AI 분석 완료] 초응급(RED) 환자 이송 모드</div>
+            <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: 0.9, marginTop: '2px' }}>
+              수술 가능한 중환자실(ICU) 빈 병상을 최우선 탐색합니다.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 긴급 호출 버튼 (항상 표시) - 모바일 최적화 */}
       <button
         onClick={handleEmergencyCall}
@@ -599,6 +655,7 @@ export const HomePage: React.FC = () => {
               warning={searchWarning}
               isLoading={isLoadingHospitals}
               sortOption={sortOption}
+              targetDisease={targetDisease}
               onSortChange={setSortOption}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);
