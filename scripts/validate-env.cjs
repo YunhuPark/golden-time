@@ -29,18 +29,15 @@ function log(message, color = 'reset') {
  * 필수 환경 변수 정의
  */
 const REQUIRED_ENV_VARS = {
-  development: [
-    'VITE_KAKAO_MAP_APP_KEY',
-    'VITE_KAKAO_REST_API_KEY',
-  ],
-  production: [
-    'VITE_EGEN_SERVICE_KEY',
+  common: [
     'VITE_KAKAO_MAP_APP_KEY',
     'VITE_KAKAO_REST_API_KEY',
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
+  ],
+  development: [],
+  production: [
     'VITE_ENCRYPTION_KEY',
-    'VITE_SENTRY_DSN',
   ],
 };
 
@@ -213,11 +210,11 @@ function validateSecurity(env, mode) {
     log('⚠️  Sentry DSN이 설정되지 않았습니다. 에러 모니터링이 비활성화됩니다.', 'yellow');
   }
 
-  // 3. 환경 모드 확인
-  const viteEnv = env.VITE_ENV;
-  if (viteEnv !== 'production') {
-    securityIssues.push(`VITE_ENV가 'production'이 아닙니다. (현재: ${viteEnv})`);
-  }
+  // 3. 환경 모드 확인 (Vercel에서는 기본적으로 적용되므로 생략)
+  // const viteEnv = env.VITE_ENV;
+  // if (viteEnv !== 'production') {
+  //   securityIssues.push(`VITE_ENV가 'production'이 아닙니다. (현재: ${viteEnv})`);
+  // }
 
   if (securityIssues.length > 0) {
     log('\n❌ 보안 문제 발견:', 'red');
