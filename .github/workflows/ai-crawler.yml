@@ -29,5 +29,4 @@ jobs:
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CRAWLER_TEST_LIMIT: 0
         run: npm run crawler
