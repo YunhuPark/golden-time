@@ -365,8 +365,8 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       {/* 헤더: 병원명 + 소요시간/거리 */}
       <div className="flex flex-col mb-2 gap-1">
         {targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease) && (
-          <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
-            ✨ AI 추천: {targetDisease} 전문
+          <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-[11px] sm:text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
+            ✨ AI 추천: {targetDisease} 치료 적합 (거리·병상 종합 고려)
           </div>
         )}
         <div className="flex justify-between items-start gap-2">
