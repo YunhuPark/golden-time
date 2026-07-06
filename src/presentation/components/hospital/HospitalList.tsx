@@ -44,8 +44,8 @@ export const HospitalList: React.FC<HospitalListProps> = ({
 
   // 정렬된 병원 목록 (useMemo로 최적화)
   const sortedHospitals = useMemo(() => {
-    return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation);
-  }, [hospitals, sortOption, userLocation]);
+    return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation, targetDisease);
+  }, [hospitals, sortOption, userLocation, targetDisease]);
 
   // 정렬 옵션이나 병원 목록이 변경되면 displayCount 초기화
   React.useEffect(() => {

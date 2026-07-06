@@ -19,7 +19,8 @@ export class HospitalSortService {
   static sortHospitals(
     hospitals: Hospital[],
     sortOption: SortOption,
-    userLocation: Coordinates | null
+    userLocation: Coordinates | null,
+    targetDisease?: string | null
   ): Hospital[] {
     // Edge Case: 빈 배열
     if (hospitals.length === 0) {
@@ -36,7 +37,7 @@ export class HospitalSortService {
 
     switch (sortOption) {
       case 'RECOMMENDED':
-        return this.sortByRecommended(sortedHospitals);
+        return this.sortByRecommended(sortedHospitals, targetDisease);
 
       case 'TIME':
         return this.sortByTime(sortedHospitals);
@@ -55,8 +56,8 @@ export class HospitalSortService {
   /**
    * 추천순 정렬 (AI 점수 기반)
    */
-  private static sortByRecommended(hospitals: Hospital[]): Hospital[] {
-    return HospitalRankingService.rankHospitals(hospitals);
+  private static sortByRecommended(hospitals: Hospital[], targetDisease?: string | null): Hospital[] {
+    return HospitalRankingService.rankHospitals(hospitals, targetDisease);
   }
 
   /**

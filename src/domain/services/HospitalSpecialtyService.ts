@@ -45,37 +45,37 @@ export class HospitalSpecialtyService {
    * 2. 없으면 병원 이름과 메타데이터를 분석하여 Heuristic하게 추론(Fallback)
    */
   static getSpecialties(hospital: Hospital): string[] {
+    const specialties = new Set<string>();
+
     // 1. DB 매칭 (정확한 이름 또는 포함하는 이름)
-    for (const [dbName, specialties] of Object.entries(this.dbSpecialties)) {
+    for (const [dbName, dbSpecs] of Object.entries(this.dbSpecialties)) {
       if (hospital.name.includes(dbName)) {
-        return specialties;
+        dbSpecs.forEach(s => specialties.add(s));
       }
     }
 
-    // 2. Heuristic 추론 엔진 (DB에 없는 타 지역 병원일 경우)
-    const inferredSpecialties: string[] = [];
+    // 2. Heuristic 추론 엔진 (DB에 없는 타 지역 병원이거나 기본 중증 질환 강점 추가)
     const name = hospital.name;
 
     // 대형 대학병원급은 중증 질환 전반에 강점이 있다고 추론
-    if (name.includes('대학교') || name.includes('국립')) {
-      inferredSpecialties.push('패혈증', '호흡곤란증후군', '중환자의학');
+    if (name.includes('대학교') || name.includes('국립') || name.includes('대학')) {
+      ['패혈증', '호흡곤란증후군', '중환자의학'].forEach(s => specialties.add(s));
     }
 
     // 이름에 특정 키워드가 포함된 전문 병원 추론
     if (name.includes('심혈관') || name.includes('심장')) {
-      inferredSpecialties.push('심근경색', '심혈관');
+      ['심근경색', '심혈관'].forEach(s => specialties.add(s));
     }
     if (name.includes('뇌') || name.includes('신경')) {
-      inferredSpecialties.push('뇌졸중', '뇌종양');
+      ['뇌졸중', '뇌종양'].forEach(s => specialties.add(s));
     }
 
     // 권역외상센터나 권역응급의료센터인 경우 (traumaLevel이 1 또는 2)
     if (hospital.traumaLevel === 1) {
-      inferredSpecialties.push('중증외상', '저혈량성 쇼크', '출혈성 쇼크');
+      ['중증외상', '저혈량성 쇼크', '출혈성 쇼크'].forEach(s => specialties.add(s));
     }
 
-    // 아무것도 매칭되지 않으면 빈 배열 반환
-    return inferredSpecialties;
+    return Array.from(specialties);
   }
 
   /**
