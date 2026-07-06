@@ -1,4 +1,5 @@
 import { Hospital, AvailabilityStatus } from '../entities/Hospital';
+import { HospitalSpecialtyService } from './HospitalSpecialtyService';
 
 /**
  * Hospital Ranking Service
@@ -7,8 +8,9 @@ import { Hospital, AvailabilityStatus } from '../entities/Hospital';
  * 점수 계산 기준:
  * 1. 경로 소요시간 (40점) - 가장 중요
  * 2. 병상 가용률 (30점)
- * 3. 외상센터 등급 (20점)
- * 4. 응급실 운영 여부 (10점)
+ * 3. 질환 적합도 (30점) - 추가됨 (환자의 질환과 병원의 강점 매칭)
+ * 4. 외상센터 등급 (20점)
+ * 5. 응급실 운영 여부 (10점)
  *
  * Ironclad Law #3: Edge Case Obsession
  * - 경로 정보 없음, 병상 정보 없음, 모든 병원 만실 등 처리
@@ -18,9 +20,10 @@ export class HospitalRankingService {
    * 병원 목록을 응급 상황 최적 순으로 정렬
    *
    * @param hospitals 병원 목록
+   * @param targetDisease (선택) 환자의 타겟 질환 (예: '패혈증', '뇌종양')
    * @returns 점수 기반으로 정렬된 병원 목록
    */
-  static rankHospitals(hospitals: Hospital[]): Hospital[] {
+  static rankHospitals(hospitals: Hospital[], targetDisease?: string | null): Hospital[] {
     // Edge Case 1: 빈 배열
     if (hospitals.length === 0) {
       return [];
@@ -34,19 +37,21 @@ export class HospitalRankingService {
     // 각 병원에 점수 부여
     const hospitalsWithScore = hospitals.map((hospital) => ({
       hospital,
-      score: this.calculateScore(hospital, hospitals),
+      score: this.calculateScore(hospital, hospitals, targetDisease),
     }));
 
     // 점수 내림차순 정렬 (높은 점수 = 더 적합한 병원)
     hospitalsWithScore.sort((a, b) => b.score - a.score);
 
     // 디버그 로그
-    console.log('🏆 Hospital Ranking Results:');
+    console.log(`🏆 Hospital Ranking Results (Target Disease: ${targetDisease || 'None'}):`);
     hospitalsWithScore.slice(0, 5).forEach((item, index) => {
+      const isMatch = targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(item.hospital, targetDisease);
       console.log(
         `${index + 1}. ${item.hospital.name}: ${item.score.toFixed(1)}점 ` +
           `(소요: ${item.hospital.getRouteDurationMinutes() || '?'}분, ` +
-          `병상: ${item.hospital.availableBeds}/${item.hospital.totalBeds})`
+          `병상: ${item.hospital.availableBeds}/${item.hospital.totalBeds})` +
+          (isMatch ? ' ✨ [Specialty Match!]' : '')
       );
     });
 
@@ -54,15 +59,12 @@ export class HospitalRankingService {
   }
 
   /**
-   * 개별 병원의 종합 점수 계산 (0~100점)
-   *
-   * @param hospital 평가 대상 병원
-   * @param allHospitals 전체 병원 목록 (상대 평가용)
-   * @returns 종합 점수 (0~100)
+   * 개별 병원의 종합 점수 계산
    */
   private static calculateScore(
     hospital: Hospital,
-    allHospitals: Hospital[]
+    allHospitals: Hospital[],
+    targetDisease?: string | null
   ): number {
     let score = 0;
 
@@ -77,6 +79,11 @@ export class HospitalRankingService {
 
     // 4. 응급실 운영 여부 점수 (10점)
     score += this.calculateOperatingScore(hospital);
+
+    // 5. 질환 적합도 점수 (30점) - 새로 추가됨!
+    if (targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease)) {
+      score += 30;
+    }
 
     return score;
   }

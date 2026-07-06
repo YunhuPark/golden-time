@@ -6,6 +6,7 @@ import { supabase } from '../../../infrastructure/supabase/supabaseClient';
 import { VisitHistoryService } from '../../../domain/services/VisitHistoryService';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
 import { ReviewService } from '../../../domain/services/ReviewService';
+import { HospitalSpecialtyService } from '../../../domain/services/HospitalSpecialtyService';
 import { cn } from '../../../lib/utils';
 import { Button } from '../ui/button';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -15,6 +16,7 @@ import { logError } from '../../../infrastructure/monitoring/sentry';
 interface HospitalCardProps {
   hospital: Hospital;
   userLocation: Coordinates | null;
+  targetDisease?: string | null;
   onClick?: () => void;
 }
 
@@ -30,6 +32,7 @@ interface HospitalCardProps {
 export const HospitalCard: React.FC<HospitalCardProps> = ({
   hospital,
   userLocation,
+  targetDisease,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -360,24 +363,31 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       aria-label={`${hospital.name} 병원 정보`}
     >
       {/* 헤더: 병원명 + 소요시간/거리 */}
-      <div className="flex justify-between items-start mb-2 gap-2">
-        <h3 className="text-lg sm:text-xl font-bold text-foreground m-0 flex-1 min-w-0 break-words">
-          {hospital.name}
-        </h3>
-        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-          {routeDurationMinutes && (
-            <span className={cn(
-              'text-base sm:text-lg font-bold whitespace-nowrap',
-              isDark ? 'text-info' : 'text-[#1E88E5]'
-            )}>
-              🚗 {routeDurationMinutes}분
-            </span>
-          )}
-          {distance && (
-            <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-              {distance}km
-            </span>
-          )}
+      <div className="flex flex-col mb-2 gap-1">
+        {targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease) && (
+          <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
+            ✨ AI 추천: {targetDisease} 전문
+          </div>
+        )}
+        <div className="flex justify-between items-start gap-2">
+          <h3 className="text-lg sm:text-xl font-bold text-foreground m-0 flex-1 min-w-0 break-words">
+            {hospital.name}
+          </h3>
+          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+            {routeDurationMinutes && (
+              <span className={cn(
+                'text-base sm:text-lg font-bold whitespace-nowrap',
+                isDark ? 'text-info' : 'text-[#1E88E5]'
+              )}>
+                🚗 {routeDurationMinutes}분
+              </span>
+            )}
+            {distance && (
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                {distance}km
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
