@@ -61,13 +61,25 @@ async function runCrawler() {
     targetHospitals = targetHospitals.slice(0, TEST_LIMIT);
   }
   
-  // DB에서 이미 크롤링된 병원 목록 가져오기 (중복 크롤링 방지 및 비용 절감)
-  console.log('📡 Supabase에서 기존 병원 목록을 확인합니다...');
-  const { data: existingData } = await supabase.from('hospital_specialties').select('hpid');
-  const existingHpids = new Set(existingData?.map(row => row.hpid) || []);
+  // DB에서 이미 크롤링된 병원 목록 가져오기 (30일 주기 갱신 로직 적용)
+  console.log('📡 Supabase에서 기존 병원 목록 및 갱신일을 확인합니다...');
+  const { data: existingData } = await supabase.from('hospital_specialties').select('hpid, last_updated_at');
   
-  targetHospitals = targetHospitals.filter(h => !existingHpids.has(h.hpid));
-  console.log(`✅ 이미 DB에 저장된 병원을 제외하고 ${targetHospitals.length}개의 병원만 새로 크롤링합니다.`);
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const now = new Date().getTime();
+  
+  const freshHpids = new Set(
+    existingData
+      ?.filter(row => {
+        if (!row.last_updated_at) return false;
+        const lastUpdated = new Date(row.last_updated_at).getTime();
+        return now - lastUpdated < THIRTY_DAYS_MS;
+      })
+      .map(row => row.hpid) || []
+  );
+  
+  targetHospitals = targetHospitals.filter(h => !freshHpids.has(h.hpid));
+  console.log(`✅ 최근 30일 이내에 갱신된 병원을 제외하고, 총 ${targetHospitals.length}개의 병원만 새로 크롤링합니다.`);
 
   // Rate Limit 방지를 위한 Delay 함수
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
