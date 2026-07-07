@@ -94,7 +94,14 @@ async function runCrawler() {
       const textData = await fetchHospitalNewsAndReviews(hospital.name);
 
       if (!textData) {
-        console.warn(`⚠️ 수집된 데이터가 없습니다. 추론 엔진을 통과합니다.`);
+        console.warn(`⚠️ 수집된 데이터가 없습니다. DB에 빈 값으로 기록하여 30일간 재검색을 방지합니다(Negative Cache).`);
+        await updateHospitalSpecialties(supabase, {
+          hpid: hospital.hpid,
+          hospital_name: hospital.name,
+          specialties: [],
+          confidence_score: 0,
+          inferred_from: 'no_data'
+        });
         continue;
       }
 
@@ -103,7 +110,14 @@ async function runCrawler() {
       const analysisResult = await analyzeSpecialties(hospital.name, textData);
 
       if (analysisResult.specialties.length === 0) {
-        console.log('⚠️ 추출된 전문 분야가 없습니다.');
+        console.log('⚠️ 추출된 전문 분야가 없습니다. DB에 빈 값으로 기록하여 30일간 재검색을 방지합니다.');
+        await updateHospitalSpecialties(supabase, {
+          hpid: hospital.hpid,
+          hospital_name: hospital.name,
+          specialties: [],
+          confidence_score: 0,
+          inferred_from: 'ai_empty'
+        });
         continue;
       }
 
