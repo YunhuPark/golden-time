@@ -48,6 +48,26 @@
     <link rel="prefetch" href="https://supabase.co" />
 
     <!-- Kakao Maps SDK will be loaded dynamically from main.tsx -->
+    <!-- Prevent dark mode flash (FOUC) -->
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('golden-time-storage');
+          var theme = 'dark'; // 기본값을 다크모드로 설정
+          if (stored) {
+            var parsed = JSON.parse(stored);
+            if (parsed && parsed.state && parsed.state.themeMode) {
+              theme = parsed.state.themeMode;
+            }
+          }
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
