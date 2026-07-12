@@ -131,28 +131,30 @@ export const LocationPermissionPrompt: React.FC<LocationPermissionPromptProps> =
         </div>
       </div>
 
-      {/* 현재 사용 중인 위치 안내 */}
-      <div
-        className={cn(
-          'mb-3 p-3 rounded-md text-sm',
-          isDark ? 'bg-secondary' : 'bg-white'
-        )}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg">🏢</span>
-          <span
-            className={cn(
-              'font-semibold',
-              isDark ? 'text-foreground' : 'text-gray-900'
-            )}
-          >
-            현재 기본 위치 사용 중
-          </span>
+      {/* 현재 사용 중인 위치 안내 (STALE_DATA일 때는 실제 사용자 위치를 사용 중이므로 숨김) */}
+      {error.type !== 'STALE_DATA' && (
+        <div
+          className={cn(
+            'mb-3 p-3 rounded-md text-sm',
+            isDark ? 'bg-secondary' : 'bg-white'
+          )}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🏢</span>
+            <span
+              className={cn(
+                'font-semibold',
+                isDark ? 'text-foreground' : 'text-gray-900'
+              )}
+            >
+              현재 기본 위치 사용 중
+            </span>
+          </div>
+          <p className={cn('text-xs', isDark ? 'text-muted-foreground' : 'text-gray-600')}>
+            서울시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
+          </p>
         </div>
-        <p className={cn('text-xs', isDark ? 'text-muted-foreground' : 'text-gray-600')}>
-          서울시청 기준으로 병원을 검색하고 있습니다. 정확한 위치를 위해 위치 권한을 허용해주세요.
-        </p>
-      </div>
+      )}
 
       {/* 액션 버튼들 */}
       <div className="flex gap-2">
