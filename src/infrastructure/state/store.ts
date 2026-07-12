@@ -78,7 +78,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       // Initial State
-      themeMode: 'light', // 기본값: 라이트 모드
+      themeMode: 'dark', // 기본값을 다크 모드로 변경
 
       userLocation: null,
       locationError: null,
