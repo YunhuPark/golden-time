@@ -17,19 +17,8 @@ export function EcgLoader({
   message = 'LOADING EMERGENCY DATA...',
   fullScreen = true
 }: EcgLoaderProps) {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    try {
-      const stored = localStorage.getItem('golden-time-storage');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const savedTheme = parsed.state?.themeMode;
-        if (savedTheme) return savedTheme;
-      }
-    } catch (error) {
-      console.error('Failed to read theme from localStorage:', error);
-    }
-    return 'dark'; // 기본값을 다크모드로 변경
-  });
+  // 시연 영상을 위해 초기는 무조건 다크모드로 고정 (안전장치)
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
 
   // 초기 렌더링 시점에 이미 올바른 테마를 가져오므로 useEffect는 제거하거나 빈 상태로 두어도 됩니다.
 
