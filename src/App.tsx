@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HomePage } from './presentation/pages/HomePage';
 import { EcgLoader } from './presentation/components/common/EcgLoader';
 
@@ -58,6 +58,7 @@ function App() {
         <Suspense fallback={<EcgLoader message="LOADING EMERGENCY PAGE..." />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/sepsis" element={<Navigate to="/?triage=RED&disease=%ED%8C%A8%ED%98%88%EC%A6%9D%20(Sepsis)&volume=12997" replace />} />
             <Route path="/emergency/:token" element={<EmergencySharePage />} />
           </Routes>
         </Suspense>
