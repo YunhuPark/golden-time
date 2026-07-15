@@ -259,7 +259,7 @@ export const HomePage: React.FC = () => {
           });
 
           setHospitals(cached.hospitals, {
-            type: 'NETWORK_ERROR',
+            type: 'DATA_STALE',
             message: `서버 연결에 실패하여 ${cached.ageMinutes}분 전 데이터를 사용하고 있습니다. ${cached.isFresh ? '' : '정보가 오래되었을 수 있습니다.'}`,
           });
         } else {
