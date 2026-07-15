@@ -27,19 +27,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Number validations
-    if (numOfRows && (isNaN(Number(numOfRows)) || Number(numOfRows) < 1 || Number(numOfRows) > 300)) {
-      return res.status(400).json({ error: 'Bad Request: Invalid numOfRows' });
+    if (numOfRows !== undefined) {
+      const parsedNumOfRows = Number(numOfRows);
+      if (!Number.isInteger(parsedNumOfRows) || parsedNumOfRows < 1 || parsedNumOfRows > 300) {
+        return res.status(400).json({ error: 'Bad Request: Invalid numOfRows' });
+      }
     }
-    if (pageNo && (isNaN(Number(pageNo)) || Number(pageNo) < 1)) {
-      return res.status(400).json({ error: 'Bad Request: Invalid pageNo' });
+    if (pageNo !== undefined) {
+      const parsedPageNo = Number(pageNo);
+      if (!Number.isInteger(parsedPageNo) || parsedPageNo < 1 || parsedPageNo > 1000) {
+        return res.status(400).json({ error: 'Bad Request: Invalid pageNo' });
+      }
     }
 
     // Type validation
-    if (_type && _type !== 'json' && _type !== 'xml') {
-      return res.status(400).json({ error: 'Bad Request: Invalid _type' });
+    if (_type && _type !== 'json') {
+      return res.status(400).json({ error: 'Bad Request: Invalid _type, only json is allowed' });
     }
 
-    const targetUrl = new URL(`http://apis.data.go.kr/B552657${_endpoint}`);
+    const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
     
     if (numOfRows) targetUrl.searchParams.set('numOfRows', String(numOfRows));

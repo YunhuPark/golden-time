@@ -73,6 +73,20 @@ test('EGen API', async (t) => {
     const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: 'abc' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
+
+    const { req: req2, res: res2 } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: '301' });
+    await handler(req2, res2);
+    assert.strictEqual(res2.statusCode, 400);
+
+    const { req: req3, res: res3 } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: '1.5' });
+    await handler(req3, res3);
+    assert.strictEqual(res3.statusCode, 400);
+  });
+
+  await t.test('5-1. 잘못된 _type은 400', async () => {
+    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', _type: 'xml' });
+    await handler(req, res);
+    assert.strictEqual(res.statusCode, 400);
   });
 
   await t.test('6. 클라이언트 serviceKey가 upstream에 전달되지 않음 / 7. 허용된 endpoint 요청에는 서버 환경변수 키만 주입', async () => {
@@ -90,6 +104,7 @@ test('EGen API', async (t) => {
     assert.strictEqual(res.statusCode, 200);
     const urlObj = new URL(requestedUrl);
     assert.strictEqual(urlObj.searchParams.get('serviceKey'), 'dummy_server_key');
+    assert.strictEqual(urlObj.protocol, 'https:');
   });
 
   await t.test('8. upstream AbortError는 504', async () => {

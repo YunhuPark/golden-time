@@ -1,14 +1,11 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "devCommand": "npm run dev:ui",
+  "installCommand": "npm ci",
   "framework": "vite",
   "rewrites": [
-    {
-      "source": "/api/egen/:path*",
-      "destination": "https://apis.data.go.kr/B552657/:path*"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
