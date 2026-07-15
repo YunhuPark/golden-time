@@ -4,6 +4,9 @@
   "type": "module",
   "description": "실시간 응급실 가용 현황 및 최단 경로 안내 시스템",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vercel dev",
     "dev:ui": "vite",
@@ -14,7 +17,7 @@
     "lint": "eslint . --report-unused-disable-directives",
     "type-check": "tsc --noEmit",
     "type-check:api": "tsc --project tsconfig.api.json --noEmit",
-    "test:api": "tsx --test api/**/*.test.ts",
+    "test:api": "tsx --test api/egen.test.ts api/kakao/directions.test.ts api/kakao/geocoding.test.ts",
     "crawler": "npx tsx scripts/ai-crawler/index.ts",
     "validate:env": "node scripts/validate-env.cjs",
     "validate:env:dev": "node scripts/validate-env.cjs --env=development",
