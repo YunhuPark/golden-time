@@ -87,27 +87,15 @@ export interface KakaoKeywordSearchResponse {
  * 주소 → 좌표 변환 전용
  */
 export class KakaoGeocodingClient {
-  private readonly baseUrl = 'https://dapi.kakao.com/v2/local';
-  private readonly restApiKey: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
 
   constructor(
-    restApiKey = import.meta.env['VITE_KAKAO_REST_API_KEY'] || '',
     timeout = 5000,
     maxRetries = 2
   ) {
-    this.restApiKey = restApiKey;
     this.timeout = timeout;
     this.maxRetries = maxRetries;
-
-    if (!this.restApiKey) {
-      console.warn(
-        '⚠️ WARNING: VITE_KAKAO_REST_API_KEY not found. Geocoding will fail.'
-      );
-    } else {
-      console.log('✅ Kakao REST API Key loaded successfully');
-    }
   }
 
   /**
@@ -141,8 +129,8 @@ export class KakaoGeocodingClient {
       return null;
     }
 
-    const endpoint = '/search/address.json';
-    const url = new URL(this.baseUrl + endpoint);
+    const url = new URL('/api/kakao/geocoding', window.location.origin);
+    url.searchParams.set('type', 'address');
     url.searchParams.set('query', address);
 
     try {
@@ -228,8 +216,8 @@ export class KakaoGeocodingClient {
       return null;
     }
 
-    const endpoint = '/search/keyword.json';
-    const url = new URL(this.baseUrl + endpoint);
+    const url = new URL('/api/kakao/geocoding', window.location.origin);
+    url.searchParams.set('type', 'keyword');
 
     // 검색 정확도 향상: "키워드 + 지역" 조합
     const searchQuery = region ? `${keyword} ${region}` : keyword;
@@ -342,7 +330,6 @@ export class KakaoGeocodingClient {
         const response = await fetch(url, {
           signal: controller.signal,
           headers: {
-            Authorization: `KakaoAK ${this.restApiKey}`,
             'Content-Type': 'application/json',
           },
         });
