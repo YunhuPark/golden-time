@@ -21,11 +21,5 @@
         }
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/sepsis",
-      "destination": "/?triage=RED&disease=%ED%8C%A8%ED%98%88%EC%A6%9D%20(Sepsis)&volume=12997"
-    }
   ]
 }
