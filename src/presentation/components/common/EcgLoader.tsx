@@ -4,7 +4,7 @@
  * Emergency Control Center 디자인
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ThemeMode } from '../../styles/theme';
 import { cn } from '../../../lib/utils';
 
@@ -18,7 +18,7 @@ export function EcgLoader({
   fullScreen = true
 }: EcgLoaderProps) {
   // 시연 영상을 위해 초기는 무조건 다크모드로 고정 (안전장치)
-  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const [themeMode] = useState<ThemeMode>('dark');
 
   // 초기 렌더링 시점에 이미 올바른 테마를 가져오므로 useEffect는 제거하거나 빈 상태로 두어도 됩니다.
 
