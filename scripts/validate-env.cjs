@@ -31,7 +31,6 @@ function log(message, color = 'reset') {
 const REQUIRED_ENV_VARS = {
   common: [
     'VITE_KAKAO_MAP_APP_KEY',
-    'VITE_KAKAO_REST_API_KEY',
     'VITE_SUPABASE_URL',
     'VITE_SUPABASE_ANON_KEY',
   ],
@@ -56,12 +55,10 @@ const OPTIONAL_ENV_VARS = [
  */
 const DEFAULT_VALUES = {
   'VITE_ENCRYPTION_KEY': 'dev_fallback_key_not_secure_replace_in_production',
-  'your_kakao_rest_api_key_here': true,
   'your_kakao_map_app_key_here': true,
   'your_supabase_project_url_here': true,
   'your_supabase_anon_key_here': true,
   'your_32_byte_hex_encryption_key_here': true,
-  'your_egen_service_key_here': true,
   'your_sentry_dsn_here': true,
 };
 

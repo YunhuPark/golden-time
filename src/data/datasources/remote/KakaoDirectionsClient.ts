@@ -103,27 +103,15 @@ export interface RouteInfo {
  * 자동차 경로 탐색 및 소요시간 계산 전용
  */
 export class KakaoDirectionsClient {
-  private readonly baseUrl = 'https://apis-navi.kakaomobility.com';
-  private readonly restApiKey: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
 
   constructor(
-    restApiKey = import.meta.env['VITE_KAKAO_REST_API_KEY'] || '',
     timeout = 3000, // 3초로 단축 (성능 최적화)
     maxRetries = 1 // 재시도 1회로 단축 (빠른 실패)
   ) {
-    this.restApiKey = restApiKey;
     this.timeout = timeout;
     this.maxRetries = maxRetries;
-
-    if (!this.restApiKey) {
-      console.warn(
-        '⚠️ WARNING: VITE_KAKAO_REST_API_KEY not found. Directions API will fail.'
-      );
-    } else {
-      console.log('✅ Kakao Mobility Directions API Key loaded successfully');
-    }
   }
 
   /**
@@ -165,8 +153,7 @@ export class KakaoDirectionsClient {
       return null;
     }
 
-    const endpoint = '/v1/directions';
-    const url = new URL(this.baseUrl + endpoint);
+    const url = new URL('/api/kakao/directions', window.location.origin);
 
     // 쿼리 파라미터 설정
     // origin/destination 형식: "경도,위도" (주의: x=경도, y=위도)
@@ -316,7 +303,6 @@ export class KakaoDirectionsClient {
         const response = await fetch(url, {
           signal: controller.signal,
           headers: {
-            Authorization: `KakaoAK ${this.restApiKey}`,
             'Content-Type': 'application/json',
           },
         });
