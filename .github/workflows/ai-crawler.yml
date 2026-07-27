@@ -22,8 +22,24 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Check Secrets
+        env:
+          EGEN_SERVICE_KEY: ${{ secrets.EGEN_SERVICE_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          missing=()
+          if [ -z "$EGEN_SERVICE_KEY" ]; then missing+=("EGEN_SERVICE_KEY"); fi
+          if [ -z "$VITE_SUPABASE_URL" ]; then missing+=("VITE_SUPABASE_URL"); fi
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then missing+=("SUPABASE_SERVICE_ROLE_KEY"); fi
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "❌ Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+
       - name: Run AI Crawler Script
         env:
+          EGEN_SERVICE_KEY: ${{ secrets.EGEN_SERVICE_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}

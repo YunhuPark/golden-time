@@ -23,13 +23,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 /**
  * AI 병원 특화 분야 크롤러 메인 파이프라인
  */
-async function runCrawler() {
+export async function runCrawler() {
   console.log('🚀 Starting AI Hospital Crawler...');
 
   // 1. E-Gen API에서 전국 병원 목록 가져오기
-  const HARDCODED_KEY = '24e573c3571a5e29f58333bd1b0ae2d7af7a69b89cacbbdc578e56961b469b4c';
+  const EGEN_SERVICE_KEY = process.env.EGEN_SERVICE_KEY?.trim();
+  if (!EGEN_SERVICE_KEY) {
+    console.error('❌ Missing EGEN_SERVICE_KEY. Crawler cannot proceed without it.');
+    process.exit(1);
+  }
+
   // 기본정보 API(getHsptlBassInfoInqire)가 404를 반환하므로, 정상 작동하는 병상 정보 API를 사용하여 병원 목록 추출
-  const url = `http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=${HARDCODED_KEY}&pageNo=1&numOfRows=400&_type=json`;
+  // 공공데이터포털 키는 보통 URL 인코딩이 필요한 문자가 포함될 수 있으므로 encodeURIComponent 적용
+  const url = `http://apis.data.go.kr/B552657/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire?serviceKey=${encodeURIComponent(EGEN_SERVICE_KEY)}&pageNo=1&numOfRows=400&_type=json`;
   
   let targetHospitals: { hpid: string; name: string }[] = [];
   
@@ -49,8 +55,12 @@ async function runCrawler() {
       }));
       
     console.log(`✅ 총 ${targetHospitals.length}개의 병원 목록을 가져왔습니다.`);
-  } catch (error) {
-    console.error('❌ E-Gen API 병원 목록 조회 실패:', error);
+  } catch (error: any) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      console.error(`❌ E-Gen API 인증 실패 (상태 코드: ${error.response.status}). 키가 유효하지 않거나 만료되었습니다.`);
+    } else {
+      console.error('❌ E-Gen API 병원 목록 조회 실패:', error.message || 'Unknown error');
+    }
     process.exit(1);
   }
 
@@ -150,4 +160,6 @@ async function runCrawler() {
 }
 
 // 스크립트 실행
-runCrawler().catch(console.error);
+if (process.env.NODE_ENV !== 'test') {
+  runCrawler().catch(console.error);
+}
