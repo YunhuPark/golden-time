@@ -87,7 +87,8 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
 
       // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals, targetDisease);
+      const rankingResult = HospitalRankingService.rankHospitals(allHospitals, targetDisease);
+      const rankedHospitals = rankingResult.hospitals;
 
       console.log(`✅ Returning ${rankedHospitals.length} hospitals (route info for top ${INITIAL_ROUTE_COUNT}, rest use direct distance)`);
 
