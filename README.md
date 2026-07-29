@@ -1,9 +1,10 @@
-# 🏥 Medi-Matrix - AI 의료 영상 3D 분석 & 응급실 자동 매칭 시스템
+# 🚑 Golden-Time - 실시간 응급실 검색 시스템
 
-> **진단부터 이송까지, 생명을 구하는 완벽한 AI 파이프라인**
-> 환자의 MRI/생체신호 실시간 3D 뷰어 분석 ➔ 위급 상황 시 골든타임 응급실 자동 매칭
+> **응급 상황 발생 시 최적의 병상 검색 지원 (포트폴리오/프로토타입)**
+> 전국 응급실 병상 가용 현황을 파악하여 적합한 병원으로 안내를 돕는 시스템입니다.
+> ⚠️ 이 프로젝트는 포트폴리오 목적이며, 실제 의료 판단이나 응급 구조 요청(119)을 대체하지 않습니다.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live-success?style=for-the-badge&logo=vercel)](https://medi-matrix.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Demo-Live-success?style=for-the-badge&logo=vercel)](https://golden-time.vercel.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
@@ -12,38 +13,29 @@
 
 ## 📋 프로젝트 개요
 
-**Medi-Matrix**는 의료 현장에서 환자의 상태를 즉각적으로 파악하고 최적의 병원으로 이송하기 위한 **통합 의료 AI 웹 애플리케이션**입니다. 
-단순한 병원 검색을 넘어, **[Phase 1] 환자의 의료 영상(MRI/CT) 및 생체 신호 실시간 3D 분석**을 거쳐, 위급 환자로 판별될 경우 **[Phase 2] 전국의 응급실 실시간 병상 현황 및 AI 병원 특화 진료과 매칭 시스템**으로 자동 전환되어 환자의 골든타임을 확보합니다.
+**Golden-Time**은 응급 상황에서 환자를 수용 가능한 병원으로 안내하는 **응급실 검색 시스템**입니다.
+추후 외부 의료 영상 분석 프로젝트인 **Medi-Matrix**와 연동하여 분석 결과를 기반으로 적합한 병원을 찾을 수 있도록 구상 중인 독립적인 웹 애플리케이션입니다.
 
 ---
 
 ## ✨ 핵심 기능
 
-### 🧠 [Phase 1] Medical Image 3D Viewer & Multi-Modal Evaluation (의료 영상 & 생체신호 분석)
-- **3D 메쉬 뷰어 렌더링**: 뇌(Brain) 및 폐(Lung) 원본 환자 MRI 데이터(`.nii.gz`)를 업로드하여 웹 브라우저에서 즉각적으로 3D 메쉬로 시각화합니다.
-- **생체 신호 시계열 모니터링**: 환자의 바이탈 사인(`.csv`) 데이터를 업로드하고 실시간 모니터링을 진행합니다.
-- **Multi-Modal AI 평가**: 마스크 파일(`.npy`, `.nii.gz`)을 기반으로 AI가 환자의 병변을 평가하고 응급도를 판별합니다.
-- **자동 라우팅 시스템**: 분석 결과 환자가 즉각적인 처치가 필요한 위급 상황으로 판단되면, 즉시 **응급실 매칭 시스템(Phase 2)**으로 화면이 전환됩니다.
+### 🚨 실시간 응급실 검색 & 추천 매칭
+- **병상 가용률 실시간 파악**: 국립중앙의료원(E-Gen) API를 호출하여 현재 가용 병상이 있는 병원을 우선적으로 안내합니다.
+- **다중 요소 스코어링**: 최단 소요 시간, 병상 여유, 질환 적합도, 외상센터 등급, 운영 여부를 기반으로 점수를 합산하여 병원을 추천합니다.
+- **만실 긴급 경고**: 반경 내 응급실이 모두 만실일 경우, 레드 알럿(119 호출 안내) UI로 전환됩니다.
 
-### 🤖 [Phase 2] AI 병원 특화 분야 크롤링 파이프라인 (Data Engineering & Automation)
-- **전국 400개 병원 무인 자동 모니터링**: 매일 밤 자정(Cron Job), 국립중앙의료원(E-Gen) API에서 전국 응급의료기관 목록을 갱신하고 백그라운드 파이프라인을 가동합니다.
-- **NLP 기반 특화 질환 자동 추출 (gpt-4o-mini)**: 각 병원의 최근 뉴스, 수술 실적, 리뷰 데이터를 수집하여 OpenAI가 "이 병원이 심근경색, 뇌출혈 등에 특화되어 있는지"를 판단해 Supabase 데이터베이스에 자동 적재합니다.
-- **💰 유지보수 비용 99% 절감 아키텍처 (TTL & Negative Caching)**:
-  - **30일 TTL(Time-To-Live) 갱신 주기**: 한 번 수집된 데이터는 30일간 API 호출을 건너뛰어(Skip) 비용을 방어하며, 30일이 지난 후 재검사하여 데이터의 최신성(Freshness)을 완벽 보장합니다.
-  - **Negative Caching (실패 데이터 캐싱)**: "특화 정보가 없는 작은 동네 병원"도 매일 재검사하는 낭비를 막기 위해, `[데이터 없음]` 상태 자체를 DB에 캐싱하여 불필요한 API 요금 발생을 원천 차단합니다.
+### 🤖 AI 기반 병원 특화 분야 데이터 파이프라인
+- **전국 병원 무인 자동 모니터링**: 백그라운드 파이프라인을 통해 각 병원의 최신 진료 특화 분야 데이터를 지속 갱신합니다.
+- **비용 최적화 캐싱**: 빈번한 API 호출을 줄이고 데이터 최신성을 보장하기 위해 TTL 기반 Negative 캐싱을 적극 활용합니다.
 
-### 🚨 [Phase 2] 실시간 응급실 검색 & 스마트 추천 매칭
-- **병상 가용률 실시간 반영**: E-Gen 실시간 병상 API(`getEmrrmRltmUsefulSckbdInfoInqire`)를 직접 호출하여 현재 자리가 있는 병원만 우선순위로 올립니다.
-- **AI + 거리 + 병상 복합 스코어링**: 거리가 가깝고(30%), 병상이 넉넉하며(30%), 1단계에서 분석된 환자의 증상과 병원의 특화 분야가 일치하는(40%) 최적의 병원을 1순위로 추천합니다.
-- **만실(0병상) 긴급 경고**: 반경 내 모든 병원이 만실일 경우, UI 전체에 즉각적인 레드 알럿(119 즉시 전화)을 띄워 환자의 생명을 보호합니다.
+### 🗺️ 정밀 GPS 탐색 및 카카오 모빌리티 연동
+- **위치 기반 자동 반경 확장 검색**: 환자 주변 5km 이내 병원이 부족하면 10km → 20km → 50km로 반경을 스마트하게 확대합니다.
+- **Kakao Directions API**: 실시간 교통 상황을 반영한 정확한 도착 예상 시간(ETA)과 경로를 제공합니다.
 
-### 🗺️ 경로 안내 및 위치 시스템
-- **Kakao Maps 연동**: 실시간 교통 정보가 반영된 정밀한 맵 렌더링.
-- **GPS 자동 확장 검색**: 5km 내 병원이 없으면 10km → 20km → 50km로 자동 반경을 넓혀 탐색합니다.
-
-### 👤 암호화된 의료 프로필 (Web Crypto API)
-- **로컬 보안 저장**: 환자의 기저질환, 알레르기, 복용 약물 등을 군사급(AES-256-GCM)으로 암호화하여 기기에만 안전하게 저장합니다.
-- **응급 의료진용 QR 코드**: 1초 만에 나의 필수 의료 정보를 담은 QR 코드를 생성하여 구급대원에게 보여줄 수 있습니다.
+### 👤 로컬 의료 프로필 암호화 시연 (Web Crypto API)
+- **로컬 보안 저장**: 기저질환, 알레르기 등을 브라우저 내장 Web Crypto API (AES-256-GCM)로 암호화하여 기기에 저장하는 기능을 시연합니다. (주의: 프론트엔드 환경의 특성상 완전한 보안을 보장하지 않습니다.)
+- **응급 의료진용 QR 코드**: 의료 정보를 담은 QR 코드를 생성합니다.
 
 ---
 
@@ -62,14 +54,10 @@
 - **Google OAuth 2.0** - 소셜 로그인
 - **IndexedDB** - 클라이언트 사이드 캐싱
 
-### Security
-- **Web Crypto API** - AES-256-GCM 의료 데이터 암호화
+### Security & Monitoring
+- **Web Crypto API** - 의료 데이터 암호화 구현 시연
 - **Row-Level Security** - Supabase 데이터베이스 접근 제어
-- **HTTPS Only** - 모든 통신 암호화
-
-### Monitoring & Analytics
 - **Sentry** - 에러 추적 및 성능 모니터링
-- **Vercel Analytics** - 사용자 행동 분석
 
 ---
 
@@ -154,7 +142,6 @@ golden-time/
 │           └── validation.ts       # 입력값 검증
 │
 ├── public/                         # 정적 파일
-│   ├── manifest.json               # PWA 매니페스트
 │   └── icons/                      # 앱 아이콘
 │
 ├── scripts/                        # 유틸리티 스크립트
@@ -195,13 +182,15 @@ cp .env.example .env
 필수 환경 변수:
 
 ```env
-# 공공데이터포털 API 키 (응급의료포털)
-VITE_EGEN_SERVICE_KEY=your_egen_api_key_here
+# 서버 전용 환경 변수 (브라우저에 노출되지 않음)
+EGEN_SERVICE_KEY=your_egen_api_key_here
+KAKAO_REST_API_KEY=your_kakao_rest_key_here
 
-# Kakao Maps JavaScript 키
+# 브라우저 전용 환경 변수
+# ⚠️ VITE_ 접두사가 붙은 변수는 브라우저 번들에 포함되므로 실제 비밀 키를 넣지 마세요!
 VITE_KAKAO_MAP_APP_KEY=your_kakao_map_key_here
 
-# 의료 데이터 암호화 키 (32바이트 hex)
+# 클라이언트 사이드 암호화 키 (주의: 소스 코드에 노출되므로 완전한 보안이 아님)
 VITE_ENCRYPTION_KEY=your_encryption_key_here
 
 # Supabase 설정
@@ -240,7 +229,7 @@ npm run preview  # 빌드 결과 미리보기
 2. 다음 API 신청:
    - **실시간 응급실 병상 정보 조회 서비스**
    - **응급의료기관 기본정보 조회 서비스**
-3. 승인 후 (1~2일 소요) 서비스 키를 `.env`의 `VITE_EGEN_SERVICE_KEY`에 입력
+3. 승인 후 서비스 키를 `.env`의 `EGEN_SERVICE_KEY`에 입력
 
 > ⚠️ 개발용/운영용 키가 다르므로 주의하세요. 활용 신청 시 "운영 계정 활용 신청"을 선택하세요.
 
@@ -249,8 +238,8 @@ npm run preview  # 빌드 결과 미리보기
 1. [Kakao Developers](https://developers.kakao.com) 로그인
 2. **내 애플리케이션** → **애플리케이션 추가하기**
 3. **플랫폼** → **Web 플랫폼 추가** → 사이트 도메인 등록 (예: `http://localhost:3000`)
-4. **앱 키** → **JavaScript 키** 복사
-5. `.env`의 `VITE_KAKAO_MAP_APP_KEY`에 입력
+4. **앱 키** → **JavaScript 키** 복사 후 `.env`의 `VITE_KAKAO_MAP_APP_KEY`에 입력
+5. **REST API 키** 복사 후 `.env`의 `KAKAO_REST_API_KEY`에 입력
 
 ### 3. Supabase (선택 - 사용자 프로필 기능용)
 
@@ -278,8 +267,14 @@ npm run preview  # 빌드 결과 미리보기
 ## 🧪 테스트
 
 ```bash
-# 타입 체크
+# 프론트엔드 타입 체크
 npm run type-check
+
+# API 타입 체크
+npm run type-check:api
+
+# API 단위 테스트
+npm run test:api
 
 # Playwright E2E 테스트
 npm run test:e2e
@@ -333,12 +328,13 @@ CREATE POLICY "Users can update own medical profile"
 
 Golden Time은 다중 요소 점수 시스템으로 최적의 병원을 추천합니다.
 
-### 점수 계산식
+### 점수 항목 (총점 130점)
 
-```
-최종 점수 = (거리 × 40%) + (병상 가용률 × 35%) +
-           (이동 시간 × 15%) + (외상센터 등급 × 10%)
-```
+- **경로 소요시간 (최대 40점)**: 가장 빠른 병원 40점, 가장 느린 병원 0점 비례 할당. 경로 정보가 없으면 기본 20점.
+- **병상 가용률 (최대 30점)**: 가용 비율에 따라 20~30점 부여. 제한적일 시 15점, 만실이면 0점 처리.
+- **질환 적합도 (최대 30점)**: 환자의 질환과 병원의 진료 특화 분야가 매칭될 경우 추가 점수.
+- **외상센터 등급 (최대 20점)**: 권역외상센터 20점, 지역외상센터 15점, 일반센터 10점, 없음 5점.
+- **응급실 운영 여부 (최대 10점)**: 현재 운영 중일 시 10점.
 
 ### 검색 반경 전략
 
@@ -379,26 +375,7 @@ Golden Time은 **모든 예외 상황**을 안전하게 처리합니다:
 - **ECG 로딩 애니메이션**: 사용자가 시스템 작동을 인지하도록 심전도 애니메이션 표시
 - **다크 모드 Neon Glow**: 야간 응급 상황에서도 가독성 확보
 
----
 
-## 📱 PWA 기능
-
-### 설치 가능한 웹 앱
-
-- **홈 화면 추가**: 모바일 기기에서 네이티브 앱처럼 사용
-- **오프라인 지원**: Service Worker로 핵심 리소스 캐싱
-- **빠른 로딩**: Vercel CDN + 자산 사전 로딩
-
-### 오프라인 전략
-
-```javascript
-// Service Worker 캐싱 전략
-- HTML, CSS, JS: Cache First (즉시 로딩)
-- 병원 데이터: Network First → Cache Fallback (최신 데이터 우선)
-- 이미지, 폰트: Cache First (대역폭 절약)
-```
-
----
 
 ## 🤝 기여 가이드
 
@@ -486,7 +463,6 @@ perf: 성능 개선
 - [x] 응급 QR 생성
 - [x] 병원 리뷰 시스템
 - [x] 다크 모드 지원
-- [x] PWA 기본 기능
 
 ### Phase 2: Enhancement (진행 중)
 - [ ] Service Worker 완전한 오프라인 지원
