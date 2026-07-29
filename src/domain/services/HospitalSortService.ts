@@ -75,17 +75,17 @@ export class HospitalSortService {
    */
   private static sortByTime(hospitals: Hospital[]): Hospital[] {
     return hospitals.sort((a, b) => {
-      const timeA = a.routeDuration;
-      const timeB = b.routeDuration;
+      const timeA = a.routeDuration === -1 ? undefined : a.routeDuration;
+      const timeB = b.routeDuration === -1 ? undefined : b.routeDuration;
 
       // 둘 다 경로 정보 없음
-      if (!timeA && !timeB) return 0;
+      if (timeA === undefined && timeB === undefined) return 0;
 
       // A만 경로 정보 없음 → B가 우선
-      if (!timeA) return 1;
+      if (timeA === undefined) return 1;
 
       // B만 경로 정보 없음 → A가 우선
-      if (!timeB) return -1;
+      if (timeB === undefined) return -1;
 
       // 둘 다 있으면 소요시간 비교 (오름차순)
       return timeA - timeB;
