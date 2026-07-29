@@ -657,7 +657,7 @@ export const HomePage: React.FC = () => {
       {/* 병원 목록 뷰 */}
       {!showMapView && (
         <>
-          {/* Medi-Matrix 연동 배너 */}
+          {/* Medi-Matrix 연동 배너 — triage는 파서 검증값, 원문 하드코딩 금지 */}
           {mediMatrixParams && mediMatrixParams.condition !== 'unsupported_modality' && (
             <div
               style={{
@@ -671,10 +671,15 @@ export const HomePage: React.FC = () => {
               aria-label="Medi-Matrix 연동 안내"
             >
               <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '14px', color: '#dc2626' }}>
-                🚨 [합성 데이터 분석 데모] 중증도 RED · 뇌 병변 대응 병원 탐색
+                🚨 [합성 데이터 분석 데모] 중증도 {mediMatrixParams.triage} · 뇌 병변 대응 병원 탐색
               </p>
               <p style={{ margin: '0 0 2px', fontSize: '12px', color: '#6b7280' }}>
                 진료과: {mediMatrixParams.specialties.join(', ')} | 역량: {mediMatrixParams.capabilities.join(', ')}
+                {mediMatrixParams.vitalsCondition && (
+                  <span style={{ marginLeft: '8px', color: '#f472b6' }}>
+                    | Vitals: {mediMatrixParams.vitalsCondition}
+                  </span>
+                )}
               </p>
               <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
                 ⚠️ 합성 데이터 기반 데모이며 임상 진단 결과가 아닙니다. E-Gen 공개 응급의료정보 기반 추천.
