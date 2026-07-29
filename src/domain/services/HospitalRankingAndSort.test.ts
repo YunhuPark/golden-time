@@ -7,7 +7,7 @@ import { Hospital } from '../entities/Hospital';
 import { Coordinates } from '../valueObjects/Coordinates';
 import { HospitalRankingService } from './HospitalRankingService';
 import { HospitalSortService } from './HospitalSortService';
-
+import { MediMatrixParams } from '../types/MediMatrixParams';
 
 function createDummyHospital(id: string, name: string, routeDuration: number | undefined | -1 = undefined): Hospital {
   const h = new Hospital(
@@ -19,55 +19,50 @@ function createDummyHospital(id: string, name: string, routeDuration: number | u
   return h.withRouteInfo(routeDuration, 1000);
 }
 
+const mockParams = {
+  analysisMode: 'synthetic_demo',
+  condition: 'brain_lesion_demo',
+  specialties: [],
+  capabilities: [],
+  volume: 1,
+  clinicalValidation: false,
+  triage: 'RED'
+} satisfies MediMatrixParams;
+
 describe('Ranking/Sort Service', () => {
   it('undefined 상태는 최고점/최저점이 아님 (기본 timeScore = 0)', () => {
     const h1 = createDummyHospital('h1', 'H1', 600);
     const h2 = createDummyHospital('h2', 'H2', undefined);
     
-    const result = HospitalRankingService.rankHospitals([h1, h2], undefined, {
-      triageLevel: 'RED',
-      triggeringCondition: '패혈증',
-      vitalsVolume: 1,
-      capabilities: []
-    });
+    const result = HospitalRankingService.rankHospitals([h1, h2], undefined, mockParams);
 
-    const h1Score = result.scoreMap.get('h1')!;
-    const h2Score = result.scoreMap.get('h2')!;
+    const h1Score = result.scoreMap.get('h1');
+    const h2Score = result.scoreMap.get('h2');
 
-    expect(h2Score.timeScore).toBe(0);
-    expect(h1Score.timeScore).toBe(40);
+    expect(h2Score?.timeScore).toBe(0);
+    expect(h1Score?.timeScore).toBe(40);
   });
 
   it('-1 실패 상태는 시간 점수 0점', () => {
     const h1 = createDummyHospital('h1', 'H1', 600);
     const h3 = createDummyHospital('h3', 'H3', -1);
 
-    const result = HospitalRankingService.rankHospitals([h1, h3], undefined, {
-      triageLevel: 'RED',
-      triggeringCondition: '심근경색',
-      vitalsVolume: 1,
-      capabilities: []
-    });
+    const result = HospitalRankingService.rankHospitals([h1, h3], undefined, mockParams);
 
-    const h3Score = result.scoreMap.get('h3')!;
-    expect(h3Score.timeScore).toBe(0);
+    const h3Score = result.scoreMap.get('h3');
+    expect(h3Score?.timeScore).toBe(0);
   });
 
   it('일반 모드 최대 130점, 특화 모드 최대 145점', () => {
     const h1 = createDummyHospital('h1', 'H1', 600);
     
     const normalResult = HospitalRankingService.rankHospitals([h1]);
-    const normalScore = normalResult.scoreMap.get('h1')!;
-    expect(normalScore.totalScore).toBeLessThanOrEqual(130);
+    const normalScore = normalResult.scoreMap.get('h1');
+    expect(normalScore?.totalScore).toBeLessThanOrEqual(130);
     
-    const specializedResult = HospitalRankingService.rankHospitals([h1], undefined, {
-      triageLevel: 'RED',
-      triggeringCondition: 'Trauma',
-      vitalsVolume: 1,
-      capabilities: []
-    });
-    const specializedScore = specializedResult.scoreMap.get('h1')!;
-    expect(specializedScore.totalScore).toBeLessThanOrEqual(145);
+    const specializedResult = HospitalRankingService.rankHospitals([h1], undefined, mockParams);
+    const specializedScore = specializedResult.scoreMap.get('h1');
+    expect(specializedScore?.totalScore).toBeLessThanOrEqual(145);
   });
 
   it('시간순 정렬에서 -1과 undefined는 마지막', () => {
@@ -82,10 +77,10 @@ describe('Ranking/Sort Service', () => {
       new Coordinates(37, 127)
     );
 
-    expect(sorted[0].id).toBe('h4');
-    expect(sorted[1].id).toBe('h1');
-    expect(['h2', 'h3']).toContain(sorted[2].id);
-    expect(['h2', 'h3']).toContain(sorted[3].id);
+    const ids = sorted.map((h) => h.id);
+    expect(ids.length).toBe(4);
+    expect(ids.slice(0, 2)).toEqual(['h4', 'h1']);
+    expect(ids.slice(2)).toEqual(expect.arrayContaining(['h2', 'h3']));
   });
 
   it('거리순 및 병상순은 -1로 인해 왜곡되지 않음', () => {
@@ -94,12 +89,16 @@ describe('Ranking/Sort Service', () => {
     const h2 = new Hospital('h2', 'H2', new Coordinates(37.2, 127.2), '', '', '', 15, 20, [], 1, true, new Date(), true, true, true).withRouteInfo(600, 1000);
 
     const distSorted = HospitalSortService.sortHospitals([h2, h1], 'DISTANCE', loc);
-    expect(distSorted[0].id).toBe('h1');
+    expect(distSorted.length).toBeGreaterThan(0);
+    expect(distSorted.map(h => h.id)[0]).toBe('h1');
 
     const bedSorted = HospitalSortService.sortHospitals([h2, h1], 'BEDS', loc);
-    expect(bedSorted[0].id).toBe('h2');
+    expect(bedSorted.length).toBeGreaterThan(0);
+    expect(bedSorted.map(h => h.id)[0]).toBe('h2');
+
     const bedSorted2 = HospitalSortService.sortHospitals([h1, h2], 'BEDS', loc);
-    expect(bedSorted2[0].id).toBe('h2');
+    expect(bedSorted2.length).toBeGreaterThan(0);
+    expect(bedSorted2.map(h => h.id)[0]).toBe('h2');
   });
 });
 
