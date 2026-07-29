@@ -242,12 +242,14 @@ export class HospitalRankingService {
   ): number {
     const MAX_SCORE = 40;
 
-    if (!hospital.routeDuration) {
-      return MAX_SCORE * 0.5;
+    if (!hospital.routeDuration || hospital.routeDuration === -1) {
+      return 0; // 경로 계산 실패 시 0분(최고점)이 아닌 0점(최하점/알 수 없음) 부여
     }
 
-    const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration);
-    if (hospitalsWithRoute.length === 1) return MAX_SCORE;
+    const hospitalsWithRoute = allHospitals.filter(
+      (h) => h.routeDuration && h.routeDuration !== -1
+    );
+    if (hospitalsWithRoute.length <= 1) return MAX_SCORE;
 
     const minDuration = Math.min(...hospitalsWithRoute.map((h) => h.routeDuration!));
     const maxDuration = Math.max(...hospitalsWithRoute.map((h) => h.routeDuration!));

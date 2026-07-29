@@ -218,7 +218,7 @@ export class Hospital {
    * 예상 도착 시간 계산 (현재 시각 + 경로 소요시간)
    */
   getEstimatedArrivalTime(): Date | null {
-    if (!this.routeDuration) return null;
+    if (this.routeDuration === undefined || this.routeDuration === -1) return null;
     const now = new Date();
     return new Date(now.getTime() + this.routeDuration * 1000);
   }
@@ -226,8 +226,9 @@ export class Hospital {
   /**
    * 경로 소요시간을 "분" 단위로 반환
    */
-  getRouteDurationMinutes(): number | null {
-    if (!this.routeDuration) return null;
+  getRouteDurationMinutes(): number | null | undefined {
+    if (this.routeDuration === undefined) return undefined;
+    if (this.routeDuration === -1) return -1;
     return Math.ceil(this.routeDuration / 60);
   }
 

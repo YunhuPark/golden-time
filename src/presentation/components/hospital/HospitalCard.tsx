@@ -428,16 +428,31 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             {hospital.name}
           </h3>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            {routeDurationMinutes && (
-              <span className={cn(
-                'text-base sm:text-lg font-bold whitespace-nowrap',
-                isDark ? 'text-info' : 'text-[#1E88E5]'
-              )}>
-                🚗 {routeDurationMinutes}분
+            {routeDurationMinutes === undefined ? (
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                ⏳ 이동시간 계산 중
               </span>
+            ) : routeDurationMinutes === -1 ? (
+              <span className="text-xs sm:text-sm text-destructive whitespace-nowrap">
+                ❌ 도로 이동시간 확인 불가
+              </span>
+            ) : (
+              <div className="flex flex-col items-end gap-0">
+                <span className={cn(
+                  'text-base sm:text-lg font-bold whitespace-nowrap',
+                  isDark ? 'text-info' : 'text-[#1E88E5]'
+                )}>
+                  🚗 {routeDurationMinutes}분
+                </span>
+                {estimatedArrivalTime && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    도착 예상 {estimatedArrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </span>
+                )}
+              </div>
             )}
             {distance && (
-              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap mt-0.5">
                 {distance}km
               </span>
             )}
