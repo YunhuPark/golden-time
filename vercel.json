@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev:ui",
-  "installCommand": "npm ci",
+  "installCommand": "npm install",
   "framework": "vite",
   "rewrites": [
     {
