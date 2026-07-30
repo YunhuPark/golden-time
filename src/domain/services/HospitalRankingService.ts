@@ -8,11 +8,11 @@ export interface HospitalScoreBreakdown {
   bedScore: number;
   traumaScore: number;
   operatingScore: number;
-  specialtyScore: number;         // condition 기반 진료�??�합??(?�거??
-  capabilityScore: number;        // capabilities 기반 치료 ??��
+  specialtyScore: number;         // condition 기반 진료�??�합??(?�거??
+  capabilityScore: number;        // capabilities 기반 치료 ??��
   icuProxyScore: number;          // ICU proxy (traumaLevel 기반)
-  specialtyMatchDetails: string[]; // 매칭??진료�??�워??(?�거??
-  capabilityDetails: {            // ??���??�인 결과
+  specialtyMatchDetails: string[]; // 매칭??진료�??�워??(?�거??
+  capabilityDetails: {            // ??���??�인 결과
     emergency_surgery: 'confirmed' | 'not_confirmed';
     brain_imaging: 'confirmed' | 'not_confirmed';
     icu: 'proxy_confirmed' | 'not_confirmed';
@@ -27,7 +27,7 @@ export interface RankingResult {
 
 export class HospitalRankingService {
   /**
-   * 병원 목록???�급 ?�황 최적 ?�으�??�렬
+   * 병원 목록???�급 ?�황 최적 ?�으�??�렬
    */
   static rankHospitals(
     hospitals: Hospital[],
@@ -41,7 +41,8 @@ export class HospitalRankingService {
 
     const scoreMap = new Map<string, HospitalScoreBreakdown>();
 
-    // �?병원???�수 부??    const hospitalsWithScore = hospitals.map((hospital) => {
+    // �?병원???�수 부??
+    const hospitalsWithScore = hospitals.map((hospital) => {
       const breakdown = this.calculateBreakdown(hospital, hospitals, targetDisease, mediMatrixParams);
       scoreMap.set(hospital.id, breakdown);
 
@@ -58,7 +59,7 @@ export class HospitalRankingService {
       };
     });
 
-    // ?�체 목록?� 추천??overallScore ?�림차순, ?�동?�간 ?�름차순) ?�렬
+    // ?�체 목록?� 추천??overallScore ?�림차순, ?�동?�간 ?�름차순) ?�렬
     hospitalsWithScore.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score;
@@ -71,28 +72,28 @@ export class HospitalRankingService {
       return a.hospital.id.localeCompare(b.hospital.id);
     });
 
-    // TOP 3 AI ?�화 추천 계산
+    // TOP 3 AI ?�화 추천 계산
     let top3DiseaseRecommendedIds = freezeTop3Ids;
 
     if (!top3DiseaseRecommendedIds) {
       const diseaseCandidates = hospitalsWithScore.filter(h => h.diseaseSpecialtyScore > 0);
 
       diseaseCandidates.sort((a, b) => {
-        // 1. diseaseSpecialtyScore ?�림차순
+        // 1. diseaseSpecialtyScore ?�림차순
         if (b.diseaseSpecialtyScore !== a.diseaseSpecialtyScore) {
           return b.diseaseSpecialtyScore - a.diseaseSpecialtyScore;
         }
-        // 2. ?�체 추천 ?�수 ?�림차순
+        // 2. ?�체 추천 ?�수 ?�림차순
         if (b.score !== a.score) {
           return b.score - a.score;
         }
-        // 3. ?�동?�간 ?�름차순 (Infinity 처리)
+        // 3. ?�동?�간 ?�름차순 (Infinity 처리)
         const timeA = a.hospital.routeDuration && a.hospital.routeDuration > 0 ? a.hospital.routeDuration : Infinity;
         const timeB = b.hospital.routeDuration && b.hospital.routeDuration > 0 ? b.hospital.routeDuration : Infinity;
         if (timeA !== timeB) {
           return timeA - timeB;
         }
-        // 4. id ?�름차순
+        // 4. id ?�름차순
         const idA = a.hospital.id;
         const idB = b.hospital.id;
         return idA.localeCompare(idB);
@@ -117,8 +118,8 @@ export class HospitalRankingService {
     const traumaScore = this.calculateTraumaLevelScore(hospital);
     const operatingScore = this.calculateOperatingScore(hospital);
 
-    // 기존 disease 문자??기반 ?�수 (?�위 ?�환) - HospitalSpecialtyService.hasSpecialtyMatch ??��??
-    // 기존 overallScore?�???�위 ?�환?�을 ?�해 getDiseaseSpecialtyScore가 0보다 ?�면 30?�을 부?�합?�다.
+    // 기존 disease 문자??기반 ?�수 (?�위 ?�환) - HospitalSpecialtyService.hasSpecialtyMatch ??��??
+    // 기존 overallScore?�???�위 ?�환?�을 ?�해 getDiseaseSpecialtyScore가 0보다 ?�면 30?�을 부?�합?�다.
     let legacyDiseaseScore = 0;
     if (targetDisease && HospitalSpecialtyService.getDiseaseSpecialtyScore(hospital, targetDisease) > 0) {
       legacyDiseaseScore = 30;
@@ -192,7 +193,8 @@ export class HospitalRankingService {
     const MAX_SCORE = 40;
 
     if (!hospital.routeDuration || hospital.routeDuration === -1) {
-      return 0; // 경로 계산 ?�패 ??0�?최고?????�닌 0??부??    }
+      return 0; // 경로 계산 ?�패 ??0�?최고?????�닌 0??부??
+    }
 
     const hospitalsWithRoute = allHospitals.filter(
       (h) => h.routeDuration && h.routeDuration !== -1
