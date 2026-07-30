@@ -382,37 +382,49 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             )}
             {/* 응급수술 배지 */}
             {mediMatrixParams.capabilities.includes('emergency_surgery') && (
-              scoreBreakdown.capabilityDetails.emergency_surgery === 'confirmed' ? (
+              scoreBreakdown.capabilityDetails.emergency_surgery === 'available' ? (
                 <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 text-[11px] font-semibold rounded-md border border-green-300">
                   🔪 응급수술 가능
                 </span>
+              ) : scoreBreakdown.capabilityDetails.emergency_surgery === 'unavailable' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-800 text-[11px] font-semibold rounded-md border border-red-300">
+                  🔪 응급수술 불가
+                </span>
               ) : (
                 <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
-                  🔪 수술 정보 미확인
+                  🔪 수술 전화 확인
                 </span>
               )
             )}
             {/* 뇌 영상 배지 */}
             {mediMatrixParams.capabilities.includes('brain_imaging') && (
-              scoreBreakdown.capabilityDetails.brain_imaging === 'confirmed' ? (
+              scoreBreakdown.capabilityDetails.brain_imaging === 'available' ? (
                 <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-semibold rounded-md border border-blue-300">
                   🧠 뇌 영상 가능
                 </span>
+              ) : scoreBreakdown.capabilityDetails.brain_imaging === 'unavailable' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-800 text-[11px] font-semibold rounded-md border border-red-300">
+                  🧠 뇌 영상 불가
+                </span>
               ) : (
                 <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
-                  🧠 영상 정보 미확인
+                  🧠 영상 전화 확인
                 </span>
               )
             )}
             {/* ICU 배지 */}
             {mediMatrixParams.capabilities.includes('icu') && (
-              scoreBreakdown.capabilityDetails.icu === 'proxy_confirmed' ? (
+              scoreBreakdown.capabilityDetails.icu === 'available' ? (
                 <span className="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-800 text-[11px] font-semibold rounded-md border border-purple-300">
-                  🏥 중환자 대응 (권역외상센터급)
+                  🏥 중환자실(ICU) 가능
+                </span>
+              ) : scoreBreakdown.capabilityDetails.icu === 'unavailable' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-800 text-[11px] font-semibold rounded-md border border-red-300">
+                  🏥 중환자실(ICU) 불가
                 </span>
               ) : (
                 <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
-                  🏥 ICU 정보 미확인
+                  🏥 ICU 전화 확인
                 </span>
               )
             )}

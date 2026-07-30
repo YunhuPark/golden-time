@@ -14,6 +14,8 @@ export interface EmergencyRoomBedDTO {
   hvec?: string;                   // 응급실병상수
   hvoc?: string;                   // 수술실병상수
   hvcc?: string;                   // 신경중환자병상수
+  hv2?: string;                    // 신경계중환자병상수
+  hv6?: string;                    // 신경외과중환자병상수
   hvncc?: string;                  // 신생중환자병상수
   hvccc?: string;                  // 흉부중환자병상수
   hvicc?: string;                  // 일반중환자병상수

@@ -16,11 +16,11 @@ const ALLOWED_ANALYSIS_MODES = ['synthetic_demo'] as const;
 export type AnalysisMode = (typeof ALLOWED_ANALYSIS_MODES)[number];
 
 /** 허용된 condition 값 */
-const ALLOWED_CONDITIONS = ['brain_lesion_demo', 'unsupported_modality'] as const;
+const ALLOWED_CONDITIONS = ['brain_lesion_demo', 'sepsis_demo', 'unsupported_modality'] as const;
 export type MediMatrixCondition = (typeof ALLOWED_CONDITIONS)[number];
 
 /** 허용된 specialty 값 (소문자 영어, E-Gen specializations과 매핑) */
-const ALLOWED_SPECIALTIES = ['neurosurgery', 'neurology'] as const;
+const ALLOWED_SPECIALTIES = ['neurosurgery', 'neurology', 'emergency_medicine', 'internal_medicine'] as const;
 export type MediMatrixSpecialty = (typeof ALLOWED_SPECIALTIES)[number];
 
 /** 허용된 capability 값 */
@@ -37,8 +37,14 @@ export type TriageLevel = (typeof ALLOWED_TRIAGE)[number];
 export interface MediMatrixParams {
   /** 분석 모드 */
   analysisMode: AnalysisMode;
-  /** 병변 조건 식별자 */
+  /** 병변 조건 식별자 (하위호환) */
   condition: MediMatrixCondition;
+  /** 주 병변 조건 식별자 */
+  primaryCondition?: MediMatrixCondition;
+  /** 부 병변 조건 식별자(들) */
+  secondaryConditions?: string;
+  /** 분석 출처 (mri, vitals) */
+  analysisSources?: string[];
   /** 요청 진료과 목록 */
   specialties: MediMatrixSpecialty[];
   /** 요청 치료 역량 목록 */
@@ -110,6 +116,19 @@ export function parseMediMatrixParams(
   if (!ALLOWED_CONDITIONS.includes(rawCondition as MediMatrixCondition)) {
     return rejectLog('condition', 'not in allowlist');
   }
+  
+  const rawPrimaryCondition = searchParams.get('primaryCondition');
+  const primaryCondition = rawPrimaryCondition 
+    && ALLOWED_CONDITIONS.includes(rawPrimaryCondition as MediMatrixCondition) 
+    ? (rawPrimaryCondition as MediMatrixCondition) : undefined;
+    
+  const rawSecondaryConditions = searchParams.get('secondaryConditions');
+  const secondaryConditions = rawSecondaryConditions ? rawSecondaryConditions.slice(0, MAX_PARAM_LENGTH) : undefined;
+  
+  const rawAnalysisSources = searchParams.get('analysisSources');
+  const analysisSources = rawAnalysisSources 
+    ? rawAnalysisSources.split(',').map(s => s.trim().slice(0, 20))
+    : undefined;
 
   // clinicalValidation 검사: 정확히 'false'여야 특화 모드로 인정
   const rawClinicalValidation = searchParams.get('clinicalValidation');
@@ -172,6 +191,9 @@ export function parseMediMatrixParams(
   return {
     analysisMode: rawAnalysisMode as AnalysisMode,
     condition: rawCondition as MediMatrixCondition,
+    ...(primaryCondition !== undefined && { primaryCondition }),
+    ...(secondaryConditions !== undefined && { secondaryConditions }),
+    ...(analysisSources !== undefined && { analysisSources }),
     specialties,
     capabilities,
     volume,
@@ -189,6 +211,8 @@ export function getKoreanSpecialtiesForCondition(condition: MediMatrixCondition)
   switch (condition) {
     case 'brain_lesion_demo':
       return ['신경외과', '신경과', '뇌졸중', '뇌종양'];
+    case 'sepsis_demo':
+      return ['응급의학과', '내과'];
     case 'unsupported_modality':
       return [];
     default:
