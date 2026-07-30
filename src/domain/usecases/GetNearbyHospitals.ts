@@ -66,8 +66,23 @@ export class GetNearbyHospitals {
       h => HospitalSpecialtyService.getDiseaseSpecialtyScore(h, targetDisease) > 0
     );
 
-    const first15 = availableHospitals.slice(0, 15);
-    const phase1Targets = new Set([...first15, ...diseaseCandidates]);
+    // diseaseCandidates could theoretically exceed 30. Sort them by ID deterministically.
+    diseaseCandidates.sort((a, b) => a.id.localeCompare(b.id));
+
+    const PHASE1_ROUTE_LIMIT = 30;
+    const phase1Targets = new Set<Hospital>();
+
+    // 1. Add disease candidates up to the limit
+    for (const h of diseaseCandidates) {
+      if (phase1Targets.size >= PHASE1_ROUTE_LIMIT) break;
+      phase1Targets.add(h);
+    }
+
+    // 2. Fill the remaining slots with general closest hospitals
+    for (const h of availableHospitals) {
+      if (phase1Targets.size >= PHASE1_ROUTE_LIMIT) break;
+      phase1Targets.add(h);
+    }
 
     // Compute route info for Phase 1 targets
     await this.hospitalRepository.enrichWithRouteInfo(userLocation, Array.from(phase1Targets));

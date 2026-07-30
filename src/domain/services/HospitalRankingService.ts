@@ -46,16 +46,11 @@ export class HospitalRankingService {
       const breakdown = this.calculateBreakdown(hospital, hospitals, targetDisease, mediMatrixParams);
       scoreMap.set(hospital.id, breakdown);
 
-      const diseaseSpecialtyScore = HospitalSpecialtyService.getDiseaseSpecialtyScore(
-        hospital,
-        mediMatrixParams?.condition || targetDisease
-      );
-
       return {
         hospital,
         score: breakdown.totalScore,
         breakdown,
-        diseaseSpecialtyScore
+        diseaseSpecialtyScore: breakdown.specialtyScore
       };
     });
 
@@ -118,15 +113,11 @@ export class HospitalRankingService {
     const traumaScore = this.calculateTraumaLevelScore(hospital);
     const operatingScore = this.calculateOperatingScore(hospital);
 
-    // 기존 disease 문자??기반 ?�수 (?�위 ?�환) - HospitalSpecialtyService.hasSpecialtyMatch ??��??
-    // 기존 overallScore?�???�위 ?�환?�을 ?�해 getDiseaseSpecialtyScore가 0보다 ?�면 30?�을 부?�합?�다.
-    let legacyDiseaseScore = 0;
-    if (targetDisease && HospitalSpecialtyService.getDiseaseSpecialtyScore(hospital, targetDisease) > 0) {
-      legacyDiseaseScore = 30;
-    }
+    const diseaseSpecialtyScore = HospitalSpecialtyService.getDiseaseSpecialtyScore(
+      hospital,
+      mediMatrixParams?.condition || targetDisease
+    );
 
-    let specialtyScore = 0;
-    let specialtyMatchDetails: string[] = [];
     let capabilityScore = 0;
     let icuProxyScore = 0;
     const capabilityDetails: HospitalScoreBreakdown['capabilityDetails'] = {
@@ -136,10 +127,6 @@ export class HospitalRankingService {
     };
 
     if (mediMatrixParams && mediMatrixParams.condition !== 'unsupported_modality') {
-      if (HospitalSpecialtyService.getDiseaseSpecialtyScore(hospital, mediMatrixParams.condition) > 0) {
-        specialtyScore = 25;
-      }
-
       const capabilityScorePerItem = mediMatrixParams.capabilities.length > 0
         ? 20 / mediMatrixParams.capabilities.length
         : 0;
@@ -160,15 +147,12 @@ export class HospitalRankingService {
       });
     }
 
-    const effectiveDiseaseScore = mediMatrixParams ? 0 : legacyDiseaseScore;
-
     const totalScore =
       timeScore +
       bedScore +
       traumaScore +
       operatingScore +
-      effectiveDiseaseScore +
-      specialtyScore +
+      diseaseSpecialtyScore +
       capabilityScore +
       icuProxyScore;
 
@@ -178,10 +162,10 @@ export class HospitalRankingService {
       bedScore,
       traumaScore,
       operatingScore,
-      specialtyScore,
+      specialtyScore: diseaseSpecialtyScore,
       capabilityScore,
       icuProxyScore,
-      specialtyMatchDetails,
+      specialtyMatchDetails: [],
       capabilityDetails,
     };
   }
