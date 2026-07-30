@@ -40,9 +40,9 @@ export class HospitalMapper {
         // 좌표 없어도 일단 병원 객체는 생성 (Geocoding에서 보정 시도)
         // 단, 기본 좌표로 서울시청 사용
         const fallbackCoords = new Coordinates(37.5663, 126.9779);
-        const fallbackHasCT = bedInfo?.hvctayn === 'Y';
-        const fallbackHasMRI = bedInfo?.hvmriayn === 'Y';
-        const fallbackHasSurgery = bedInfo?.hvoc ? parseInt(bedInfo.hvoc, 10) > 0 : false;
+        const fallbackHasCT = bedInfo?.hvctayn === undefined ? null : bedInfo.hvctayn === 'Y';
+        const fallbackHasMRI = bedInfo?.hvmriayn === undefined ? null : bedInfo.hvmriayn === 'Y';
+        const fallbackHasSurgery = bedInfo?.hvoc === undefined ? null : parseInt(bedInfo.hvoc, 10) > 0;
         return new Hospital(
           basicInfo.hpid,
           basicInfo.dutyName,
@@ -59,6 +59,8 @@ export class HospitalMapper {
           fallbackHasCT,
           fallbackHasMRI,
           fallbackHasSurgery,
+          null, // hasNeuroIcu
+          null, // hasGeneralIcu
           undefined, // estimatedWaitTime
           undefined, // routeDuration
           undefined  // routeDistance
@@ -68,10 +70,18 @@ export class HospitalMapper {
       // 병상 정보 파싱
       const { availableBeds, totalBeds } = this.parseBedInfo(bedInfo);
 
-      // CT/MRI/수술 가용 여부 파싱
-      const hasCT = bedInfo?.hvctayn === 'Y';
-      const hasMRI = bedInfo?.hvmriayn === 'Y';
-      const hasSurgery = bedInfo?.hvoc ? parseInt(bedInfo.hvoc, 10) > 0 : false;
+      // CT/MRI/수술/ICU 가용 여부 파싱 (3-State)
+      const hasCT = bedInfo?.hvctayn === undefined ? null : bedInfo.hvctayn === 'Y';
+      const hasMRI = bedInfo?.hvmriayn === undefined ? null : bedInfo.hvmriayn === 'Y';
+      const hasSurgery = bedInfo?.hvoc === undefined ? null : parseInt(bedInfo.hvoc, 10) > 0;
+      
+      const hasNeuroIcu = (bedInfo?.hvcc !== undefined || bedInfo?.hv2 !== undefined || bedInfo?.hv6 !== undefined) 
+        ? ((bedInfo.hvcc && parseInt(bedInfo.hvcc, 10) > 0) || 
+           (bedInfo.hv2 && parseInt(bedInfo.hv2, 10) > 0) || 
+           (bedInfo.hv6 && parseInt(bedInfo.hv6, 10) > 0)) 
+        : null;
+        
+      const hasGeneralIcu = bedInfo?.hvicc === undefined ? null : parseInt(bedInfo.hvicc, 10) > 0;
 
       // 전화번호 정리 (공백, 하이픈 제거)
       const phoneNumber = this.sanitizePhoneNumber(basicInfo.dutyTel1) || this.sanitizePhoneNumber(basicInfo.dutyTel3);
@@ -117,6 +127,8 @@ export class HospitalMapper {
         hasCT,
         hasMRI,
         hasSurgery,
+        hasNeuroIcu,
+        hasGeneralIcu,
         undefined, // estimatedWaitTime
         undefined, // routeDuration (will be calculated later)
         undefined  // routeDistance (will be calculated later)

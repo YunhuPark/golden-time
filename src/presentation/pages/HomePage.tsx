@@ -678,7 +678,12 @@ export const HomePage: React.FC = () => {
               aria-label="Medi-Matrix 연동 안내"
             >
               <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '14px', color: '#dc2626' }}>
-                🚨 [합성 데이터 분석 데모] 중증도 {mediMatrixParams.triage} · 뇌 병변 대응 병원 탐색
+                🚨 [합성 데이터 분석 데모] 중증도 {mediMatrixParams.triage} · {
+                  mediMatrixParams.primaryCondition === 'sepsis_demo' && mediMatrixParams.secondaryConditions?.includes('brain_lesion_demo') ? '패혈증 및 뇌 병변 복합 대응 병원 탐색' :
+                  mediMatrixParams.primaryCondition === 'brain_lesion_demo' && mediMatrixParams.secondaryConditions?.includes('sepsis_demo') ? '뇌 병변 및 패혈증 복합 대응 병원 탐색' :
+                  (mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'sepsis_demo' ? '패혈증 대응 병원 탐색' :
+                  '뇌 병변 대응 병원 탐색'
+                }
               </p>
               <p style={{ margin: '0 0 2px', fontSize: '12px', color: '#6b7280' }}>
                 진료과: {mediMatrixParams.specialties.join(', ')} | 역량: {mediMatrixParams.capabilities.join(', ')}

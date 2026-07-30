@@ -8,15 +8,16 @@ export interface HospitalScoreBreakdown {
   bedScore: number;
   traumaScore: number;
   operatingScore: number;
-  specialtyScore: number;         // condition 기반 진료�??�합??(?�거??
-  capabilityScore: number;        // capabilities 기반 치료 ??��
+  specialtyScore: number;         // condition 기반 진료과 부합도
+  capabilityScore: number;        // capabilities 기반 치료 역량
   icuProxyScore: number;          // ICU proxy (traumaLevel 기반)
-  specialtyMatchDetails: string[]; // 매칭??진료�??�워??(?�거??
-  capabilityDetails: {            // ??���??�인 결과
-    emergency_surgery: 'confirmed' | 'not_confirmed';
-    brain_imaging: 'confirmed' | 'not_confirmed';
-    icu: 'proxy_confirmed' | 'not_confirmed';
+  specialtyMatchDetails: string[]; // 매칭된 진료과 키워드
+  capabilityDetails: {
+    emergency_surgery: 'available' | 'unavailable' | 'unknown';
+    brain_imaging: 'available' | 'unavailable' | 'unknown';
+    icu: 'available' | 'unavailable' | 'unknown';
   };
+  hasCriticalUnknowns: boolean;   // RED 환자의 필수 역량이 unknown인지 여부
 }
 
 export interface RankingResult {
@@ -27,7 +28,7 @@ export interface RankingResult {
 
 export class HospitalRankingService {
   /**
-   * 병원 목록???�급 ?�황 최적 ?�으�??�렬
+   * 병원 목록을 응급 상황 최적 순으로 정렬
    */
   static rankHospitals(
     hospitals: Hospital[],
@@ -41,7 +42,7 @@ export class HospitalRankingService {
 
     const scoreMap = new Map<string, HospitalScoreBreakdown>();
 
-    // �?병원???�수 부??
+    // 각 병원에 점수 부여
     const hospitalsWithScore = hospitals.map((hospital) => {
       const breakdown = this.calculateBreakdown(hospital, hospitals, targetDisease, mediMatrixParams);
       scoreMap.set(hospital.id, breakdown);
@@ -54,8 +55,11 @@ export class HospitalRankingService {
       };
     });
 
-    // ?�체 목록?� 추천??overallScore ?�림차순, ?�동?�간 ?�름차순) ?�렬
+    // 전체 목록은 추천(overallScore 내림차순, 이동시간 오름차순) 정렬
     hospitalsWithScore.sort((a, b) => {
+      if (a.breakdown.hasCriticalUnknowns !== b.breakdown.hasCriticalUnknowns) {
+        return a.breakdown.hasCriticalUnknowns ? 1 : -1;
+      }
       if (b.score !== a.score) {
         return b.score - a.score;
       }
@@ -67,28 +71,32 @@ export class HospitalRankingService {
       return a.hospital.id.localeCompare(b.hospital.id);
     });
 
-    // TOP 3 AI ?�화 추천 계산
+    // TOP 3 AI 특화 추천 계산
     let top3DiseaseRecommendedIds = freezeTop3Ids;
 
     if (!top3DiseaseRecommendedIds) {
       const diseaseCandidates = hospitalsWithScore.filter(h => h.diseaseSpecialtyScore > 0);
 
       diseaseCandidates.sort((a, b) => {
-        // 1. diseaseSpecialtyScore ?�림차순
+        // hasCriticalUnknowns가 있는 경우 후순위
+        if (a.breakdown.hasCriticalUnknowns !== b.breakdown.hasCriticalUnknowns) {
+          return a.breakdown.hasCriticalUnknowns ? 1 : -1;
+        }
+        // 1. diseaseSpecialtyScore 내림차순
         if (b.diseaseSpecialtyScore !== a.diseaseSpecialtyScore) {
           return b.diseaseSpecialtyScore - a.diseaseSpecialtyScore;
         }
-        // 2. ?�체 추천 ?�수 ?�림차순
+        // 2. 전체 추천 점수 내림차순
         if (b.score !== a.score) {
           return b.score - a.score;
         }
-        // 3. ?�동?�간 ?�름차순 (Infinity 처리)
+        // 3. 이동시간 오름차순 (Infinity 처리)
         const timeA = a.hospital.routeDuration && a.hospital.routeDuration > 0 ? a.hospital.routeDuration : Infinity;
         const timeB = b.hospital.routeDuration && b.hospital.routeDuration > 0 ? b.hospital.routeDuration : Infinity;
         if (timeA !== timeB) {
           return timeA - timeB;
         }
-        // 4. id ?�름차순
+        // 4. id 오름차순
         const idA = a.hospital.id;
         const idB = b.hospital.id;
         return idA.localeCompare(idB);
@@ -121,10 +129,11 @@ export class HospitalRankingService {
     let capabilityScore = 0;
     let icuProxyScore = 0;
     const capabilityDetails: HospitalScoreBreakdown['capabilityDetails'] = {
-      emergency_surgery: 'not_confirmed',
-      brain_imaging: 'not_confirmed',
-      icu: 'not_confirmed',
+      emergency_surgery: 'unknown',
+      brain_imaging: 'unknown',
+      icu: 'unknown',
     };
+    let hasCriticalUnknowns = false;
 
     if (mediMatrixParams && mediMatrixParams.condition !== 'unsupported_modality') {
       const capabilityScorePerItem = mediMatrixParams.capabilities.length > 0
@@ -132,17 +141,45 @@ export class HospitalRankingService {
         : 0;
 
       mediMatrixParams.capabilities.forEach((cap: MediMatrixCapability) => {
-        if (cap === 'emergency_surgery' && hospital.hasSurgery) {
-          capabilityScore += capabilityScorePerItem;
-          capabilityDetails.emergency_surgery = 'confirmed';
+        if (cap === 'emergency_surgery') {
+          if (hospital.hasSurgery === true) {
+            capabilityScore += capabilityScorePerItem;
+            capabilityDetails.emergency_surgery = 'available';
+          } else if (hospital.hasSurgery === false) {
+            capabilityDetails.emergency_surgery = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
         }
-        if (cap === 'brain_imaging' && (hospital.hasMRI || hospital.hasCT)) {
-          capabilityScore += capabilityScorePerItem;
-          capabilityDetails.brain_imaging = 'confirmed';
+        
+        if (cap === 'brain_imaging') {
+          if (hospital.hasMRI === true || hospital.hasCT === true) {
+            capabilityScore += capabilityScorePerItem;
+            capabilityDetails.brain_imaging = 'available';
+          } else if (hospital.hasMRI === false && hospital.hasCT === false) {
+            capabilityDetails.brain_imaging = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
         }
-        if (cap === 'icu' && (hospital.traumaLevel === 1 || hospital.traumaLevel === 2)) {
-          icuProxyScore = 15;
-          capabilityDetails.icu = 'proxy_confirmed';
+        
+        if (cap === 'icu') {
+          let hasIcu: boolean | null = null;
+          // 질환에 따른 ICU 확인 (Brain: 신경계, Sepsis: 일반내과)
+          if ((mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'brain_lesion_demo') {
+            hasIcu = hospital.hasNeuroIcu;
+          } else if ((mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'sepsis_demo') {
+            hasIcu = hospital.hasGeneralIcu;
+          }
+          
+          if (hasIcu === true) {
+            icuProxyScore = 15;
+            capabilityDetails.icu = 'available';
+          } else if (hasIcu === false) {
+            capabilityDetails.icu = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
         }
       });
     }
@@ -173,6 +210,7 @@ export class HospitalRankingService {
       icuProxyScore,
       specialtyMatchDetails: [],
       capabilityDetails,
+      hasCriticalUnknowns,
     };
   }
 
