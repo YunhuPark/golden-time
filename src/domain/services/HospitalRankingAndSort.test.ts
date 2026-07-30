@@ -213,8 +213,8 @@ describe('Ranking/Sort Service', () => {
       const result = HospitalRankingService.rankHospitals([hUnknown, hKnown], 'brain_lesion_demo', params);
       
       // RED이므로 Unknown 병원은 아무리 점수가 높거나 시간이 짧아도 뒤로 밀려야 함
-      expect(result.hospitals[0].id).toBe('hKnown');
-      expect(result.hospitals[1].id).toBe('hUnknown');
+      expect(result.hospitals[0]?.id).toBe('hKnown');
+      expect(result.hospitals[1]?.id).toBe('hUnknown');
     });
 
     it('동일 조건에서 정렬 Comparator가 안정적으로 동작하는지 (ID Fallback)', () => {
@@ -230,8 +230,8 @@ describe('Ranking/Sort Service', () => {
       const result = HospitalRankingService.rankHospitals([h1, h2], 'brain_lesion_demo', params);
       
       // 완벽히 동일 조건이면 id 문자열 오름차순 (A_Hosp -> C_Hosp)
-      expect(result.hospitals[0].id).toBe('A_Hosp');
-      expect(result.hospitals[1].id).toBe('C_Hosp');
+      expect(result.hospitals[0]?.id).toBe('A_Hosp');
+      expect(result.hospitals[1]?.id).toBe('C_Hosp');
     });
   });
 });
