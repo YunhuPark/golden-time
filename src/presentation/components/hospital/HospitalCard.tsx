@@ -6,7 +6,6 @@ import { supabase } from '../../../infrastructure/supabase/supabaseClient';
 import { VisitHistoryService } from '../../../domain/services/VisitHistoryService';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
 import { ReviewService } from '../../../domain/services/ReviewService';
-import { HospitalSpecialtyService } from '../../../domain/services/HospitalSpecialtyService';
 import { MediMatrixParams } from '../../../domain/types/MediMatrixParams';
 import { HospitalScoreBreakdown } from '../../../domain/services/HospitalRankingService';
 import { cn } from '../../../lib/utils';
@@ -21,6 +20,7 @@ interface HospitalCardProps {
   targetDisease?: string | null;
   mediMatrixParams?: MediMatrixParams | null;
   scoreBreakdown?: HospitalScoreBreakdown;
+  isTop3Recommended?: boolean;
   onClick?: () => void;
 }
 
@@ -39,6 +39,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   targetDisease,
   mediMatrixParams,
   scoreBreakdown,
+  isTop3Recommended,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -417,10 +418,10 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             )}
           </div>
         )}
-        {/* 기존 targetDisease 기반 배지 (레거시 - mediMatrixParams 없는 경우) */}
-        {!mediMatrixParams && targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease) && (
+        {/* 특화 추천 배지 (TOP 3) */}
+        {!mediMatrixParams && targetDisease && isTop3Recommended && (
           <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-[11px] sm:text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
-            ✨ AI 추천: {targetDisease} 치료 적합 (거리·병상 종합 고려)
+            ✨ 근거 기반 {targetDisease} 대응 후보 TOP 3
           </div>
         )}
         <div className="flex justify-between items-start gap-2">

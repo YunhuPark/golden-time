@@ -28,4 +28,11 @@ export interface IHospitalRepository {
    * @returns 병원 정보 또는 null
    */
   findById(id: string): Promise<Hospital | null>;
+  /**
+   * 병원 목록에 경로 정보 추가
+   * @param origin 시작 좌표
+   * @param hospitals 대상 병원 목록
+   * @returns 경로 정보가 추가된(갱신된) 병원 목록
+   */
+  enrichWithRouteInfo(origin: Coordinates, hospitals: Hospital[]): Promise<Hospital[]>;
 }

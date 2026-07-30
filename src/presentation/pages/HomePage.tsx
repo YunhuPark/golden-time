@@ -26,6 +26,7 @@ import { supabase } from '../../infrastructure/supabase/supabaseClient';
 import { Hospital } from '../../domain/entities/Hospital';
 import { applyFilters } from '../../domain/types/HospitalFilter';
 import { MediMatrixParams, parseMediMatrixParams } from '../../domain/types/MediMatrixParams';
+import { RouteEnrichmentService } from '../../domain/services/RouteEnrichmentService';
 
 /**
  * HomePage Component
@@ -36,6 +37,7 @@ export const HomePage: React.FC = () => {
     themeMode,
     userLocation,
     hospitals,
+    top3DiseaseRecommendedIds,
     searchWarning,
     isLoadingHospitals,
     selectedHospital,
@@ -230,21 +232,26 @@ export const HomePage: React.FC = () => {
 
         const result = await useCase.execute(userLocation, targetDisease || undefined);
 
-        // API 성공 시 캐시에 저장
+        // API 성공 시 캐시에 저장 (top3 ids는 캐싱 생략)
         if (result.hospitals.length > 0) {
           HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론
         }
 
-        setHospitals(result.hospitals, result.warning);
+        setHospitals(result.hospitals, result.top3DiseaseRecommendedIds, result.warning);
 
-        // 초기 로드 완료 (경로 정보는 병원 카드에서 개별적으로 로드됨)
-        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API`);
+        // 초기 로드 완료 (Phase 1 완료)
+        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API (Phase 1)`);
 
         // 성공 이벤트 로깅
         logEvent('hospital_search_success', {
           hospital_count: result.hospitals.length,
           has_warning: !!result.warning,
         });
+
+        // Phase 2: 백그라운드 경로 계산 시작
+        const enrichmentService = new RouteEnrichmentService(repository);
+        enrichmentService.processBackgroundQueue(userLocation, result.hospitals).catch(e => console.error(e));
+
       } catch (err) {
         console.error('❌ Failed to search hospitals from API:', err);
 
@@ -273,7 +280,7 @@ export const HomePage: React.FC = () => {
             hospital_count: cached.hospitals.length,
           });
 
-          setHospitals(cached.hospitals, {
+          setHospitals(cached.hospitals, [], {
             type: 'DATA_STALE',
             message: `서버 연결에 실패하여 ${cached.ageMinutes}분 전 데이터를 사용하고 있습니다. ${cached.isFresh ? '' : '정보가 오래되었을 수 있습니다.'}`,
           });
@@ -283,7 +290,7 @@ export const HomePage: React.FC = () => {
             has_cache: false,
           });
 
-          setHospitals([], {
+          setHospitals([], [], {
             type: 'NO_HOSPITALS_FOUND',
             message: '병원 검색 중 오류가 발생했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.',
           });
@@ -702,6 +709,7 @@ export const HomePage: React.FC = () => {
               sortOption={sortOption}
               targetDisease={targetDisease}
               mediMatrixParams={mediMatrixParams}
+              top3DiseaseRecommendedIds={top3DiseaseRecommendedIds}
               onSortChange={setSortOption}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);

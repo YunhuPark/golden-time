@@ -4,7 +4,6 @@ import { IHospitalRepository } from '../../domain/repositories/IHospitalReposito
 import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
-import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
 
 /**
  * Hospital Repository Implementation
@@ -36,7 +35,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   /**
    * 특정 좌표 주변의 병원 검색
    */
-  async findNearby(coords: Coordinates, targetDisease?: string): Promise<Hospital[]> {
+  async findNearby(coords: Coordinates): Promise<Hospital[]> {
     try {
       // 좌표를 기반으로 시도/시군구 추론 (간단히 서울 가정, 향후 역지오코딩 API 사용)
       // TODO: Kakao Local API로 좌표 → 행정구역 변환
@@ -76,35 +75,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       console.log(`✅ Found ${validHospitals.length} hospitals (filtered by distance < ${MAX_DISTANCE_KM}km)`);
 
-      /**
-       * 경로 계산 대상: 직선거리 상위 15개
-       * - UI에 표시되는 10개 + 랭킹 재정렬 후 순위 변동 여유분 5개
-       * - 거리 제한 없음: 16km, 46km, 56km 병원도 모두 포함
-       */
-      const ROUTE_CALC_COUNT = 15;
-      const hospitalsForRoute = validHospitals.slice(0, ROUTE_CALC_COUNT);
-      const remainingHospitals = validHospitals.slice(ROUTE_CALC_COUNT);
-
-      console.log(`🚗 Calculating route info for top ${hospitalsForRoute.length} hospitals (concurrency=3)...`);
-
-      // 동시성 제한(3)을 적용한 배치 경로 계산
-      // 결과는 hospital.id 기반으로 매핑하여 순서가 뒤섞여도 올바르게 연결
-      const hospitalsWithRouteInfo = await this.enrichWithRouteInfo(
-        coords,
-        hospitalsForRoute
-      );
-
-      // 나머지 병원은 경로 정보 없이 직선 거리만 사용
-      const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
-
-      // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankingResult = HospitalRankingService.rankHospitals(allHospitals, targetDisease);
-      const rankedHospitals = rankingResult.hospitals;
-
-      const routeSuccessCount = hospitalsWithRouteInfo.filter(h => h.routeDuration !== undefined).length;
-      console.log(`✅ Returning ${rankedHospitals.length} hospitals (route: ${routeSuccessCount}/${hospitalsForRoute.length} succeeded)`);
-
-      return rankedHospitals;
+      return validHospitals;
 
     } catch (error) {
       console.error('Failed to find nearby hospitals:', error);
@@ -156,9 +127,9 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
    * - getRouteInfoBatch()로 최대 3개 동시 처리 (병렬 10개 → 타임아웃 위험 제거)
    * - 결과를 hospital.id로 매핑하여 순서가 바뀌어도 올바른 병원에 연결
    * - 개별 실패가 전체 목록 계산을 중단시키지 않음
-   * - 실패한 병원은 routeDuration=undefined 유지 (0분으로 취급하지 않음)
+   * - 실패한 병원은 routeDuration=-1 설정
    */
-  private async enrichWithRouteInfo(
+  async enrichWithRouteInfo(
     origin: Coordinates,
     hospitals: Hospital[]
   ): Promise<Hospital[]> {
