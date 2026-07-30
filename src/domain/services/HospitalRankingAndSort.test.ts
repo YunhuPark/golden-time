@@ -169,5 +169,71 @@ describe('Ranking/Sort Service', () => {
     expect(bedSorted2.length).toBeGreaterThan(0);
     expect(bedSorted2.map(h => h.id)[0]).toBe('h2');
   });
+
+  describe('3-State Capabilities and RED Triage', () => {
+    it('Available만 가점을 받고 Unavailable과 Unknown은 0점', () => {
+      // hAvail: 모두 true, hUnavail: 모두 false, hUnknown: 모두 null
+      const hAvail = new Hospital('hA', 'H_A', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), true, true, true, true, true);
+      const hUnavail = new Hospital('hU', 'H_U', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), false, false, false, false, false);
+      const hUnknown = new Hospital('hX', 'H_X', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), null, null, null, null, null);
+
+      const params = {
+        ...mockParams,
+        capabilities: ['emergency_surgery', 'brain_imaging', 'icu']
+      } satisfies MediMatrixParams;
+
+      const result = HospitalRankingService.rankHospitals([hAvail, hUnavail, hUnknown], 'brain_lesion_demo', params);
+      
+      const sAvail = result.scoreMap.get('hA')!;
+      const sUnavail = result.scoreMap.get('hU')!;
+      const sUnknown = result.scoreMap.get('hX')!;
+
+      expect(sAvail.capabilityScore).toBeGreaterThan(0);
+      expect(sAvail.icuProxyScore).toBeGreaterThan(0);
+
+      expect(sUnavail.capabilityScore).toBe(0);
+      expect(sUnavail.icuProxyScore).toBe(0);
+
+      expect(sUnknown.capabilityScore).toBe(0);
+      expect(sUnknown.icuProxyScore).toBe(0);
+    });
+
+    it('RED 필수 역량 Unknown 병원의 후순위 정렬 (hasCriticalUnknowns)', () => {
+      // hKnown: capability가 false이더라도 known 상태
+      const hKnown = new Hospital('hKnown', 'Known', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), false, false, false, false, false).withRouteInfo(600, 1000);
+      // hUnknown: capability가 null (unknown) 상태
+      const hUnknown = new Hospital('hUnknown', 'Unknown', new Coordinates(37, 127), '', '', '', 20, 20, [], 1, true, new Date(), null, null, null, null, null).withRouteInfo(300, 500); // 훨씬 조건이 좋음
+
+      const params = {
+        ...mockParams,
+        triage: 'RED', // RED 에서는 Unknown이 페널티(후순위)
+        capabilities: ['emergency_surgery']
+      } satisfies MediMatrixParams;
+
+      const result = HospitalRankingService.rankHospitals([hUnknown, hKnown], 'brain_lesion_demo', params);
+      
+      // RED이므로 Unknown 병원은 아무리 점수가 높거나 시간이 짧아도 뒤로 밀려야 함
+      expect(result.hospitals[0].id).toBe('hKnown');
+      expect(result.hospitals[1].id).toBe('hUnknown');
+    });
+
+    it('동일 조건에서 정렬 Comparator가 안정적으로 동작하는지 (ID Fallback)', () => {
+      // 점수, 시간, unknown 여부가 모두 동일한 병원 2개
+      const h1 = new Hospital('C_Hosp', 'HospC', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), true, true, true, true, true).withRouteInfo(600, 1000);
+      const h2 = new Hospital('A_Hosp', 'HospA', new Coordinates(37, 127), '', '', '', 10, 20, [], 1, true, new Date(), true, true, true, true, true).withRouteInfo(600, 1000);
+
+      const params = {
+        ...mockParams,
+        capabilities: ['emergency_surgery']
+      } satisfies MediMatrixParams;
+
+      const result = HospitalRankingService.rankHospitals([h1, h2], 'brain_lesion_demo', params);
+      
+      // 완벽히 동일 조건이면 id 문자열 오름차순 (A_Hosp -> C_Hosp)
+      expect(result.hospitals[0].id).toBe('A_Hosp');
+      expect(result.hospitals[1].id).toBe('C_Hosp');
+    });
+  });
 });
+
 
