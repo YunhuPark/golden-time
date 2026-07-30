@@ -20,6 +20,7 @@ interface HospitalListProps {
   sortOption: SortOption;
   targetDisease?: string | null;
   mediMatrixParams?: MediMatrixParams | null;
+  top3DiseaseRecommendedIds?: string[];
   onSortChange: (option: SortOption) => void;
   onHospitalClick?: (hospital: Hospital) => void;
 }
@@ -36,6 +37,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   sortOption,
   targetDisease,
   mediMatrixParams,
+  top3DiseaseRecommendedIds,
   onSortChange,
   onHospitalClick,
 }) => {
@@ -47,7 +49,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   const [displayCount, setDisplayCount] = React.useState(10);
 
   // 정렬된 병원 목록 및 점수 맵 (useMemo로 최적화)
-  const { sortedHospitals, scoreMap, noMatchWarning } = useMemo(() => {
+  const { sortedHospitals, scoreMap } = useMemo(() => {
     const sorted = HospitalSortService.sortHospitals(
       hospitals,
       sortOption,
@@ -57,18 +59,17 @@ export const HospitalList: React.FC<HospitalListProps> = ({
     );
     // 점수 근거 맵 생성 (배지 표시용)
     let scoreMap = new Map<string, import('../../../domain/services/HospitalRankingService').HospitalScoreBreakdown>();
-    let noMatchWarning: string | undefined;
     if (mediMatrixParams) {
       const rankingResult = HospitalRankingService.rankHospitals(
         hospitals,
         targetDisease,
-        mediMatrixParams
+        mediMatrixParams,
+        top3DiseaseRecommendedIds
       );
       scoreMap = rankingResult.scoreMap;
-      noMatchWarning = rankingResult.noMatchWarning;
     }
-    return { sortedHospitals: sorted, scoreMap, noMatchWarning };
-  }, [hospitals, sortOption, userLocation, targetDisease, mediMatrixParams]);
+    return { sortedHospitals: sorted, scoreMap };
+  }, [hospitals, sortOption, userLocation, targetDisease, mediMatrixParams, top3DiseaseRecommendedIds]);
 
   // 정렬 옵션이나 병원 목록이 변경되면 displayCount 초기화
   React.useEffect(() => {
@@ -220,24 +221,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
         )}
       </div>
 
-      {/* 조건 불일치 안내 배너 */}
-      {noMatchWarning && (
-        <div
-          style={{
-            backgroundColor: '#FFF3CD',
-            color: '#856404',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '13px',
-            border: '1px solid #FFEAA7',
-          }}
-          role="status"
-        >
-          ⚠️ {noMatchWarning}
-        </div>
-      )}
-
       {/* 병원 카드 목록 (10개씩 표시) */}
       <div role="list">
         {displayedHospitals.map((hospital) => (
@@ -248,6 +231,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             targetDisease={targetDisease}
             mediMatrixParams={mediMatrixParams}
             scoreBreakdown={scoreMap.get(hospital.id)}
+            isTop3Recommended={top3DiseaseRecommendedIds?.includes(hospital.id) || false}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}
