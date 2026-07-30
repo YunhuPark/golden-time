@@ -159,8 +159,8 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         return hospital.withRouteInfo(routeInfo.duration, routeInfo.distance);
       }
       // 실패한 병원은 -1로 명시 (UI에서 '이동시간 확인 불가'로 표시하기 위함)
-      console.warn(`❌ Route calculation failed for ${hospital.name}. Marking as -1.`);
-      return hospital.withRouteInfo(-1, -1);
+      console.warn(`❌ Route calculation failed for ${hospital.name}. Marking as Infinity.`);
+      return hospital.withRouteInfo(Infinity, Infinity);
     });
 
     const successCount = enrichedHospitals.filter(h => h.routeDuration !== undefined).length;
