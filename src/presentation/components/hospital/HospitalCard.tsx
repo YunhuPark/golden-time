@@ -6,7 +6,8 @@ import { supabase } from '../../../infrastructure/supabase/supabaseClient';
 import { VisitHistoryService } from '../../../domain/services/VisitHistoryService';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
 import { ReviewService } from '../../../domain/services/ReviewService';
-import { HospitalSpecialtyService } from '../../../domain/services/HospitalSpecialtyService';
+import { MediMatrixParams } from '../../../domain/types/MediMatrixParams';
+import { HospitalScoreBreakdown } from '../../../domain/services/HospitalRankingService';
 import { cn } from '../../../lib/utils';
 import { Button } from '../ui/button';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -17,6 +18,9 @@ interface HospitalCardProps {
   hospital: Hospital;
   userLocation: Coordinates | null;
   targetDisease?: string | null;
+  mediMatrixParams?: MediMatrixParams | null;
+  scoreBreakdown?: HospitalScoreBreakdown;
+  isTop3Recommended?: boolean;
   onClick?: () => void;
 }
 
@@ -33,6 +37,9 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   hospital,
   userLocation,
   targetDisease,
+  mediMatrixParams,
+  scoreBreakdown,
+  isTop3Recommended,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -364,9 +371,57 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
     >
       {/* 헤더: 병원명 + 소요시간/거리 */}
       <div className="flex flex-col mb-2 gap-1">
-        {targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease) && (
+        {/* Medi-Matrix 특화 역량 배지 (구조화 파라미터 기반) */}
+        {mediMatrixParams && scoreBreakdown && mediMatrixParams.condition !== 'unsupported_modality' && (
+          <div className="flex flex-wrap gap-1 mb-1">
+            {/* 진료과 적합 배지 */}
+            {scoreBreakdown.specialtyScore > 0 && scoreBreakdown.specialtyMatchDetails.length > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[11px] font-bold rounded-md border border-yellow-300 shadow-sm">
+                ✨ {scoreBreakdown.specialtyMatchDetails.join('·')} 적합
+              </span>
+            )}
+            {/* 응급수술 배지 */}
+            {mediMatrixParams.capabilities.includes('emergency_surgery') && (
+              scoreBreakdown.capabilityDetails.emergency_surgery === 'confirmed' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 text-[11px] font-semibold rounded-md border border-green-300">
+                  🔪 응급수술 가능
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
+                  🔪 수술 정보 미확인
+                </span>
+              )
+            )}
+            {/* 뇌 영상 배지 */}
+            {mediMatrixParams.capabilities.includes('brain_imaging') && (
+              scoreBreakdown.capabilityDetails.brain_imaging === 'confirmed' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-semibold rounded-md border border-blue-300">
+                  🧠 뇌 영상 가능
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
+                  🧠 영상 정보 미확인
+                </span>
+              )
+            )}
+            {/* ICU 배지 */}
+            {mediMatrixParams.capabilities.includes('icu') && (
+              scoreBreakdown.capabilityDetails.icu === 'proxy_confirmed' ? (
+                <span className="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-800 text-[11px] font-semibold rounded-md border border-purple-300">
+                  🏥 중환자 대응 (권역외상센터급)
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] rounded-md border border-gray-200">
+                  🏥 ICU 정보 미확인
+                </span>
+              )
+            )}
+          </div>
+        )}
+        {/* 특화 추천 배지 (TOP 3) */}
+        {!mediMatrixParams && targetDisease && isTop3Recommended && (
           <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-[11px] sm:text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
-            ✨ AI 추천: {targetDisease} 치료 적합 (거리·병상 종합 고려)
+            ✨ 근거 기반 {targetDisease} 대응 후보 TOP 3
           </div>
         )}
         <div className="flex justify-between items-start gap-2">
@@ -374,16 +429,31 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             {hospital.name}
           </h3>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            {routeDurationMinutes && (
-              <span className={cn(
-                'text-base sm:text-lg font-bold whitespace-nowrap',
-                isDark ? 'text-info' : 'text-[#1E88E5]'
-              )}>
-                🚗 {routeDurationMinutes}분
+            {routeDurationMinutes === undefined ? (
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                ⏳ 이동시간 계산 중
               </span>
+            ) : routeDurationMinutes === -1 ? (
+              <span className="text-xs sm:text-sm text-destructive whitespace-nowrap">
+                ❌ 도로 이동시간 확인 불가
+              </span>
+            ) : (
+              <div className="flex flex-col items-end gap-0">
+                <span className={cn(
+                  'text-base sm:text-lg font-bold whitespace-nowrap',
+                  isDark ? 'text-info' : 'text-[#1E88E5]'
+                )}>
+                  🚗 {routeDurationMinutes}분
+                </span>
+                {estimatedArrivalTime && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    도착 예상 {estimatedArrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </span>
+                )}
+              </div>
             )}
             {distance && (
-              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap mt-0.5">
                 {distance}km
               </span>
             )}

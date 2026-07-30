@@ -23,6 +23,7 @@ interface AppState {
 
   // 병원 검색 결과
   hospitals: Hospital[];
+  top3DiseaseRecommendedIds: string[];
   searchWarning: HospitalSearchWarning | null;
   isLoadingHospitals: boolean;
   lastUpdated: Date | null;
@@ -53,7 +54,7 @@ interface AppState {
   setLocationError: (error: string | null) => void;
   setLoadingLocation: (loading: boolean) => void;
 
-  setHospitals: (hospitals: Hospital[], warning?: HospitalSearchWarning | null) => void;
+  setHospitals: (hospitals: Hospital[], top3Ids: string[], warning?: HospitalSearchWarning | null) => void;
   setLoadingHospitals: (loading: boolean) => void;
   setSelectedHospital: (hospital: Hospital | null) => void;
   setSortOption: (option: SortOption) => void;
@@ -85,6 +86,7 @@ export const useAppStore = create<AppState>()(
       isLoadingLocation: true,
 
       hospitals: [],
+      top3DiseaseRecommendedIds: [],
       searchWarning: null,
       isLoadingHospitals: false,
       lastUpdated: null,
@@ -128,9 +130,10 @@ export const useAppStore = create<AppState>()(
   setLoadingLocation: (loading) =>
     set({ isLoadingLocation: loading }),
 
-  setHospitals: (hospitals, warning = null) =>
+  setHospitals: (hospitals, top3Ids, warning = null) =>
     set({
       hospitals,
+      top3DiseaseRecommendedIds: top3Ids,
       searchWarning: warning,
       isLoadingHospitals: false,
       lastUpdated: new Date(),
@@ -194,6 +197,7 @@ export const useAppStore = create<AppState>()(
   clearHospitals: () =>
     set({
       hospitals: [],
+      top3DiseaseRecommendedIds: [],
       searchWarning: null,
       lastUpdated: null,
     }),
@@ -204,6 +208,7 @@ export const useAppStore = create<AppState>()(
       locationError: null,
       isLoadingLocation: true,
       hospitals: [],
+      top3DiseaseRecommendedIds: [],
       searchWarning: null,
       isLoadingHospitals: false,
       lastUpdated: null,

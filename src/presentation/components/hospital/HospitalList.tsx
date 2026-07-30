@@ -4,6 +4,8 @@ import { Coordinates } from '../../../domain/valueObjects/Coordinates';
 import { HospitalSearchWarning } from '../../../domain/usecases/GetNearbyHospitals';
 import { SortOption } from '../../../domain/types/SortOption';
 import { HospitalSortService } from '../../../domain/services/HospitalSortService';
+import { MediMatrixParams } from '../../../domain/types/MediMatrixParams';
+import { HospitalRankingService } from '../../../domain/services/HospitalRankingService';
 import { HospitalCard } from './HospitalCard';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { SortSelector } from './SortSelector';
@@ -17,6 +19,8 @@ interface HospitalListProps {
   isLoading: boolean;
   sortOption: SortOption;
   targetDisease?: string | null;
+  mediMatrixParams?: MediMatrixParams | null;
+  top3DiseaseRecommendedIds?: string[];
   onSortChange: (option: SortOption) => void;
   onHospitalClick?: (hospital: Hospital) => void;
 }
@@ -32,6 +36,8 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   isLoading,
   sortOption,
   targetDisease,
+  mediMatrixParams,
+  top3DiseaseRecommendedIds,
   onSortChange,
   onHospitalClick,
 }) => {
@@ -42,10 +48,28 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   // 표시할 병원 수 상태 (10개씩 증가)
   const [displayCount, setDisplayCount] = React.useState(10);
 
-  // 정렬된 병원 목록 (useMemo로 최적화)
-  const sortedHospitals = useMemo(() => {
-    return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation, targetDisease);
-  }, [hospitals, sortOption, userLocation, targetDisease]);
+  // 정렬된 병원 목록 및 점수 맵 (useMemo로 최적화)
+  const { sortedHospitals, scoreMap } = useMemo(() => {
+    const sorted = HospitalSortService.sortHospitals(
+      hospitals,
+      sortOption,
+      userLocation,
+      targetDisease,
+      mediMatrixParams
+    );
+    // 점수 근거 맵 생성 (배지 표시용)
+    let scoreMap = new Map<string, import('../../../domain/services/HospitalRankingService').HospitalScoreBreakdown>();
+    if (mediMatrixParams) {
+      const rankingResult = HospitalRankingService.rankHospitals(
+        hospitals,
+        targetDisease,
+        mediMatrixParams,
+        top3DiseaseRecommendedIds
+      );
+      scoreMap = rankingResult.scoreMap;
+    }
+    return { sortedHospitals: sorted, scoreMap };
+  }, [hospitals, sortOption, userLocation, targetDisease, mediMatrixParams, top3DiseaseRecommendedIds]);
 
   // 정렬 옵션이나 병원 목록이 변경되면 displayCount 초기화
   React.useEffect(() => {
@@ -205,6 +229,9 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             hospital={hospital}
             userLocation={userLocation}
             targetDisease={targetDisease}
+            mediMatrixParams={mediMatrixParams}
+            scoreBreakdown={scoreMap.get(hospital.id)}
+            isTop3Recommended={top3DiseaseRecommendedIds?.includes(hospital.id) || false}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}

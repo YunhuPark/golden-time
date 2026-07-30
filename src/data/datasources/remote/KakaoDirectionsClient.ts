@@ -99,19 +99,35 @@ export interface RouteInfo {
 }
 
 /**
+ * HTTP 상태 코드 분류 — 재시도 가능 여부 판정
+ * - 재시도 가능: 429, 504, 502, 503, AbortError(timeout)
+ * - 재시도 불가: 400, 401, 403, 404, 기타 4xx
+ */
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+/**
  * Kakao Mobility Directions API 클라이언트
  * 자동차 경로 탐색 및 소요시간 계산 전용
+ *
+ * 동시성 정책:
+ * - 동시 호출은 enrichWithConcurrencyLimit()를 통해 최대 3개로 제한
+ * - 개별 요청 타임아웃: 8초 (Vercel Functions 제한 고려)
+ * - 재시도: 429/5xx/timeout에 한해 최대 1회 (지연 1초)
+ * - 400/401/403: 재시도 없이 즉시 null 반환
  */
 export class KakaoDirectionsClient {
   private readonly timeout: number;
-  private readonly maxRetries: number;
+  /** 재시도 최대 횟수 (첫 시도 제외) */
+  private readonly maxRetryCount: number;
 
   constructor(
-    timeout = 3000, // 3초로 단축 (성능 최적화)
-    maxRetries = 1 // 재시도 1회로 단축 (빠른 실패)
+    timeout = 8000, // 8초 (Vercel serverless 제한 고려)
+    maxRetryCount = 1 // 재시도 1회 (첫 시도 실패 후 1회만)
   ) {
     this.timeout = timeout;
-    this.maxRetries = maxRetries;
+    this.maxRetryCount = maxRetryCount;
   }
 
   /**
@@ -138,7 +154,6 @@ export class KakaoDirectionsClient {
       origin.latitude === destination.latitude &&
       origin.longitude === destination.longitude
     ) {
-      console.warn('getRouteInfo: Origin and destination are the same');
       return {
         distance: 0,
         duration: 0,
@@ -149,7 +164,8 @@ export class KakaoDirectionsClient {
 
     // Edge Case 2: 좌표 유효성 검증
     if (!this.isValidCoordinate(origin) || !this.isValidCoordinate(destination)) {
-      console.error('getRouteInfo: Invalid coordinates', { origin, destination });
+      // 키·좌표 원문을 로그에 출력하지 않음
+      console.warn('getRouteInfo: Invalid coordinates provided');
       return null;
     }
 
@@ -171,7 +187,6 @@ export class KakaoDirectionsClient {
 
       // Edge Case 3: 경로가 없는 경우
       if (!response.routes || response.routes.length === 0) {
-        console.warn('getRouteInfo: No routes found in response');
         return null;
       }
 
@@ -179,14 +194,14 @@ export class KakaoDirectionsClient {
 
       // Edge Case 4: firstRoute가 없는 경우
       if (!firstRoute) {
-        console.warn('getRouteInfo: First route is undefined');
         return null;
       }
 
-      // Edge Case 5: 경로 탐색 실패
+      // Edge Case 5: 경로 탐색 실패 (Kakao result_code 비영)
       if (firstRoute.result_code !== 0) {
+        // result_msg를 로그에 출력하되 full URL/키는 미출력
         console.warn(
-          `getRouteInfo: Route search failed - ${firstRoute.result_msg} (code: ${firstRoute.result_code})`
+          `getRouteInfo: Route search failed (code: ${firstRoute.result_code})`
         );
         return null;
       }
@@ -195,7 +210,6 @@ export class KakaoDirectionsClient {
 
       // Edge Case 6: summary가 없는 경우
       if (!summary) {
-        console.error('getRouteInfo: Summary is undefined');
         return null;
       }
 
@@ -204,7 +218,6 @@ export class KakaoDirectionsClient {
         typeof summary.distance !== 'number' ||
         typeof summary.duration !== 'number'
       ) {
-        console.error('getRouteInfo: Invalid summary data', summary);
         return null;
       }
 
@@ -215,48 +228,55 @@ export class KakaoDirectionsClient {
         tollFare: summary.fare?.toll || 0,
       };
     } catch (error) {
-      console.error(
-        `getRouteInfo failed from (${origin.latitude}, ${origin.longitude}) to (${destination.latitude}, ${destination.longitude}):`,
-        error
-      );
+      // 에러 유형만 로깅, URL query/키는 출력 안 함
+      if (error instanceof NetworkError) {
+        console.warn(`getRouteInfo: NetworkError [${error.statusCode ?? 'unknown'}]`);
+      } else if (error instanceof Error) {
+        console.warn(`getRouteInfo: ${error.name}`);
+      }
       return null;
     }
   }
 
   /**
-   * 여러 목적지까지의 경로 정보를 배치로 계산
+   * 여러 목적지에 대해 동시성 제한을 두고 병렬 경로 계산
+   * - 최대 concurrency개씩 동시 처리
+   * - 개별 실패가 전체 중단을 유발하지 않음
+   * - 결과는 병원의 id(안정적 식별자) → RouteInfo 로 매핑
    *
    * @param origin 출발지 좌표
-   * @param destinations 목적지 좌표 배열
-   * @param delayMs 각 요청 사이 대기 시간 (기본 100ms, Rate Limit 방지)
-   * @returns Map<목적지인덱스, RouteInfo>
-   *
-   * Edge Cases:
-   * - 일부 경로만 성공하는 경우 (부분 성공)
-   * - Rate Limit 초과 방지 (요청 간 지연)
+   * @param targets 목적지 목록 (id + 좌표)
+   * @param concurrency 최대 동시 요청 수 (기본 3)
+   * @returns Map<id, RouteInfo>
    */
-  async getBatchRouteInfo(
+  async getRouteInfoBatch(
     origin: { latitude: number; longitude: number },
-    destinations: Array<{ latitude: number; longitude: number }>,
-    delayMs = 100
-  ): Promise<Map<number, RouteInfo>> {
-    const results = new Map<number, RouteInfo>();
+    targets: Array<{ id: string; latitude: number; longitude: number }>,
+    concurrency = 3
+  ): Promise<Map<string, RouteInfo>> {
+    const results = new Map<string, RouteInfo>();
+    let index = 0;
 
-    for (let i = 0; i < destinations.length; i++) {
-      const destination = destinations[i];
-      if (!destination) continue; // undefined 체크
+    const worker = async (): Promise<void> => {
+      while (index < targets.length) {
+        const currentIndex = index++;
+        const target = targets[currentIndex];
+        if (!target) continue;
 
-      const routeInfo = await this.getRouteInfo(origin, destination);
+        const routeInfo = await this.getRouteInfo(
+          origin,
+          { latitude: target.latitude, longitude: target.longitude }
+        );
 
-      if (routeInfo) {
-        results.set(i, routeInfo);
+        if (routeInfo) {
+          results.set(target.id, routeInfo);
+        }
       }
+    };
 
-      // Rate Limit 방지를 위한 지연
-      if (delayMs > 0 && i < destinations.length - 1) {
-        await this.sleep(delayMs);
-      }
-    }
+    // concurrency개 worker를 동시에 실행
+    const workers = Array.from({ length: Math.min(concurrency, targets.length) }, worker);
+    await Promise.allSettled(workers);
 
     return results;
   }
@@ -264,63 +284,67 @@ export class KakaoDirectionsClient {
   /**
    * 좌표 유효성 검증
    */
-  private isValidCoordinate(coord: {
+  isValidCoordinate(coord: {
     latitude: number;
     longitude: number;
   }): boolean {
     const { latitude, longitude } = coord;
 
-    // NaN 체크
-    if (isNaN(latitude) || isNaN(longitude)) {
-      return false;
-    }
-
-    // 위도 범위: -90 ~ 90
-    if (latitude < -90 || latitude > 90) {
-      return false;
-    }
-
-    // 경도 범위: -180 ~ 180
-    if (longitude < -180 || longitude > 180) {
-      return false;
-    }
+    if (isNaN(latitude) || isNaN(longitude)) return false;
+    if (latitude < -90 || latitude > 90) return false;
+    if (longitude < -180 || longitude > 180) return false;
 
     return true;
   }
 
   /**
    * 재시도 로직이 포함된 Fetch 래퍼
+   *
+   * 재시도 정책:
+   * - 429 / 502 / 503 / 504 / AbortError(timeout): 1초 대기 후 최대 maxRetryCount회
+   * - 400 / 401 / 403 / 기타 4xx: 즉시 실패 (재시도 없음)
+   *
+   * Bug fixed: 기존 코드는 maxRetries=1이면 루프가 1번만 돌고
+   *   attempt < retries-1 = 0 이 절대 true가 안 돼 재시도 불가능했음.
+   *   수정: 총 시도 횟수 = 1(최초) + maxRetryCount, 루프 분리.
    */
-  private async fetchWithRetry<T>(
-    url: string,
-    retries = this.maxRetries
-  ): Promise<T> {
-    for (let attempt = 0; attempt < retries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+  private async fetchWithRetry<T>(url: string): Promise<T> {
+    const maxAttempts = 1 + this.maxRetryCount; // 최초 1 + 재시도 N
 
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+      try {
         const response = await fetch(url, {
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
           },
         });
-
         clearTimeout(timeoutId);
 
-        // HTTP 상태 코드 체크
-        if (response.status === 429) {
+        // 400 / 401 / 403: 재시도 없이 즉시 실패
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
           throw new NetworkError(
-            'Kakao Mobility API Rate Limit 초과. 잠시 후 다시 시도해주세요.',
+            `Kakao Directions: non-retryable error`,
             undefined,
-            429
+            response.status
           );
         }
 
-        if (response.status === 401 || response.status === 403) {
+        // 429 / 5xx: 재시도 가능
+        if (isRetryableStatus(response.status)) {
+          if (attempt < maxAttempts) {
+            const delay = 1000; // 1초 고정 지연
+            console.warn(
+              `Kakao Directions: status ${response.status}, retrying in ${delay}ms (attempt ${attempt}/${maxAttempts})`
+            );
+            await this.sleep(delay);
+            continue;
+          }
           throw new NetworkError(
-            'Kakao Mobility API 인증 실패. API 키를 확인해주세요.',
+            `Kakao Directions: retryable error after ${maxAttempts} attempts`,
             undefined,
             response.status
           );
@@ -328,7 +352,7 @@ export class KakaoDirectionsClient {
 
         if (!response.ok) {
           throw new NetworkError(
-            `Kakao Mobility API Error: ${response.status} ${response.statusText}`,
+            `Kakao Directions: HTTP ${response.status}`,
             undefined,
             response.status
           );
@@ -336,43 +360,50 @@ export class KakaoDirectionsClient {
 
         const data: T = await response.json();
         return data;
+
       } catch (error) {
-        // AbortError (타임아웃)
-        if (error instanceof Error && error.name === 'AbortError') {
-          if (attempt < retries - 1) {
-            const delay = Math.pow(2, attempt) * 500; // 500ms, 1000ms
-            console.warn(
-              `Kakao Mobility API timeout. Retrying in ${delay}ms... (attempt ${attempt + 1}/${retries})`
-            );
-            await this.sleep(delay);
-            continue;
-          }
-          throw new NetworkError('Kakao Mobility API 요청 시간 초과', error);
+        clearTimeout(timeoutId);
+
+        // 400/401/403은 즉시 재throw (재시도 없음)
+        if (error instanceof NetworkError &&
+            error.statusCode !== undefined &&
+            !isRetryableStatus(error.statusCode)) {
+          throw error;
         }
 
-        // 네트워크 에러 - 재시도
-        if (error instanceof NetworkError) {
-          if (attempt < retries - 1) {
-            const delay = Math.pow(2, attempt) * 500;
+        // AbortError(timeout): 재시도 가능
+        if (error instanceof Error && error.name === 'AbortError') {
+          if (attempt < maxAttempts) {
             console.warn(
-              `Kakao Mobility API network error. Retrying in ${delay}ms... (attempt ${attempt + 1}/${retries})`
+              `Kakao Directions: timeout, retrying (attempt ${attempt}/${maxAttempts})`
             );
-            await this.sleep(delay);
+            await this.sleep(1000);
+            continue;
+          }
+          throw new NetworkError('Kakao Directions: timeout after retries');
+        }
+
+        // NetworkError (retryable): 재시도
+        if (error instanceof NetworkError) {
+          if (error.statusCode !== undefined && !isRetryableStatus(error.statusCode)) {
+            throw error;
+          }
+          if (attempt < maxAttempts) {
+            console.warn(
+              `Kakao Directions: network error, retrying (attempt ${attempt}/${maxAttempts})`
+            );
+            await this.sleep(1000);
             continue;
           }
           throw error;
         }
 
         // 기타 에러
-        if (error instanceof Error) {
-          throw new NetworkError('Kakao Mobility API 호출 실패', error);
-        }
-
-        throw new NetworkError('알 수 없는 오류 발생');
+        throw new NetworkError('Kakao Directions: unexpected error');
       }
     }
 
-    throw new NetworkError('최대 재시도 횟수 초과');
+    throw new NetworkError('Kakao Directions: all attempts exhausted');
   }
 
   /**
