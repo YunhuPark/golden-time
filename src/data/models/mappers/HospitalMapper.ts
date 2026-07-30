@@ -40,9 +40,9 @@ export class HospitalMapper {
         // 좌표 없어도 일단 병원 객체는 생성 (Geocoding에서 보정 시도)
         // 단, 기본 좌표로 서울시청 사용
         const fallbackCoords = new Coordinates(37.5663, 126.9779);
-        const fallbackHasCT = bedInfo?.hvctayn === 'Y';
-        const fallbackHasMRI = bedInfo?.hvmriayn === 'Y';
-        const fallbackHasSurgery = bedInfo?.hvoc ? parseInt(bedInfo.hvoc, 10) > 0 : false;
+        const fallbackHasCT = this.parseThreeState(bedInfo?.hvctayn);
+        const fallbackHasMRI = this.parseThreeState(bedInfo?.hvmriayn);
+        const fallbackHasSurgery = this.parseThreeState(bedInfo?.hvoc);
         return new Hospital(
           basicInfo.hpid,
           basicInfo.dutyName,
@@ -59,6 +59,8 @@ export class HospitalMapper {
           fallbackHasCT,
           fallbackHasMRI,
           fallbackHasSurgery,
+          null, // hasNeuroIcu
+          null, // hasGeneralIcu
           undefined, // estimatedWaitTime
           undefined, // routeDuration
           undefined  // routeDistance
@@ -68,10 +70,13 @@ export class HospitalMapper {
       // 병상 정보 파싱
       const { availableBeds, totalBeds } = this.parseBedInfo(bedInfo);
 
-      // CT/MRI/수술 가용 여부 파싱
-      const hasCT = bedInfo?.hvctayn === 'Y';
-      const hasMRI = bedInfo?.hvmriayn === 'Y';
-      const hasSurgery = bedInfo?.hvoc ? parseInt(bedInfo.hvoc, 10) > 0 : false;
+      // CT/MRI/수술/ICU 가용 여부 파싱 (3-State)
+      const hasCT = this.parseThreeState(bedInfo?.hvctayn);
+      const hasMRI = this.parseThreeState(bedInfo?.hvmriayn);
+      const hasSurgery = this.parseThreeState(bedInfo?.hvoc);
+      
+      const hasNeuroIcu = this.combineIcuFields([bedInfo?.hvcc, bedInfo?.hv2, bedInfo?.hv6]);
+      const hasGeneralIcu = this.parseThreeState(bedInfo?.hvicc);
 
       // 전화번호 정리 (공백, 하이픈 제거)
       const phoneNumber = this.sanitizePhoneNumber(basicInfo.dutyTel1) || this.sanitizePhoneNumber(basicInfo.dutyTel3);
@@ -117,6 +122,8 @@ export class HospitalMapper {
         hasCT,
         hasMRI,
         hasSurgery,
+        hasNeuroIcu,
+        hasGeneralIcu,
         undefined, // estimatedWaitTime
         undefined, // routeDuration (will be calculated later)
         undefined  // routeDistance (will be calculated later)
@@ -135,6 +142,51 @@ export class HospitalMapper {
     return dtos
       .map((dto) => this.toDomain(dto))
       .filter((hospital): hospital is Hospital => hospital !== null);
+  }
+
+  /**
+   * 3-State (boolean | null) 변환 공통 함수
+   * - 값 누락, null, undefined, 빈 문자열, 공백 문자열, 파싱 불가능한 값 → null
+   * - "Y" → true, "N" → false
+   * - 숫자 0 또는 "0" → false
+   * - 양수 또는 양수 문자열 → true
+   * - 음수 → null
+   * - 그 외 값 → null
+   */
+  static parseThreeState(val: string | number | undefined | null): boolean | null {
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed === '') return null;
+      if (trimmed.toUpperCase() === 'Y') return true;
+      if (trimmed.toUpperCase() === 'N') return false;
+      const parsed = parseInt(trimmed, 10);
+      if (isNaN(parsed)) return null;
+      if (parsed === 0) return false;
+      if (parsed > 0) return true;
+      return null;
+    }
+    if (typeof val === 'number') {
+      if (isNaN(val)) return null;
+      if (val === 0) return false;
+      if (val > 0) return true;
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * 여러 ICU 필드를 결합하여 3-State 상태 판별
+   * - 하나라도 양수(true)면 true
+   * - 모든 확인 가능한 필드가 0(false)이면 false
+   * - 양수는 없고 0과 누락값이 섞여있으면 null (단정 불가)
+   * - 전부 누락(null)이면 null
+   */
+  static combineIcuFields(fields: (string | number | undefined | null)[]): boolean | null {
+    const states = fields.map(f => this.parseThreeState(f));
+    if (states.includes(true)) return true;
+    if (states.every(s => s === false)) return false;
+    return null;
   }
 
   /**

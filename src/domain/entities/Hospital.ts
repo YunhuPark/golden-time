@@ -63,9 +63,11 @@ export class Hospital {
     public readonly traumaLevel: TraumaLevel,         // 외상센터 등급
     public readonly isOperating: boolean,             // 응급실 운영 여부
     public readonly lastUpdated: Date,                // 데이터 마지막 갱신 시각
-    public readonly hasCT: boolean,                   // CT 장비 가용 여부
-    public readonly hasMRI: boolean,                  // MRI 장비 가용 여부
-    public readonly hasSurgery: boolean,              // 수술 가능 여부
+    public readonly hasCT: boolean | null,                   // CT 장비 가용 여부 (3-State)
+    public readonly hasMRI: boolean | null,                  // MRI 장비 가용 여부 (3-State)
+    public readonly hasSurgery: boolean | null,              // 수술 가능 여부 (3-State)
+    public readonly hasNeuroIcu: boolean | null = null,      // 신경계 중환자실 가용 여부 (3-State)
+    public readonly hasGeneralIcu: boolean | null = null,    // 일반/내과계 중환자실 가용 여부 (3-State)
     public readonly estimatedWaitTime?: number,       // 예상 대기 시간 (분, 옵셔널)
     public readonly routeDuration?: number,           // 경로 소요시간 (초, 옵셔널)
     public readonly routeDistance?: number            // 경로 거리 (미터, 옵셔널)
@@ -182,6 +184,8 @@ export class Hospital {
       this.hasCT,
       this.hasMRI,
       this.hasSurgery,
+      this.hasNeuroIcu,
+      this.hasGeneralIcu,
       this.estimatedWaitTime,
       this.routeDuration,
       this.routeDistance
@@ -208,6 +212,8 @@ export class Hospital {
       this.hasCT,
       this.hasMRI,
       this.hasSurgery,
+      this.hasNeuroIcu,
+      this.hasGeneralIcu,
       this.estimatedWaitTime,
       routeDuration,
       routeDistance
@@ -218,7 +224,7 @@ export class Hospital {
    * 예상 도착 시간 계산 (현재 시각 + 경로 소요시간)
    */
   getEstimatedArrivalTime(): Date | null {
-    if (!this.routeDuration) return null;
+    if (this.routeDuration === undefined || this.routeDuration === -1) return null;
     const now = new Date();
     return new Date(now.getTime() + this.routeDuration * 1000);
   }
@@ -226,8 +232,9 @@ export class Hospital {
   /**
    * 경로 소요시간을 "분" 단위로 반환
    */
-  getRouteDurationMinutes(): number | null {
-    if (!this.routeDuration) return null;
+  getRouteDurationMinutes(): number | null | undefined {
+    if (this.routeDuration === undefined) return undefined;
+    if (this.routeDuration === -1) return -1;
     return Math.ceil(this.routeDuration / 60);
   }
 

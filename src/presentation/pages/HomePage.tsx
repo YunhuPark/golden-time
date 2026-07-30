@@ -25,6 +25,8 @@ import { logError, logEvent } from '../../infrastructure/monitoring/sentry';
 import { supabase } from '../../infrastructure/supabase/supabaseClient';
 import { Hospital } from '../../domain/entities/Hospital';
 import { applyFilters } from '../../domain/types/HospitalFilter';
+import { MediMatrixParams, parseMediMatrixParams } from '../../domain/types/MediMatrixParams';
+import { RouteEnrichmentService } from '../../domain/services/RouteEnrichmentService';
 
 /**
  * HomePage Component
@@ -35,6 +37,7 @@ export const HomePage: React.FC = () => {
     themeMode,
     userLocation,
     hospitals,
+    top3DiseaseRecommendedIds,
     searchWarning,
     isLoadingHospitals,
     selectedHospital,
@@ -66,19 +69,33 @@ export const HomePage: React.FC = () => {
   // URL 쿼리 파라미터 확인 (Medical AI 연동)
   const [triageLevel, setTriageLevel] = useState<string | null>(null);
   const [targetDisease, setTargetDisease] = useState<string | null>(null);
-  
+  const [mediMatrixParams, setMediMatrixParams] = useState<MediMatrixParams | null>(null);
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const triage = params.get('triage');
-    const disease = params.get('disease');
-    
+    const searchParams = new URLSearchParams(window.location.search);
+    const triage = searchParams.get('triage');
+    const disease = searchParams.get('disease');
+
+    // 기존 disease 파라미터 (하위 호환)
     if (disease) {
       setTargetDisease(disease);
     }
-    
+
+    // 새 구조화 MediMatrix 파라미터 파싱
+    const parsedParams = parseMediMatrixParams(searchParams);
+    if (parsedParams) {
+      setMediMatrixParams(parsedParams);
+      // MediMatrix 연동 이벤트 로깅
+      logEvent('medi_matrix_referral', {
+        condition: parsedParams.condition,
+        specialties: parsedParams.specialties.join(','),
+        volume: parsedParams.volume,
+      });
+    }
+
     if (triage) {
       setTriageLevel(triage);
-      
+
       // RED 응급도일 경우 자동 필터링 적용
       if (triage === 'RED') {
         // 기존 상태가 초기화되기 전에 약간의 지연 후 필터 적용
@@ -215,21 +232,26 @@ export const HomePage: React.FC = () => {
 
         const result = await useCase.execute(userLocation, targetDisease || undefined);
 
-        // API 성공 시 캐시에 저장
+        // API 성공 시 캐시에 저장 (top3 ids는 캐싱 생략)
         if (result.hospitals.length > 0) {
           HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론
         }
 
-        setHospitals(result.hospitals, result.warning);
+        setHospitals(result.hospitals, result.top3DiseaseRecommendedIds, result.warning);
 
-        // 초기 로드 완료 (경로 정보는 병원 카드에서 개별적으로 로드됨)
-        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API`);
+        // 초기 로드 완료 (Phase 1 완료)
+        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API (Phase 1)`);
 
         // 성공 이벤트 로깅
         logEvent('hospital_search_success', {
           hospital_count: result.hospitals.length,
           has_warning: !!result.warning,
         });
+
+        // Phase 2: 백그라운드 경로 계산 시작
+        const enrichmentService = new RouteEnrichmentService(repository);
+        enrichmentService.processBackgroundQueue(userLocation, result.hospitals).catch(e => console.error(e));
+
       } catch (err) {
         console.error('❌ Failed to search hospitals from API:', err);
 
@@ -258,7 +280,7 @@ export const HomePage: React.FC = () => {
             hospital_count: cached.hospitals.length,
           });
 
-          setHospitals(cached.hospitals, {
+          setHospitals(cached.hospitals, [], {
             type: 'DATA_STALE',
             message: `서버 연결에 실패하여 ${cached.ageMinutes}분 전 데이터를 사용하고 있습니다. ${cached.isFresh ? '' : '정보가 오래되었을 수 있습니다.'}`,
           });
@@ -268,7 +290,7 @@ export const HomePage: React.FC = () => {
             has_cache: false,
           });
 
-          setHospitals([], {
+          setHospitals([], [], {
             type: 'NO_HOSPITALS_FOUND',
             message: '병원 검색 중 오류가 발생했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.',
           });
@@ -642,6 +664,41 @@ export const HomePage: React.FC = () => {
       {/* 병원 목록 뷰 */}
       {!showMapView && (
         <>
+          {/* Medi-Matrix 연동 배너 — triage는 파서 검증값, 원문 하드코딩 금지 */}
+          {mediMatrixParams && mediMatrixParams.condition !== 'unsupported_modality' && (
+            <div
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '14px',
+              }}
+              role="status"
+              aria-label="Medi-Matrix 연동 안내"
+            >
+              <p style={{ margin: '0 0 4px', fontWeight: '700', fontSize: '14px', color: '#dc2626' }}>
+                🚨 [합성 데이터 분석 데모] 중증도 {mediMatrixParams.triage} · {
+                  mediMatrixParams.primaryCondition === 'sepsis_demo' && mediMatrixParams.secondaryConditions?.includes('brain_lesion_demo') ? '패혈증 및 뇌 병변 복합 대응 병원 탐색' :
+                  mediMatrixParams.primaryCondition === 'brain_lesion_demo' && mediMatrixParams.secondaryConditions?.includes('sepsis_demo') ? '뇌 병변 및 패혈증 복합 대응 병원 탐색' :
+                  (mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'sepsis_demo' ? '패혈증 대응 병원 탐색' :
+                  '뇌 병변 대응 병원 탐색'
+                }
+              </p>
+              <p style={{ margin: '0 0 2px', fontSize: '12px', color: '#6b7280' }}>
+                진료과: {mediMatrixParams.specialties.join(', ')} | 역량: {mediMatrixParams.capabilities.join(', ')}
+                {mediMatrixParams.vitalsCondition && (
+                  <span style={{ marginLeft: '8px', color: '#f472b6' }}>
+                    | Vitals: {mediMatrixParams.vitalsCondition}
+                  </span>
+                )}
+              </p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
+                ⚠️ 합성 데이터 기반 데모이며 임상 진단 결과가 아닙니다. E-Gen 공개 응급의료정보 기반 추천.
+              </p>
+            </div>
+          )}
+
           {filteredHospitals.length === 0 && !isLoadingHospitals ? (
             <EmptyHospitalList
               hasActiveFilters={Object.values(filters).some(v => v)}
@@ -656,6 +713,8 @@ export const HomePage: React.FC = () => {
               isLoading={isLoadingHospitals}
               sortOption={sortOption}
               targetDisease={targetDisease}
+              mediMatrixParams={mediMatrixParams}
+              top3DiseaseRecommendedIds={top3DiseaseRecommendedIds}
               onSortChange={setSortOption}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);

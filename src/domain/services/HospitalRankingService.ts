@@ -1,212 +1,269 @@
 import { Hospital, AvailabilityStatus } from '../entities/Hospital';
 import { HospitalSpecialtyService } from './HospitalSpecialtyService';
+import { MediMatrixParams, MediMatrixCapability } from '../types/MediMatrixParams';
 
-/**
- * Hospital Ranking Service
- * 응급 상황에서 최적의 병원을 선택하기 위한 점수 기반 랭킹 알고리즘
- *
- * 점수 계산 기준:
- * 1. 경로 소요시간 (40점) - 가장 중요
- * 2. 병상 가용률 (30점)
- * 3. 질환 적합도 (30점) - 추가됨 (환자의 질환과 병원의 강점 매칭)
- * 4. 외상센터 등급 (20점)
- * 5. 응급실 운영 여부 (10점)
- *
- * Ironclad Law #3: Edge Case Obsession
- * - 경로 정보 없음, 병상 정보 없음, 모든 병원 만실 등 처리
- */
+export interface HospitalScoreBreakdown {
+  totalScore: number;
+  timeScore: number;
+  bedScore: number;
+  traumaScore: number;
+  operatingScore: number;
+  specialtyScore: number;         // condition 기반 진료과 부합도
+  capabilityScore: number;        // capabilities 기반 치료 역량
+  icuProxyScore: number;          // ICU proxy (traumaLevel 기반)
+  specialtyMatchDetails: string[]; // 매칭된 진료과 키워드
+  capabilityDetails: {
+    emergency_surgery: 'available' | 'unavailable' | 'unknown';
+    brain_imaging: 'available' | 'unavailable' | 'unknown';
+    icu: 'available' | 'unavailable' | 'unknown';
+  };
+  hasCriticalUnknowns: boolean;   // RED 환자의 필수 역량이 unknown인지 여부
+}
+
+export interface RankingResult {
+  hospitals: Hospital[];
+  scoreMap: Map<string, HospitalScoreBreakdown>;
+  top3DiseaseRecommendedIds: string[];
+}
+
 export class HospitalRankingService {
   /**
    * 병원 목록을 응급 상황 최적 순으로 정렬
-   *
-   * @param hospitals 병원 목록
-   * @param targetDisease (선택) 환자의 타겟 질환 (예: '패혈증', '뇌종양')
-   * @returns 점수 기반으로 정렬된 병원 목록
    */
-  static rankHospitals(hospitals: Hospital[], targetDisease?: string | null): Hospital[] {
-    // Edge Case 1: 빈 배열
+  static rankHospitals(
+    hospitals: Hospital[],
+    targetDisease?: string | null,
+    mediMatrixParams?: MediMatrixParams | null,
+    freezeTop3Ids?: string[]
+  ): RankingResult {
     if (hospitals.length === 0) {
-      return [];
+      return { hospitals: [], scoreMap: new Map(), top3DiseaseRecommendedIds: [] };
     }
 
-    // Edge Case 2: 1개 병원만 있는 경우
-    if (hospitals.length === 1) {
-      return hospitals;
-    }
+    const scoreMap = new Map<string, HospitalScoreBreakdown>();
 
     // 각 병원에 점수 부여
-    const hospitalsWithScore = hospitals.map((hospital) => ({
-      hospital,
-      score: this.calculateScore(hospital, hospitals, targetDisease),
-    }));
+    const hospitalsWithScore = hospitals.map((hospital) => {
+      const breakdown = this.calculateBreakdown(hospital, hospitals, targetDisease, mediMatrixParams);
+      scoreMap.set(hospital.id, breakdown);
 
-    // 점수 내림차순 정렬 (높은 점수 = 더 적합한 병원)
-    hospitalsWithScore.sort((a, b) => b.score - a.score);
-
-    // 디버그 로그
-    console.log(`🏆 Hospital Ranking Results (Target Disease: ${targetDisease || 'None'}):`);
-    hospitalsWithScore.slice(0, 5).forEach((item, index) => {
-      const isMatch = targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(item.hospital, targetDisease);
-      console.log(
-        `${index + 1}. ${item.hospital.name}: ${item.score.toFixed(1)}점 ` +
-          `(소요: ${item.hospital.getRouteDurationMinutes() || '?'}분, ` +
-          `병상: ${item.hospital.availableBeds}/${item.hospital.totalBeds})` +
-          (isMatch ? ' ✨ [Specialty Match!]' : '')
-      );
+      return {
+        hospital,
+        score: breakdown.totalScore,
+        breakdown,
+        diseaseSpecialtyScore: breakdown.specialtyScore
+      };
     });
 
-    return hospitalsWithScore.map((item) => item.hospital);
-  }
+    // 전체 목록은 추천(overallScore 내림차순, 이동시간 오름차순) 정렬
+    hospitalsWithScore.sort((a, b) => {
+      if (a.breakdown.hasCriticalUnknowns !== b.breakdown.hasCriticalUnknowns) {
+        return a.breakdown.hasCriticalUnknowns ? 1 : -1;
+      }
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      const timeA = a.hospital.routeDuration && a.hospital.routeDuration > 0 ? a.hospital.routeDuration : Infinity;
+      const timeB = b.hospital.routeDuration && b.hospital.routeDuration > 0 ? b.hospital.routeDuration : Infinity;
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.hospital.id.localeCompare(b.hospital.id);
+    });
 
-  /**
-   * 개별 병원의 종합 점수 계산
-   */
-  private static calculateScore(
-    hospital: Hospital,
-    allHospitals: Hospital[],
-    targetDisease?: string | null
-  ): number {
-    let score = 0;
+    // TOP 3 AI 특화 추천 계산
+    let top3DiseaseRecommendedIds = freezeTop3Ids;
 
-    // 1. 경로 소요시간 점수 (40점)
-    score += this.calculateTimeScore(hospital, allHospitals);
+    if (!top3DiseaseRecommendedIds) {
+      const diseaseCandidates = hospitalsWithScore.filter(h => h.diseaseSpecialtyScore > 0);
 
-    // 2. 병상 가용률 점수 (30점)
-    score += this.calculateBedAvailabilityScore(hospital);
+      diseaseCandidates.sort((a, b) => {
+        // hasCriticalUnknowns가 있는 경우 후순위
+        if (a.breakdown.hasCriticalUnknowns !== b.breakdown.hasCriticalUnknowns) {
+          return a.breakdown.hasCriticalUnknowns ? 1 : -1;
+        }
+        // 1. diseaseSpecialtyScore 내림차순
+        if (b.diseaseSpecialtyScore !== a.diseaseSpecialtyScore) {
+          return b.diseaseSpecialtyScore - a.diseaseSpecialtyScore;
+        }
+        // 2. 전체 추천 점수 내림차순
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        // 3. 이동시간 오름차순 (Infinity 처리)
+        const timeA = a.hospital.routeDuration && a.hospital.routeDuration > 0 ? a.hospital.routeDuration : Infinity;
+        const timeB = b.hospital.routeDuration && b.hospital.routeDuration > 0 ? b.hospital.routeDuration : Infinity;
+        if (timeA !== timeB) {
+          return timeA - timeB;
+        }
+        // 4. id 오름차순
+        const idA = a.hospital.id;
+        const idB = b.hospital.id;
+        return idA.localeCompare(idB);
+      });
 
-    // 3. 외상센터 등급 점수 (20점)
-    score += this.calculateTraumaLevelScore(hospital);
-
-    // 4. 응급실 운영 여부 점수 (10점)
-    score += this.calculateOperatingScore(hospital);
-
-    // 5. 질환 적합도 점수 (30점) - 새로 추가됨!
-    if (targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease)) {
-      score += 30;
+      top3DiseaseRecommendedIds = diseaseCandidates.slice(0, 3).map(c => c.hospital.id);
     }
 
-    return score;
+    const sortedHospitals = hospitalsWithScore.map(({ hospital }) => hospital);
+
+    return { hospitals: sortedHospitals, scoreMap, top3DiseaseRecommendedIds };
   }
 
-  /**
-   * 경로 소요시간 점수 계산 (0~40점)
-   * - 가장 빠른 병원: 40점
-   * - 가장 느린 병원: 0점
-   * - 선형 보간
-   * - 경로 정보 없으면 중간값 (20점)
-   */
+  private static calculateBreakdown(
+    hospital: Hospital,
+    allHospitals: Hospital[],
+    targetDisease?: string | null,
+    mediMatrixParams?: MediMatrixParams | null
+  ): HospitalScoreBreakdown {
+    const timeScore = this.calculateTimeScore(hospital, allHospitals);
+    const bedScore = this.calculateBedAvailabilityScore(hospital);
+    const traumaScore = this.calculateTraumaLevelScore(hospital);
+    const operatingScore = this.calculateOperatingScore(hospital);
+
+    const diseaseSpecialtyScore = HospitalSpecialtyService.getDiseaseSpecialtyScore(
+      hospital,
+      mediMatrixParams?.condition || targetDisease
+    );
+
+    let capabilityScore = 0;
+    let icuProxyScore = 0;
+    const capabilityDetails: HospitalScoreBreakdown['capabilityDetails'] = {
+      emergency_surgery: 'unknown',
+      brain_imaging: 'unknown',
+      icu: 'unknown',
+    };
+    let hasCriticalUnknowns = false;
+
+    if (mediMatrixParams && mediMatrixParams.condition !== 'unsupported_modality') {
+      const capabilityScorePerItem = mediMatrixParams.capabilities.length > 0
+        ? 20 / mediMatrixParams.capabilities.length
+        : 0;
+
+      mediMatrixParams.capabilities.forEach((cap: MediMatrixCapability) => {
+        if (cap === 'emergency_surgery') {
+          if (hospital.hasSurgery === true) {
+            capabilityScore += capabilityScorePerItem;
+            capabilityDetails.emergency_surgery = 'available';
+          } else if (hospital.hasSurgery === false) {
+            capabilityDetails.emergency_surgery = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
+        }
+        
+        if (cap === 'brain_imaging') {
+          if (hospital.hasMRI === true || hospital.hasCT === true) {
+            capabilityScore += capabilityScorePerItem;
+            capabilityDetails.brain_imaging = 'available';
+          } else if (hospital.hasMRI === false && hospital.hasCT === false) {
+            capabilityDetails.brain_imaging = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
+        }
+        
+        if (cap === 'icu') {
+          let hasIcu: boolean | null = null;
+          // 질환에 따른 ICU 확인 (Brain: 신경계, Sepsis: 일반내과)
+          if ((mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'brain_lesion_demo') {
+            hasIcu = hospital.hasNeuroIcu;
+          } else if ((mediMatrixParams.primaryCondition || mediMatrixParams.condition) === 'sepsis_demo') {
+            hasIcu = hospital.hasGeneralIcu;
+          }
+          
+          if (hasIcu === true) {
+            icuProxyScore = 15;
+            capabilityDetails.icu = 'available';
+          } else if (hasIcu === false) {
+            capabilityDetails.icu = 'unavailable';
+          } else {
+            if (mediMatrixParams.triage === 'RED') hasCriticalUnknowns = true;
+          }
+        }
+      });
+    }
+
+    const rawAmbulanceScore = capabilityScore + icuProxyScore;
+    let ambulanceScore = (rawAmbulanceScore / 35) * 10;
+    if (isNaN(ambulanceScore) || !isFinite(ambulanceScore)) {
+      ambulanceScore = 0;
+    }
+    ambulanceScore = Math.max(0, Math.min(10, ambulanceScore));
+
+    const totalScore =
+      timeScore +
+      bedScore +
+      traumaScore +
+      operatingScore +
+      diseaseSpecialtyScore +
+      ambulanceScore;
+
+    return {
+      totalScore,
+      timeScore,
+      bedScore,
+      traumaScore,
+      operatingScore,
+      specialtyScore: diseaseSpecialtyScore,
+      capabilityScore,
+      icuProxyScore,
+      specialtyMatchDetails: [],
+      capabilityDetails,
+      hasCriticalUnknowns,
+    };
+  }
+
   private static calculateTimeScore(
     hospital: Hospital,
     allHospitals: Hospital[]
   ): number {
     const MAX_SCORE = 40;
 
-    // Edge Case: 경로 정보 없음
-    if (!hospital.routeDuration) {
-      return MAX_SCORE * 0.5; // 중간 점수 (20점)
+    if (!hospital.routeDuration || hospital.routeDuration === -1) {
+      return 0; // 경로 계산 ?�패 ??0�?최고?????�닌 0??부??
     }
 
-    // 전체 병원 중 경로 정보가 있는 병원들만 추출
-    const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration);
+    const hospitalsWithRoute = allHospitals.filter(
+      (h) => h.routeDuration && h.routeDuration !== -1
+    );
+    if (hospitalsWithRoute.length <= 1) return MAX_SCORE;
 
-    // Edge Case: 경로 정보 있는 병원이 1개뿐
-    if (hospitalsWithRoute.length === 1) {
-      return MAX_SCORE;
-    }
-
-    // 최소/최대 소요시간 찾기
     const minDuration = Math.min(...hospitalsWithRoute.map((h) => h.routeDuration!));
     const maxDuration = Math.max(...hospitalsWithRoute.map((h) => h.routeDuration!));
+    if (minDuration === maxDuration) return MAX_SCORE;
 
-    // Edge Case: 모든 병원 소요시간 동일
-    if (minDuration === maxDuration) {
-      return MAX_SCORE;
-    }
-
-    // 선형 보간: 빠를수록 높은 점수
     const normalizedScore =
       1 - (hospital.routeDuration - minDuration) / (maxDuration - minDuration);
     return normalizedScore * MAX_SCORE;
   }
 
-  /**
-   * 병상 가용률 점수 계산 (0~30점)
-   * - AVAILABLE (병상 충분): 30점
-   * - LIMITED (병상 제한적): 15점
-   * - FULL (만실): 0점
-   * - UNKNOWN (정보 없음): 10점
-   */
   private static calculateBedAvailabilityScore(hospital: Hospital): number {
     const MAX_SCORE = 30;
     const status = hospital.getAvailabilityStatus();
 
     switch (status) {
       case AvailabilityStatus.AVAILABLE:
-        // 가용률 기반 세밀한 점수 (20~30점)
-        const availabilityRate = hospital.getAvailabilityRate();
-        return 20 + availabilityRate * 10;
-
+        return 20 + hospital.getAvailabilityRate() * 10;
       case AvailabilityStatus.LIMITED:
-        return MAX_SCORE * 0.5; // 15점
-
+        return MAX_SCORE * 0.5;
       case AvailabilityStatus.FULL:
-        return 0; // 0점 (만실인 병원은 최하위)
-
+        return 0;
       case AvailabilityStatus.UNKNOWN:
       default:
-        return MAX_SCORE * 0.33; // 10점 (정보 없으면 낮은 점수)
+        return MAX_SCORE * 0.33;
     }
   }
 
-  /**
-   * 외상센터 등급 점수 계산 (0~20점)
-   * - Level 1 (권역외상센터): 20점
-   * - Level 2 (지역외상센터): 15점
-   * - Level 3 (지역응급의료센터): 10점
-   * - 없음: 5점
-   */
   private static calculateTraumaLevelScore(hospital: Hospital): number {
     const MAX_SCORE = 20;
-
-    if (hospital.traumaLevel === 1) {
-      return MAX_SCORE; // 20점
-    } else if (hospital.traumaLevel === 2) {
-      return MAX_SCORE * 0.75; // 15점
-    } else if (hospital.traumaLevel === 3) {
-      return MAX_SCORE * 0.5; // 10점
-    } else {
-      return MAX_SCORE * 0.25; // 5점 (외상센터 아니어도 기본 점수)
-    }
+    if (hospital.traumaLevel === 1) return MAX_SCORE;
+    if (hospital.traumaLevel === 2) return MAX_SCORE * 0.75;
+    if (hospital.traumaLevel === 3) return MAX_SCORE * 0.5;
+    return MAX_SCORE * 0.25;
   }
 
-  /**
-   * 응급실 운영 여부 점수 계산 (0~10점)
-   * - 운영 중: 10점
-   * - 미운영: 0점
-   */
   private static calculateOperatingScore(hospital: Hospital): number {
     return hospital.isOperating ? 10 : 0;
-  }
-
-  /**
-   * 특정 병원의 점수 상세 분석 (디버깅용)
-   */
-  static analyzeHospitalScore(
-    hospital: Hospital,
-    allHospitals: Hospital[]
-  ): {
-    totalScore: number;
-    timeScore: number;
-    bedScore: number;
-    traumaScore: number;
-    operatingScore: number;
-  } {
-    return {
-      totalScore: this.calculateScore(hospital, allHospitals),
-      timeScore: this.calculateTimeScore(hospital, allHospitals),
-      bedScore: this.calculateBedAvailabilityScore(hospital),
-      traumaScore: this.calculateTraumaLevelScore(hospital),
-      operatingScore: this.calculateOperatingScore(hospital),
-    };
   }
 }

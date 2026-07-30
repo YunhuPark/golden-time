@@ -4,7 +4,6 @@ import { IHospitalRepository } from '../../domain/repositories/IHospitalReposito
 import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
-import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
 
 /**
  * Hospital Repository Implementation
@@ -15,6 +14,13 @@ import { HospitalRankingService } from '../../domain/services/HospitalRankingSer
  * - DTO → Domain Entity 변환
  * - 거리 기반 필터링
  * - 캐싱 전략 (향후 추가 예정)
+ *
+ * 경로 계산 정책 (ROUTE_CALC_COUNT):
+ * - 직선거리 기준 상위 N개에 대해 Kakao Directions API 호출
+ * - 랭킹 재정렬 후 화면 표시 10개를 기준으로 계산하므로, 여유분 포함
+ * - 동시성: 최대 3개 병렬 (Vercel serverless + Kakao rate limit 고려)
+ * - 실패한 병원은 routeDuration=undefined → UI에 '도로 이동시간 확인 불가' 표시
+ * - 실패한 병원의 시간 점수는 별도 unknown 처리 (calculateTimeScore 참고)
  */
 export class HospitalRepositoryImpl implements IHospitalRepository {
   private readonly directionsClient: KakaoDirectionsClient;
@@ -29,7 +35,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   /**
    * 특정 좌표 주변의 병원 검색
    */
-  async findNearby(coords: Coordinates, targetDisease?: string): Promise<Hospital[]> {
+  async findNearby(coords: Coordinates): Promise<Hospital[]> {
     try {
       // 좌표를 기반으로 시도/시군구 추론 (간단히 서울 가정, 향후 역지오코딩 API 사용)
       // TODO: Kakao Local API로 좌표 → 행정구역 변환
@@ -52,7 +58,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         const distanceKm = hospital.distanceFrom(coords) / 1000;
         if (distanceKm > MAX_DISTANCE_KM) {
           console.warn(
-            `⚠️ Filtering out hospital "${hospital.name}" - too far from user (${distanceKm.toFixed(1)}km > ${MAX_DISTANCE_KM}km)`
+            `⚠️ Filtering out hospital "${hospital.name}" - too far (${distanceKm.toFixed(1)}km > ${MAX_DISTANCE_KM}km)`
           );
           return false;
         }
@@ -67,31 +73,9 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         return distA - distB;
       });
 
-      console.log(`✅ Found ${validHospitals.length} hospitals with coordinates (filtered by distance < ${MAX_DISTANCE_KM}km)`);
+      console.log(`✅ Found ${validHospitals.length} hospitals (filtered by distance < ${MAX_DISTANCE_KM}km)`);
 
-      // 성능 최적화: 초기에는 상위 10개만 경로 정보 계산
-      // 나머지는 직선 거리만 사용하여 빠르게 표시
-      const INITIAL_ROUTE_COUNT = 10;
-      const topHospitals = validHospitals.slice(0, INITIAL_ROUTE_COUNT);
-      const remainingHospitals = validHospitals.slice(INITIAL_ROUTE_COUNT);
-
-      console.log(`🚗 Calculating route info for top ${topHospitals.length} hospitals only (performance optimization)...`);
-
-      // 상위 10개만 경로 정보 계산 (병렬 처리)
-      const hospitalsWithRouteInfo = await this.enrichWithRouteInfo(
-        coords,
-        topHospitals
-      );
-
-      // 나머지 병원은 경로 정보 없이 직선 거리만 사용
-      const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
-
-      // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals, targetDisease);
-
-      console.log(`✅ Returning ${rankedHospitals.length} hospitals (route info for top ${INITIAL_ROUTE_COUNT}, rest use direct distance)`);
-
-      return rankedHospitals;
+      return validHospitals;
 
     } catch (error) {
       console.error('Failed to find nearby hospitals:', error);
@@ -139,48 +123,48 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   /**
    * 병원 목록에 경로 정보 추가
    *
-   * @param origin 출발지 좌표
-   * @param hospitals 병원 목록
-   * @returns 경로 정보가 추가된 병원 목록
+   * 핵심 변경:
+   * - getRouteInfoBatch()로 최대 3개 동시 처리 (병렬 10개 → 타임아웃 위험 제거)
+   * - 결과를 hospital.id로 매핑하여 순서가 바뀌어도 올바른 병원에 연결
+   * - 개별 실패가 전체 목록 계산을 중단시키지 않음
+   * - 실패한 병원은 routeDuration=-1 설정
    */
-  private async enrichWithRouteInfo(
+  async enrichWithRouteInfo(
     origin: Coordinates,
     hospitals: Hospital[]
   ): Promise<Hospital[]> {
-    console.log(`🚗 Calculating route info for ${hospitals.length} hospitals (병렬 처리)...`);
+    console.log(`🚗 enrichWithRouteInfo: ${hospitals.length}개 병원, 최대 3개 동시 처리`);
 
-    // 병렬 처리: 모든 경로 정보를 동시에 요청 (성능 향상)
-    const routePromises = hospitals.map(async (hospital) => {
-      try {
-        const routeInfo = await this.directionsClient.getRouteInfo(
-          { latitude: origin.latitude, longitude: origin.longitude },
-          { latitude: hospital.coordinates.latitude, longitude: hospital.coordinates.longitude }
+    // id 기반 매핑을 위한 targets 생성
+    const targets = hospitals.map((h) => ({
+      id: h.id,
+      latitude: h.coordinates.latitude,
+      longitude: h.coordinates.longitude,
+    }));
+
+    // 동시성 제한(3)으로 배치 경로 계산
+    const routeMap = await this.directionsClient.getRouteInfoBatch(
+      { latitude: origin.latitude, longitude: origin.longitude },
+      targets,
+      3
+    );
+
+    // id 기반으로 경로 정보를 병원에 연결
+    const enrichedHospitals = hospitals.map((hospital) => {
+      const routeInfo = routeMap.get(hospital.id);
+      if (routeInfo) {
+        console.log(
+          `✅ Route to ${hospital.name}: ${Math.ceil(routeInfo.duration / 60)}분 (${(routeInfo.distance / 1000).toFixed(1)}km)`
         );
-
-        if (routeInfo) {
-          // 경로 정보가 있으면 업데이트된 병원 객체 생성
-          const enrichedHospital = hospital.withRouteInfo(
-            routeInfo.duration,
-            routeInfo.distance
-          );
-          console.log(
-            `✅ Route to ${hospital.name}: ${Math.ceil(routeInfo.duration / 60)}분 (${(routeInfo.distance / 1000).toFixed(1)}km)`
-          );
-          return enrichedHospital;
-        } else {
-          // 경로 정보 없으면 원본 병원 객체 그대로 사용
-          console.warn(`⚠️ Failed to get route info for ${hospital.name}`);
-          return hospital;
-        }
-      } catch (error) {
-        console.error(`Failed to calculate route for ${hospital.name}:`, error);
-        // 에러 발생 시 원본 병원 객체 그대로 사용
-        return hospital;
+        return hospital.withRouteInfo(routeInfo.duration, routeInfo.distance);
       }
+      // 실패한 병원은 -1로 명시 (UI에서 '이동시간 확인 불가'로 표시하기 위함)
+      console.warn(`❌ Route calculation failed for ${hospital.name}. Marking as Infinity.`);
+      return hospital.withRouteInfo(Infinity, Infinity);
     });
 
-    // 모든 Promise가 완료될 때까지 대기
-    const enrichedHospitals = await Promise.all(routePromises);
+    const successCount = enrichedHospitals.filter(h => h.routeDuration !== undefined).length;
+    console.log(`🚗 Route calculation complete: ${successCount}/${hospitals.length} succeeded`);
 
     return enrichedHospitals;
   }
@@ -236,25 +220,25 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
     } else if (latitude >= 35.8 && latitude <= 36.0 && longitude >= 128.5 && longitude <= 128.7) {
       return '대구광역시';
     } else if (latitude >= 35.0 && latitude <= 35.4 && longitude >= 127.9 && longitude <= 129.0) {
-      return '경상남도'; // 창원, 진주, 마산 등
+      return '경상남도';
     } else if (latitude >= 35.4 && latitude <= 36.6 && longitude >= 128.0 && longitude <= 129.4) {
-      return '경상북도'; // 경주, 포항, 안동 등
+      return '경상북도';
     } else if (latitude >= 35.0 && latitude <= 35.5 && longitude >= 126.4 && longitude <= 127.6) {
-      return '전라남도'; // 목포, 여수, 순천 등
+      return '전라남도';
     } else if (latitude >= 35.5 && latitude <= 36.0 && longitude >= 126.7 && longitude <= 127.6) {
-      return '전라북도'; // 전주, 익산, 군산 등
+      return '전라북도';
     } else if (latitude >= 36.2 && latitude <= 36.6 && longitude >= 127.2 && longitude <= 127.6) {
-      return '충청남도'; // 천안, 아산 등
+      return '충청남도';
     } else if (latitude >= 36.3 && latitude <= 37.2 && longitude >= 127.3 && longitude <= 128.5) {
-      return '충청북도'; // 청주, 충주 등
+      return '충청북도';
     } else if (latitude >= 37.7 && latitude <= 38.6 && longitude >= 127.0 && longitude <= 128.5) {
-      return '강원도'; // 춘천, 강릉, 원주 등
+      return '강원도';
     } else if (latitude >= 33.1 && latitude <= 33.6 && longitude >= 126.1 && longitude <= 126.9) {
       return '제주특별자치도';
     }
 
     // 기본값: 가장 가까운 대도시
-    console.warn(`⚠️ 좌표 (${latitude}, ${longitude})에 대한 지역 매칭 실패. 서울로 기본 설정.`);
+    console.warn(`⚠️ 좌표에 대한 지역 매칭 실패. 서울로 기본 설정.`);
     return '서울특별시';
   }
 }
