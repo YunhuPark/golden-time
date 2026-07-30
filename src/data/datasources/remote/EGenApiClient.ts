@@ -11,20 +11,14 @@ import {
 import { KakaoPlacesClient } from './KakaoPlacesClient';
 
 export class EGenApiClient {
-  private readonly baseUrl: string;
   private readonly timeout: number;
   private readonly maxRetries: number;
   private readonly geocodingClient: KakaoPlacesClient;
 
-  // 🔑 [핵심] 키를 변수에서 가져오지 않고 직접 넣습니다. (이게 가장 확실합니다)
-  private readonly HARDCODED_KEY = '24e573c3571a5e29f58333bd1b0ae2d7af7a69b89cacbbdc578e56961b469b4c';
-
   constructor(
-    baseUrl = '/api/egen', // Vite 프록시 사용 (CORS 우회)
     timeout = 10000,
     maxRetries = 3
   ) {
-    this.baseUrl = baseUrl;
     this.timeout = timeout;
     this.maxRetries = maxRetries;
     this.geocodingClient = new KakaoPlacesClient();
@@ -41,7 +35,7 @@ export class EGenApiClient {
     const endpoint = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
 
     const params = new URLSearchParams({
-      serviceKey: this.HARDCODED_KEY,
+      _endpoint: endpoint,
       numOfRows: numOfRows.toString(),
       pageNo: '1',
       _type: 'json',
@@ -50,7 +44,7 @@ export class EGenApiClient {
     if (stage1) params.append('STAGE1', stage1);
     if (stage2) params.append('STAGE2', stage2);
 
-    const url = `${this.baseUrl}${endpoint}?${params.toString()}`;
+    const url = `/api/egen?${params.toString()}`;
     
     const response = await this.fetchWithRetry<EGenApiResponse<EmergencyRoomBedDTO>>(url);
     return this.extractItems(response);
@@ -68,7 +62,7 @@ export class EGenApiClient {
     const endpoint = '/ErmctInfoInqireService/getHsptlBassInfoInqire';
 
     const params = new URLSearchParams({
-      serviceKey: this.HARDCODED_KEY,
+      _endpoint: endpoint,
       numOfRows: numOfRows.toString(),
       pageNo: '1',
       QZ,
@@ -78,7 +72,7 @@ export class EGenApiClient {
     if (Q0) params.append('Q0', Q0);
     if (Q1) params.append('Q1', Q1);
 
-    const url = `${this.baseUrl}${endpoint}?${params.toString()}`;
+    const url = `/api/egen?${params.toString()}`;
     
     const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(url);
     return this.extractItems(response);

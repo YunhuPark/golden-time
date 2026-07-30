@@ -82,7 +82,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => checkFavorite(), 100);
 
     return () => {
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window && 'cancelIdleCallback' in window && typeof idleCallback === 'number') {
+      if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {
         (window as any).cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
@@ -110,7 +110,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => loadRating(), 100);
 
     return () => {
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window && 'cancelIdleCallback' in window && typeof idleCallback === 'number') {
+      if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {
         (window as any).cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
