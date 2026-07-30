@@ -2,6 +2,7 @@ import { Hospital } from '../entities/Hospital';
 import { Coordinates } from '../valueObjects/Coordinates';
 import { IHospitalRepository } from '../repositories/IHospitalRepository';
 import { HospitalSpecialtyService } from '../services/HospitalSpecialtyService';
+import { AIAnalysisContext } from '../types/AIContext';
 
 /**
  * 검색 결과 타입
@@ -15,7 +16,7 @@ export interface HospitalSearchResult {
  * 경고 메시지 타입
  */
 export interface HospitalSearchWarning {
-  type: 'NO_HOSPITALS_FOUND' | 'NO_BEDS_AVAILABLE' | 'DATA_STALE' | 'LOW_ACCURACY';
+  type: 'NO_HOSPITALS_FOUND' | 'NO_BEDS_AVAILABLE' | 'DATA_STALE' | 'LOW_ACCURACY' | 'NETWORK_ERROR';
   message: string;
   action?: {
     type: 'CALL_119' | 'EXPAND_SEARCH' | 'REFRESH_DATA';
@@ -39,13 +40,13 @@ export class GetNearbyHospitals {
    */
   async execute(
     userLocation: Coordinates,
-    targetDisease?: string
+    aiContext?: AIAnalysisContext | null
   ): Promise<HospitalSearchResult> {
     // 0. Supabase DB에서 전체 병원 전문/특화 분야 최신 데이터를 로드 (캐시됨)
     await HospitalSpecialtyService.loadSpecialtiesFromDB();
 
     // 점진적 확대 전략 제거: 모든 병원을 한 번에 가져옴 (거리 무제한)
-    const allHospitals = await this.hospitalRepository.findNearby(userLocation, targetDisease);
+    const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext);
 
     // 가용 병상이 있는 병원 필터링 (임시로 운영중인 병원만)
     const availableHospitals = allHospitals.filter(

@@ -6,7 +6,8 @@ import { supabase } from '../../../infrastructure/supabase/supabaseClient';
 import { VisitHistoryService } from '../../../domain/services/VisitHistoryService';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
 import { ReviewService } from '../../../domain/services/ReviewService';
-import { HospitalSpecialtyService } from '../../../domain/services/HospitalSpecialtyService';
+import { HospitalAICardService } from '../../../domain/services/HospitalAICardService';
+import { AIAnalysisContext } from '../../../domain/types/AIContext';
 import { cn } from '../../../lib/utils';
 import { Button } from '../ui/button';
 import { useAuthSession } from '../../hooks/useAuthSession';
@@ -16,7 +17,7 @@ import { logError } from '../../../infrastructure/monitoring/sentry';
 interface HospitalCardProps {
   hospital: Hospital;
   userLocation: Coordinates | null;
-  targetDisease?: string | null;
+  aiContext?: AIAnalysisContext | null;
   onClick?: () => void;
 }
 
@@ -32,7 +33,7 @@ interface HospitalCardProps {
 export const HospitalCard: React.FC<HospitalCardProps> = ({
   hospital,
   userLocation,
-  targetDisease,
+  aiContext,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -81,8 +82,8 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => checkFavorite(), 100);
 
     return () => {
-      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
-        window.cancelIdleCallback(idleCallback);
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window && 'cancelIdleCallback' in window && typeof idleCallback === 'number') {
+        (window as any).cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }
@@ -109,8 +110,8 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => loadRating(), 100);
 
     return () => {
-      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
-        window.cancelIdleCallback(idleCallback);
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window && 'cancelIdleCallback' in window && typeof idleCallback === 'number') {
+        (window as any).cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }
@@ -168,6 +169,17 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   };
 
   const styles = getStatusStyles();
+
+  // AI 분석 결과 산출
+  const aiMatch = HospitalAICardService.evaluateMatch(hospital, aiContext || null);
+  const isAiRecommended = aiMatch && aiMatch.score > 0;
+  
+  // 조건명 한글 매핑
+  const getConditionName = (condition: string | null) => {
+    if (condition === 'sepsis_demo') return '패혈증 대응';
+    if (condition === 'brain_lesion_demo') return '뇌 병변 대응';
+    return '응급 대응 병원 탐색';
+  };
 
   // 별점 렌더링 (작은 사이즈)
   const renderStars = (rating: number) => {
@@ -364,9 +376,17 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
     >
       {/* 헤더: 병원명 + 소요시간/거리 */}
       <div className="flex flex-col mb-2 gap-1">
-        {targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease) && (
-          <div className="inline-flex items-center self-start px-2 py-1 bg-yellow-100 text-yellow-800 text-[11px] sm:text-xs font-bold rounded-md border border-yellow-300 shadow-sm mb-1">
-            ✨ AI 추천: {targetDisease} 치료 적합 (거리·병상 종합 고려)
+        {isAiRecommended && aiMatch && aiContext && (
+          <div className={cn(
+            "inline-flex items-center self-start px-2 py-1 text-[11px] sm:text-xs font-bold rounded-md border shadow-sm mb-1",
+            aiContext.triage === 'RED' 
+              ? "bg-red-100 text-red-800 border-red-300" 
+              : aiContext.triage === 'YELLOW'
+                ? "bg-yellow-100 text-yellow-800 border-yellow-300"
+                : "bg-blue-100 text-blue-800 border-blue-300"
+          )}>
+            {aiContext.triage === 'RED' ? '🚨 긴급 이송 거점' : aiContext.triage === 'YELLOW' ? '⚠️ 집중 모니터링' : '💡 요구 역량 매칭'}
+            {' '} - {getConditionName(aiContext.primaryCondition)} (확인 조건 {aiMatch.matchedReasons.length}개)
           </div>
         )}
         <div className="flex justify-between items-start gap-2">
@@ -428,6 +448,28 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       <p className="text-xs sm:text-sm text-muted-foreground my-2 break-words">
         📍 {hospital.address}
       </p>
+
+      {/* 매칭된 AI 추천 근거 칩스 */}
+      {isAiRecommended && aiMatch && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {aiMatch.matchedReasons.map((reason, idx) => (
+            <span key={`match-${idx}`} className={cn(
+              "text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium border",
+              isDark ? "bg-blue-900/30 text-blue-300 border-blue-800" : "bg-blue-50 text-blue-700 border-blue-200"
+            )}>
+              ✓ {reason}
+            </span>
+          ))}
+          {aiMatch.unconfirmedReasons.map((reason, idx) => (
+            <span key={`unconf-${idx}`} className={cn(
+              "text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-medium border",
+              isDark ? "bg-gray-800 text-gray-400 border-gray-700" : "bg-gray-100 text-gray-500 border-gray-200"
+            )}>
+              ? {reason}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 전문 진료과 */}
       {hospital.specializations.length > 0 && (

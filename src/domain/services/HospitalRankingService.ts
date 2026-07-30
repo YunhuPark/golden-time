@@ -1,5 +1,6 @@
 import { Hospital, AvailabilityStatus } from '../entities/Hospital';
-import { HospitalSpecialtyService } from './HospitalSpecialtyService';
+import { AIAnalysisContext } from '../types/AIContext';
+import { HospitalAICardService } from './HospitalAICardService';
 
 /**
  * Hospital Ranking Service
@@ -20,10 +21,10 @@ export class HospitalRankingService {
    * 병원 목록을 응급 상황 최적 순으로 정렬
    *
    * @param hospitals 병원 목록
-   * @param targetDisease (선택) 환자의 타겟 질환 (예: '패혈증', '뇌종양')
+   * @param aiContext (선택) 환자의 타겟 질환 및 역량 컨텍스트
    * @returns 점수 기반으로 정렬된 병원 목록
    */
-  static rankHospitals(hospitals: Hospital[], targetDisease?: string | null): Hospital[] {
+  static rankHospitals(hospitals: Hospital[], aiContext?: AIAnalysisContext | null): Hospital[] {
     // Edge Case 1: 빈 배열
     if (hospitals.length === 0) {
       return [];
@@ -37,21 +38,22 @@ export class HospitalRankingService {
     // 각 병원에 점수 부여
     const hospitalsWithScore = hospitals.map((hospital) => ({
       hospital,
-      score: this.calculateScore(hospital, hospitals, targetDisease),
+      score: this.calculateScore(hospital, hospitals, aiContext),
     }));
 
     // 점수 내림차순 정렬 (높은 점수 = 더 적합한 병원)
     hospitalsWithScore.sort((a, b) => b.score - a.score);
 
     // 디버그 로그
-    console.log(`🏆 Hospital Ranking Results (Target Disease: ${targetDisease || 'None'}):`);
+    console.log(`🏆 Hospital Ranking Results (Target Disease: ${aiContext?.primaryCondition || 'None'}):`);
     hospitalsWithScore.slice(0, 5).forEach((item, index) => {
-      const isMatch = targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(item.hospital, targetDisease);
+      const aiMatch = HospitalAICardService.evaluateMatch(item.hospital, aiContext || null);
+      const isMatch = aiMatch && aiMatch.score > 0;
       console.log(
         `${index + 1}. ${item.hospital.name}: ${item.score.toFixed(1)}점 ` +
           `(소요: ${item.hospital.getRouteDurationMinutes() || '?'}분, ` +
           `병상: ${item.hospital.availableBeds}/${item.hospital.totalBeds})` +
-          (isMatch ? ' ✨ [Specialty Match!]' : '')
+          (isMatch ? ` ✨ [AI Match: ${aiMatch.score}/${aiMatch.maxScore}]` : '')
       );
     });
 
@@ -64,7 +66,7 @@ export class HospitalRankingService {
   private static calculateScore(
     hospital: Hospital,
     allHospitals: Hospital[],
-    targetDisease?: string | null
+    aiContext?: AIAnalysisContext | null
   ): number {
     let score = 0;
 
@@ -80,9 +82,13 @@ export class HospitalRankingService {
     // 4. 응급실 운영 여부 점수 (10점)
     score += this.calculateOperatingScore(hospital);
 
-    // 5. 질환 적합도 점수 (30점) - 새로 추가됨!
-    if (targetDisease && HospitalSpecialtyService.hasSpecialtyMatch(hospital, targetDisease)) {
-      score += 30;
+    // 5. 질환 적합도 점수 (30점) - 새로 추가됨! 실제 AI 분석 역량 매칭 기반
+    if (aiContext) {
+      const matchResult = HospitalAICardService.evaluateMatch(hospital, aiContext);
+      if (matchResult && matchResult.maxScore > 0) {
+        // 최대 30점으로 환산
+        score += (matchResult.score / matchResult.maxScore) * 30;
+      }
     }
 
     return score;
@@ -202,7 +208,7 @@ export class HospitalRankingService {
     operatingScore: number;
   } {
     return {
-      totalScore: this.calculateScore(hospital, allHospitals),
+      totalScore: this.calculateScore(hospital, allHospitals, null),
       timeScore: this.calculateTimeScore(hospital, allHospitals),
       bedScore: this.calculateBedAvailabilityScore(hospital),
       traumaScore: this.calculateTraumaLevelScore(hospital),

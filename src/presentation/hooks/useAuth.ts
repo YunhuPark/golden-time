@@ -42,8 +42,8 @@ export const useAuth = () => {
 
     return () => {
       subscription.unsubscribe();
-      if (window.requestIdleCallback && window.cancelIdleCallback && typeof idleCallback === 'number') {
-        window.cancelIdleCallback(idleCallback);
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window && 'cancelIdleCallback' in window && typeof idleCallback === 'number') {
+        (window as any).cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }

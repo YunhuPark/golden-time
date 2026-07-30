@@ -65,16 +65,48 @@ export const HomePage: React.FC = () => {
 
   // URL 쿼리 파라미터 확인 (Medical AI 연동)
   const [triageLevel, setTriageLevel] = useState<string | null>(null);
-  const [targetDisease, setTargetDisease] = useState<string | null>(null);
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const triage = params.get('triage');
-    const disease = params.get('disease');
     
-    if (disease) {
-      setTargetDisease(disease);
+    // 질환명 파싱 (우선순위: primaryCondition -> condition -> disease)
+    const conditionStr = params.get('primaryCondition') || params.get('condition') || params.get('disease');
+    
+    // 배열형 파라미터 안전한 파싱
+    const parseArrayParam = (paramName: string): string[] => {
+      const val = params.get(paramName);
+      if (!val) return [];
+      try {
+        return decodeURIComponent(val).split(',').map(s => s.trim()).filter(Boolean);
+      } catch (e) {
+        return val.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    };
+
+    const triage = params.get('triage');
+    const analysisMode = params.get('analysisMode');
+    const clinicalValidation = params.get('clinicalValidation') === 'true';
+    
+    // AI 분석 컨텍스트 구성
+    const aiContext = {
+      triage: triage,
+      primaryCondition: conditionStr,
+      analysisMode: analysisMode,
+      analysisSources: parseArrayParam('analysisSources'),
+      capabilities: parseArrayParam('capabilities'),
+      specialties: parseArrayParam('specialties'),
+      clinicalValidation: clinicalValidation
+    };
+
+    // 조건이 있거나 analysisMode가 ai 관련이면 AI 컨텍스트로 설정
+    const isAiMode = analysisMode === 'ai_triage' || analysisMode === 'synthetic_demo' || conditionStr !== null;
+    
+    if (isAiMode) {
+      useAppStore.getState().setAiContext(aiContext);
     }
+
+    
+
     
     if (triage) {
       setTriageLevel(triage);
@@ -212,8 +244,9 @@ export const HomePage: React.FC = () => {
         const apiClient = new EGenApiClient();
         const repository = new HospitalRepositoryImpl(apiClient);
         const useCase = new GetNearbyHospitals(repository);
+        const { aiContext } = useAppStore.getState();
 
-        const result = await useCase.execute(userLocation, targetDisease || undefined);
+        const result = await useCase.execute(userLocation, aiContext);
 
         // API 성공 시 캐시에 저장
         if (result.hospitals.length > 0) {
@@ -436,10 +469,10 @@ export const HomePage: React.FC = () => {
       </header>
 
       {/* Medical AI 연동 알림 배너 */}
-      {triageLevel === 'RED' && (
+      {(triageLevel === 'RED' || triageLevel === 'YELLOW') && (
         <div style={{
-          backgroundColor: '#ef4444',
-          color: 'white',
+          backgroundColor: triageLevel === 'RED' ? '#ef4444' : '#eab308',
+          color: triageLevel === 'RED' ? 'white' : '#1f2937',
           padding: '12px 16px',
           borderRadius: '10px',
           marginBottom: '16px',
@@ -447,14 +480,17 @@ export const HomePage: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-          animation: 'pulse 2s infinite'
+          boxShadow: `0 4px 12px ${triageLevel === 'RED' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(234, 179, 8, 0.4)'}`,
+          animation: triageLevel === 'RED' ? 'pulse 2s infinite' : 'none'
         }}>
-          <span style={{ fontSize: '20px' }}>🚨</span>
+          <span style={{ fontSize: '20px' }}>{triageLevel === 'RED' ? '🚨' : '⚠️'}</span>
           <div>
-            <div style={{ fontSize: '15px' }}>[AI 분석 완료] 초응급(RED) 환자 이송 모드</div>
+            <div style={{ fontSize: '15px' }}>
+              {useAppStore.getState().aiContext?.analysisMode === 'synthetic_demo' ? '[합성 데이터 기반 데모] ' : '[AI 분석 완료] '}
+              {triageLevel === 'RED' ? '초응급(RED) 환자 이송 모드' : '응급(YELLOW) 환자 집중 관찰'}
+            </div>
             <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: 0.9, marginTop: '2px' }}>
-              수술 가능한 중환자실(ICU) 빈 병상을 최우선 탐색합니다.
+              {triageLevel === 'RED' ? '수술 가능한 중환자실(ICU) 빈 병상을 최우선 탐색합니다.' : '집중 모니터링 및 병원 역량 확인을 권고합니다. 임상 진단 아님.'}
             </div>
           </div>
         </div>
@@ -655,7 +691,6 @@ export const HomePage: React.FC = () => {
               warning={searchWarning}
               isLoading={isLoadingHospitals}
               sortOption={sortOption}
-              targetDisease={targetDisease}
               onSortChange={setSortOption}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);
