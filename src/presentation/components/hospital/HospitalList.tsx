@@ -16,7 +16,6 @@ interface HospitalListProps {
   warning: HospitalSearchWarning | null;
   isLoading: boolean;
   sortOption: SortOption;
-  targetDisease?: string | null;
   onSortChange: (option: SortOption) => void;
   onHospitalClick?: (hospital: Hospital) => void;
 }
@@ -31,12 +30,11 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   warning,
   isLoading,
   sortOption,
-  targetDisease,
   onSortChange,
   onHospitalClick,
 }) => {
-  // 테마 모드
-  const { themeMode } = useAppStore();
+  // 테마 모드 & AI 컨텍스트
+  const { themeMode, aiContext } = useAppStore();
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
 
   // 표시할 병원 수 상태 (10개씩 증가)
@@ -44,8 +42,8 @@ export const HospitalList: React.FC<HospitalListProps> = ({
 
   // 정렬된 병원 목록 (useMemo로 최적화)
   const sortedHospitals = useMemo(() => {
-    return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation, targetDisease);
-  }, [hospitals, sortOption, userLocation, targetDisease]);
+    return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation, aiContext);
+  }, [hospitals, sortOption, userLocation, aiContext]);
 
   // 정렬 옵션이나 병원 목록이 변경되면 displayCount 초기화
   React.useEffect(() => {
@@ -204,7 +202,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             key={hospital.id}
             hospital={hospital}
             userLocation={userLocation}
-            targetDisease={targetDisease}
+            aiContext={aiContext}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}

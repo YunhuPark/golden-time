@@ -33,7 +33,7 @@ export const HospitalFilterPanel: React.FC<HospitalFilterPanelProps> = ({ isOpen
   const activeFilterCount = Object.values(filters).filter((v) => v).length;
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} maxHeight="75vh">
+    <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-4 py-3">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">

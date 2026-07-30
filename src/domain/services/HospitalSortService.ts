@@ -2,6 +2,7 @@ import { Hospital } from '../entities/Hospital';
 import { Coordinates } from '../valueObjects/Coordinates';
 import { SortOption } from '../types/SortOption';
 import { HospitalRankingService } from './HospitalRankingService';
+import { AIAnalysisContext } from '../types/AIContext';
 
 /**
  * Hospital Sort Service
@@ -20,7 +21,7 @@ export class HospitalSortService {
     hospitals: Hospital[],
     sortOption: SortOption,
     userLocation: Coordinates | null,
-    targetDisease?: string | null
+    aiContext?: AIAnalysisContext | null
   ): Hospital[] {
     // Edge Case: 빈 배열
     if (hospitals.length === 0) {
@@ -37,7 +38,7 @@ export class HospitalSortService {
 
     switch (sortOption) {
       case 'RECOMMENDED':
-        return this.sortByRecommended(sortedHospitals, targetDisease);
+        return this.sortByRecommended(sortedHospitals, aiContext);
 
       case 'TIME':
         return this.sortByTime(sortedHospitals);
@@ -56,8 +57,8 @@ export class HospitalSortService {
   /**
    * 추천순 정렬 (AI 점수 기반)
    */
-  private static sortByRecommended(hospitals: Hospital[], targetDisease?: string | null): Hospital[] {
-    return HospitalRankingService.rankHospitals(hospitals, targetDisease);
+  private static sortByRecommended(hospitals: Hospital[], aiContext?: AIAnalysisContext | null): Hospital[] {
+    return HospitalRankingService.rankHospitals(hospitals, aiContext);
   }
 
   /**

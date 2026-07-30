@@ -8,6 +8,8 @@ import { User } from '@supabase/supabase-js';
 import { ThemeMode } from '../../presentation/styles/theme';
 import { HospitalFilters, DEFAULT_FILTERS } from '../../domain/types/HospitalFilter';
 
+import { AIAnalysisContext } from '../../domain/types/AIContext';
+
 /**
  * Application State
  * Zustand를 사용한 전역 상태 관리
@@ -29,6 +31,9 @@ interface AppState {
 
   // 선택된 병원
   selectedHospital: Hospital | null;
+
+  // AI 분석 컨텍스트
+  aiContext: AIAnalysisContext | null;
 
   // 정렬 옵션
   sortOption: SortOption;
@@ -56,6 +61,7 @@ interface AppState {
   setHospitals: (hospitals: Hospital[], warning?: HospitalSearchWarning | null) => void;
   setLoadingHospitals: (loading: boolean) => void;
   setSelectedHospital: (hospital: Hospital | null) => void;
+  setAiContext: (context: AIAnalysisContext | null) => void;
   setSortOption: (option: SortOption) => void;
   setFilters: (filters: HospitalFilters) => void;
   toggleFilter: (filterKey: keyof HospitalFilters) => void;
@@ -90,6 +96,7 @@ export const useAppStore = create<AppState>()(
       lastUpdated: null,
 
       selectedHospital: null,
+      aiContext: null,
 
       sortOption: 'RECOMMENDED',
 
@@ -142,6 +149,9 @@ export const useAppStore = create<AppState>()(
 
   setSelectedHospital: (hospital) =>
     set({ selectedHospital: hospital }),
+
+  setAiContext: (context) =>
+    set({ aiContext: context }),
 
   setSortOption: (option) =>
     set({ sortOption: option }),
@@ -208,6 +218,7 @@ export const useAppStore = create<AppState>()(
       isLoadingHospitals: false,
       lastUpdated: null,
       selectedHospital: null,
+      aiContext: null,
     }),
     }),
     {
