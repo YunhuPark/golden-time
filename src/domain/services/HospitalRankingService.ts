@@ -147,14 +147,20 @@ export class HospitalRankingService {
       });
     }
 
+    const rawAmbulanceScore = capabilityScore + icuProxyScore;
+    let ambulanceScore = (rawAmbulanceScore / 35) * 10;
+    if (isNaN(ambulanceScore) || !isFinite(ambulanceScore)) {
+      ambulanceScore = 0;
+    }
+    ambulanceScore = Math.max(0, Math.min(10, ambulanceScore));
+
     const totalScore =
       timeScore +
       bedScore +
       traumaScore +
       operatingScore +
       diseaseSpecialtyScore +
-      capabilityScore +
-      icuProxyScore;
+      ambulanceScore;
 
     return {
       totalScore,
