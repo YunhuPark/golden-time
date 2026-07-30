@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
+
 import { render } from '@testing-library/react';
 import { HomePage } from './HomePage';
 import { useAppStore } from '../../infrastructure/state/store';
