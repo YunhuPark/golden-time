@@ -17,6 +17,7 @@ interface HospitalListProps {
   isLoading: boolean;
   sortOption: SortOption;
   onSortChange: (option: SortOption) => void;
+  routeCalcStatus?: Record<string, 'CALCULATING' | 'FAILED'>;
   onHospitalClick?: (hospital: Hospital) => void;
 }
 
@@ -31,6 +32,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   isLoading,
   sortOption,
   onSortChange,
+  routeCalcStatus,
   onHospitalClick,
 }) => {
   // 테마 모드 & AI 컨텍스트
@@ -203,6 +205,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             hospital={hospital}
             userLocation={userLocation}
             aiContext={aiContext}
+            routeStatus={routeCalcStatus?.[hospital.id]}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}

@@ -166,6 +166,10 @@ export const HomePage: React.FC = () => {
   // 강제 새로고침 플래그
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // 경로 계산 UI 상태
+  const [routeCalcStatus, setRouteCalcStatus] = useState<Record<string, 'CALCULATING' | 'FAILED'>>({});
+  const searchRequestIdRef = React.useRef(0);
+
   // 즐겨찾기한 병원 목록
   const [favoriteHospitals, setFavoriteHospitals] = useState<Hospital[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
@@ -255,14 +259,68 @@ export const HomePage: React.FC = () => {
 
         setHospitals(result.hospitals, result.warning);
 
-        // 초기 로드 완료 (경로 정보는 병원 카드에서 개별적으로 로드됨)
+        // 초기 로드 완료 (직선거리 및 AI 기반 1차 랭킹)
         console.log(`✅ Loaded ${result.hospitals.length} hospitals from API`);
+
+        // 진행 중인 경로 계산 요청 ID 갱신
+        searchRequestIdRef.current += 1;
+        const currentReqId = searchRequestIdRef.current;
+
+        // 상위 10개 병원 추출 (화면에 먼저 보일 병원들)
+        const top10 = result.hospitals.slice(0, 10);
+        
+        // UI를 "경로 계산 중" 상태로 업데이트
+        const newRouteCalcStatus: Record<string, 'CALCULATING' | 'FAILED'> = {};
+        top10.forEach(h => { newRouteCalcStatus[h.id] = 'CALCULATING'; });
+        setRouteCalcStatus(newRouteCalcStatus);
 
         // 성공 이벤트 로깅
         logEvent('hospital_search_success', {
           hospital_count: result.hospitals.length,
           has_warning: !!result.warning,
         });
+
+        // 백그라운드 경로 계산 비동기 실행 (await 하지 않음)
+        (async () => {
+          try {
+            const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
+            
+            // 만약 새 검색이 시작되었다면 무시
+            if (searchRequestIdRef.current !== currentReqId) return;
+
+            // 상태 업데이트
+            setRouteCalcStatus(prev => {
+              const nextStatus = { ...prev };
+              fetchedHospitals.forEach(h => {
+                if (h.routeDuration === undefined) {
+                  nextStatus[h.id] = 'FAILED';
+                } else {
+                  delete nextStatus[h.id]; // 성공 시 상태 삭제
+                }
+              });
+              return nextStatus;
+            });
+
+            // 전체 병원 목록 합치기
+            const newAllHospitals = [...fetchedHospitals, ...result.hospitals.slice(10)];
+            // 최종 재정렬 (경로 시간 반영)
+            const { HospitalRankingService } = await import('../../domain/services/HospitalRankingService');
+            const finalRanked = HospitalRankingService.rankHospitals(newAllHospitals, aiContext);
+            
+            // 상태 갱신
+            setHospitals(finalRanked, result.warning);
+            console.log(`✅ Final ranking completed with route info for top 10 hospitals`);
+          } catch (routeErr) {
+            console.error('Failed to calculate routes in background:', routeErr);
+            if (searchRequestIdRef.current === currentReqId) {
+              setRouteCalcStatus(prev => {
+                const nextStatus = { ...prev };
+                top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
+                return nextStatus;
+              });
+            }
+          }
+        })();
       } catch (err) {
         console.error('❌ Failed to search hospitals from API:', err);
 
@@ -692,6 +750,7 @@ export const HomePage: React.FC = () => {
               isLoading={isLoadingHospitals}
               sortOption={sortOption}
               onSortChange={setSortOption}
+              routeCalcStatus={routeCalcStatus}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);
                 setModalHospital(hospital);
