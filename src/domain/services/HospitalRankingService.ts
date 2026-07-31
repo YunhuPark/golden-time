@@ -42,7 +42,27 @@ export class HospitalRankingService {
     }));
 
     // 점수 내림차순 정렬 (높은 점수 = 더 적합한 병원)
-    hospitalsWithScore.sort((a, b) => b.score - a.score);
+    hospitalsWithScore.sort((a, b) => {
+      // 1. 총점 내림차순
+      // (부동소수점 오차 감안하여 미세한 차이는 무시)
+      if (Math.abs(a.score - b.score) > 0.001) {
+        return b.score - a.score;
+      }
+
+      // 2. 총점이 같을 때: 유효한 경로시간이 있는 병원 우선
+      const hasRouteA = a.hospital.routeDuration != null;
+      const hasRouteB = b.hospital.routeDuration != null;
+      if (hasRouteA && !hasRouteB) return -1;
+      if (!hasRouteA && hasRouteB) return 1;
+
+      // 3. 둘 다 경로시간이 있는 경우: 경로시간 오름차순
+      if (hasRouteA && hasRouteB) {
+        return a.hospital.routeDuration! - b.hospital.routeDuration!;
+      }
+
+      // 4. 둘 다 없는 경우: 직선거리 등 최초 순서 유지 (Stable Sort)
+      return 0;
+    });
 
     // 디버그 로그
     console.log(`🏆 Hospital Ranking Results (Target Disease: ${aiContext?.primaryCondition || 'None'}):`);
