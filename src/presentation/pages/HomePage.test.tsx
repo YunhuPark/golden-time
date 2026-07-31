@@ -72,12 +72,28 @@ describe('HomePage URL Context Parsing', () => {
   });
 });
 
-describe('HomePage Async Route & Unmount Handling', () => {
-  let executeMock: any;
-  let loadMoreRouteInfoMock: any;
+const mockExecute = vi.fn();
+const mockLoadMoreRouteInfo = vi.fn();
 
+vi.mock('../../domain/usecases/hospital/GetNearbyHospitals', () => {
+  return {
+    GetNearbyHospitals: vi.fn().mockImplementation(() => {
+      return { execute: mockExecute };
+    })
+  };
+});
+
+vi.mock('../../data/repositories/HospitalRepositoryImpl', () => {
+  return {
+    HospitalRepositoryImpl: vi.fn().mockImplementation(() => {
+      return { loadMoreRouteInfo: mockLoadMoreRouteInfo };
+    })
+  };
+});
+
+describe('HomePage Async Route & Unmount Handling', () => {
   beforeEach(() => {
-    executeMock = vi.fn().mockResolvedValue({
+    mockExecute.mockResolvedValue({
       hospitals: [
         { id: '1', name: 'H1', coordinates: { latitude: 37, longitude: 127 }, withRouteInfo: vi.fn() },
         { id: '2', name: 'H2', coordinates: { latitude: 37, longitude: 127 }, withRouteInfo: vi.fn() }
@@ -85,29 +101,14 @@ describe('HomePage Async Route & Unmount Handling', () => {
       warning: undefined
     });
     
-    loadMoreRouteInfoMock = vi.fn().mockResolvedValue([]);
+    mockLoadMoreRouteInfo.mockResolvedValue([]);
 
-    vi.mock('../../domain/usecases/hospital/GetNearbyHospitals', () => {
+    vi.mock('../hooks/useGeolocation', () => {
+      const stableLocation = { latitude: 37, longitude: 127 };
       return {
-        GetNearbyHospitals: vi.fn().mockImplementation(() => {
-          return { execute: executeMock };
-        })
+        useGeolocation: () => ({ location: stableLocation, error: null, isLoading: false })
       };
     });
-
-    vi.mock('../../data/repositories/HospitalRepositoryImpl', () => {
-      return {
-        HospitalRepositoryImpl: vi.fn().mockImplementation(() => {
-          return { loadMoreRouteInfo: loadMoreRouteInfoMock };
-        })
-      };
-    });
-    
-    // To control location manually
-    let currentLocation: any = { latitude: 37, longitude: 127 };
-    vi.mock('../hooks/useGeolocation', () => ({
-      useGeolocation: () => ({ location: currentLocation, error: null, isLoading: false })
-    }));
   });
 
   afterEach(() => {
@@ -124,17 +125,17 @@ describe('HomePage Async Route & Unmount Handling', () => {
   it('E. Unmount: 컴포넌트 unmount 시 비동기 업데이트가 발생하지 않음', async () => {
     // We can render and then immediately unmount.
     let resolveLoadMore: any;
-    loadMoreRouteInfoMock.mockImplementation(() => new Promise(res => { resolveLoadMore = res; }));
+    mockLoadMoreRouteInfo.mockImplementation(() => new Promise(res => { resolveLoadMore = res; }));
     
     const { unmount } = render(<HomePage />);
     
     // wait a tick for executeMock to finish
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise(r => setTimeout(r, 50));
     
     unmount(); // Unmount before loadMoreRouteInfo completes
     
     // resolve loadMoreRouteInfo
-    resolveLoadMore([]);
+    if (resolveLoadMore) resolveLoadMore([]);
     
     // We expect no state updates to happen. If they do, React would normally log a warning, but since we added `isCancelled`, it should be safe.
     expect(true).toBe(true);
