@@ -239,8 +239,11 @@ export const HomePage: React.FC = () => {
   // 병원 검색 (위치가 확정되면 자동 실행)
   useEffect(() => {
     if (!userLocation) return;
+    
+    let isCancelled = false;
 
     const searchHospitals = async () => {
+      if (isCancelled) return;
       setLoadingHospitals(true);
 
       try {
@@ -257,6 +260,7 @@ export const HomePage: React.FC = () => {
           HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론
         }
 
+        if (isCancelled) return;
         setHospitals(result.hospitals, result.warning);
 
         // 초기 로드 완료 (직선거리 및 AI 기반 1차 랭킹)
@@ -285,8 +289,8 @@ export const HomePage: React.FC = () => {
           try {
             const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
             
-            // 만약 새 검색이 시작되었다면 무시
-            if (searchRequestIdRef.current !== currentReqId) return;
+            // 만약 새 검색이 시작되었거나 언마운트되었다면 무시
+            if (isCancelled || searchRequestIdRef.current !== currentReqId) return;
 
             // 상태 업데이트
             setRouteCalcStatus(prev => {
@@ -312,7 +316,7 @@ export const HomePage: React.FC = () => {
             console.log(`✅ Final ranking completed with route info for top 10 hospitals`);
           } catch (routeErr) {
             console.error('Failed to calculate routes in background:', routeErr);
-            if (searchRequestIdRef.current === currentReqId) {
+            if (!isCancelled && searchRequestIdRef.current === currentReqId) {
               setRouteCalcStatus(prev => {
                 const nextStatus = { ...prev };
                 top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
@@ -323,6 +327,7 @@ export const HomePage: React.FC = () => {
         })();
       } catch (err) {
         console.error('❌ Failed to search hospitals from API:', err);
+        if (isCancelled) return;
 
         // 에러 로깅 (Sentry)
         logError(err as Error, {
@@ -365,11 +370,17 @@ export const HomePage: React.FC = () => {
           });
         }
       } finally {
-        setLoadingHospitals(false);
+        if (!isCancelled) {
+          setLoadingHospitals(false);
+        }
       }
     };
 
     searchHospitals();
+    
+    return () => {
+      isCancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation, refreshTrigger]);
 

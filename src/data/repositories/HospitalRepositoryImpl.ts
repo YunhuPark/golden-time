@@ -135,6 +135,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
     console.log(`🚗 Calculating route info for ${hospitals.length} hospitals (concurrent batch)...`);
 
     const destinations = hospitals.map(h => ({
+      id: h.id,
       latitude: h.coordinates.latitude,
       longitude: h.coordinates.longitude,
     }));
@@ -146,9 +147,9 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       3
     );
 
-    // 결과 매핑
-    const enrichedHospitals = hospitals.map((hospital, index) => {
-      const routeInfo = routeMap.get(index);
+    // 결과 매핑 (ID 기반)
+    const enrichedHospitals = hospitals.map((hospital) => {
+      const routeInfo = routeMap.get(hospital.id);
       if (routeInfo) {
         console.log(
           `✅ Route to ${hospital.name}: ${Math.ceil(routeInfo.duration / 60)}분 (${(routeInfo.distance / 1000).toFixed(1)}km)`
