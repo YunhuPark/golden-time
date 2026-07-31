@@ -233,30 +233,29 @@ export class KakaoDirectionsClient {
    */
   async getBatchRouteInfoConcurrent(
     origin: { latitude: number; longitude: number },
-    destinations: Array<{ latitude: number; longitude: number }>,
+    destinations: Array<{ id: string; latitude: number; longitude: number }>,
     concurrency = 3
-  ): Promise<Map<number, RouteInfo>> {
-    const results = new Map<number, RouteInfo>();
+  ): Promise<Map<string, RouteInfo>> {
+    const results = new Map<string, RouteInfo>();
     
     // Chunk array by concurrency
     for (let i = 0; i < destinations.length; i += concurrency) {
       const chunk = destinations.slice(i, i + concurrency);
-      const chunkIndices = chunk.map((_, idx) => i + idx);
       
-      const promises = chunk.map(async (destination, idx) => {
-        if (!destination) return null;
-        return this.getRouteInfo(origin, destination);
+      const promises = chunk.map(async (destination) => {
+        if (!destination) throw new Error('Invalid destination');
+        const routeInfo = await this.getRouteInfo(origin, destination);
+        return { id: destination.id, routeInfo };
       });
 
       // 개별 요청 실패가 전체를 중단시키지 않도록 allSettled 사용
       const settledResults = await Promise.allSettled(promises);
       
-      settledResults.forEach((result, idx) => {
-        const originalIndex = chunkIndices[idx];
-        if (result.status === 'fulfilled' && result.value) {
-          results.set(originalIndex, result.value);
+      settledResults.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value.routeInfo) {
+          results.set(result.value.id, result.value.routeInfo);
         } else if (result.status === 'rejected') {
-          console.warn(`getBatchRouteInfoConcurrent: Request failed for index ${originalIndex}`, result.reason);
+          console.warn(`getBatchRouteInfoConcurrent: Request failed`, result.reason);
         }
       });
       

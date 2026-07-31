@@ -1,14 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { HospitalRankingService } from './HospitalRankingService';
-import { Hospital, AvailabilityStatus } from '../entities/Hospital';
+import { Hospital } from '../entities/Hospital';
 import { Coordinates } from '../valueObjects/Coordinates';
 
 describe('HospitalRankingService', () => {
   const createHospital = (
     id: string,
     routeDuration: number | undefined,
-    routeDistance: number | undefined,
-    score: number = 0 // Mocked score via some properties if needed, but calculateScore depends on beds, trauma, etc.
+    routeDistance: number | undefined
   ): Hospital => {
     return new Hospital(
       id,
@@ -49,16 +48,10 @@ describe('HospitalRankingService', () => {
       try {
         const ranked = HospitalRankingService.rankHospitals(hospitals, null);
         
-        // Expected order:
-        // 1. h3 (route: 300)
-        // 2. h1 (route: 600)
-        // 3. h2 (no route, stable sort preserves it before h4)
-        // 4. h4 (no route)
-        
-        expect(ranked[0].id).toBe('3');
-        expect(ranked[1].id).toBe('1');
-        expect(ranked[2].id).toBe('2');
-        expect(ranked[3].id).toBe('4');
+        expect(ranked[0]?.id).toBe('3');
+        expect(ranked[1]?.id).toBe('1');
+        expect(ranked[2]?.id).toBe('2');
+        expect(ranked[3]?.id).toBe('4');
       } finally {
         // Restore
         (HospitalRankingService as any).calculateScore = originalCalculateScore;
