@@ -224,37 +224,45 @@ export class KakaoDirectionsClient {
   }
 
   /**
-   * 여러 목적지까지의 경로 정보를 배치로 계산
+   * 여러 목적지까지의 경로 정보를 배치로 계산 (동시성 제어 및 실패 격리)
    *
    * @param origin 출발지 좌표
    * @param destinations 목적지 좌표 배열
-   * @param delayMs 각 요청 사이 대기 시간 (기본 100ms, Rate Limit 방지)
+   * @param concurrency 동시 요청 수 (기본 3)
    * @returns Map<목적지인덱스, RouteInfo>
-   *
-   * Edge Cases:
-   * - 일부 경로만 성공하는 경우 (부분 성공)
-   * - Rate Limit 초과 방지 (요청 간 지연)
    */
-  async getBatchRouteInfo(
+  async getBatchRouteInfoConcurrent(
     origin: { latitude: number; longitude: number },
     destinations: Array<{ latitude: number; longitude: number }>,
-    delayMs = 100
+    concurrency = 3
   ): Promise<Map<number, RouteInfo>> {
     const results = new Map<number, RouteInfo>();
+    
+    // Chunk array by concurrency
+    for (let i = 0; i < destinations.length; i += concurrency) {
+      const chunk = destinations.slice(i, i + concurrency);
+      const chunkIndices = chunk.map((_, idx) => i + idx);
+      
+      const promises = chunk.map(async (destination, idx) => {
+        if (!destination) return null;
+        return this.getRouteInfo(origin, destination);
+      });
 
-    for (let i = 0; i < destinations.length; i++) {
-      const destination = destinations[i];
-      if (!destination) continue; // undefined 체크
-
-      const routeInfo = await this.getRouteInfo(origin, destination);
-
-      if (routeInfo) {
-        results.set(i, routeInfo);
-      }
-
-      // Rate Limit 방지를 위한 지연
-      if (delayMs > 0 && i < destinations.length - 1) {
-        await this.sleep(delayMs);
+      // 개별 요청 실패가 전체를 중단시키지 않도록 allSettled 사용
+      const settledResults = await Promise.allSettled(promises);
+      
+      settledResults.forEach((result, idx) => {
+        const originalIndex = chunkIndices[idx];
+        if (result.status === 'fulfilled' && result.value) {
+          results.set(originalIndex, result.value);
+        } else if (result.status === 'rejected') {
+          console.warn(`getBatchRouteInfoConcurrent: Request failed for index ${originalIndex}`, result.reason);
+        }
+      });
+      
+      // Rate Limit 방지를 위한 지연 (마지막 청크가 아니면)
+      if (i + concurrency < destinations.length) {
+        await this.sleep(100);
       }
     }
 
