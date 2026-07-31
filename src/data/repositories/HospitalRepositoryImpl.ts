@@ -70,27 +70,11 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       console.log(`✅ Found ${validHospitals.length} hospitals with coordinates (filtered by distance < ${MAX_DISTANCE_KM}km)`);
 
-      // 성능 최적화: 초기에는 상위 10개만 경로 정보 계산
-      // 나머지는 직선 거리만 사용하여 빠르게 표시
-      const INITIAL_ROUTE_COUNT = 10;
-      const topHospitals = validHospitals.slice(0, INITIAL_ROUTE_COUNT);
-      const remainingHospitals = validHospitals.slice(INITIAL_ROUTE_COUNT);
+      // 1. 경로 정보 없이 초기 점수 기반 정렬 (빠른 렌더링을 위함)
+      // 초기에는 직선 거리를 fallback으로 사용하거나 점수 계산에서 경로가 없는 것으로 간주됨
+      const rankedHospitals = HospitalRankingService.rankHospitals(validHospitals, aiContext);
 
-      console.log(`🚗 Calculating route info for top ${topHospitals.length} hospitals only (performance optimization)...`);
-
-      // 상위 10개만 경로 정보 계산 (병렬 처리)
-      const hospitalsWithRouteInfo = await this.enrichWithRouteInfo(
-        coords,
-        topHospitals
-      );
-
-      // 나머지 병원은 경로 정보 없이 직선 거리만 사용
-      const allHospitals = [...hospitalsWithRouteInfo, ...remainingHospitals];
-
-      // 최적 병원 추천 알고리즘 적용 (점수 기반 재정렬)
-      const rankedHospitals = HospitalRankingService.rankHospitals(allHospitals, aiContext);
-
-      console.log(`✅ Returning ${rankedHospitals.length} hospitals (route info for top ${INITIAL_ROUTE_COUNT}, rest use direct distance)`);
+      console.log(`✅ Returning ${rankedHospitals.length} hospitals (initially ranked without route info)`);
 
       return rankedHospitals;
 
@@ -148,40 +132,35 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
     origin: Coordinates,
     hospitals: Hospital[]
   ): Promise<Hospital[]> {
-    console.log(`🚗 Calculating route info for ${hospitals.length} hospitals (병렬 처리)...`);
+    console.log(`🚗 Calculating route info for ${hospitals.length} hospitals (concurrent batch)...`);
 
-    // 병렬 처리: 모든 경로 정보를 동시에 요청 (성능 향상)
-    const routePromises = hospitals.map(async (hospital) => {
-      try {
-        const routeInfo = await this.directionsClient.getRouteInfo(
-          { latitude: origin.latitude, longitude: origin.longitude },
-          { latitude: hospital.coordinates.latitude, longitude: hospital.coordinates.longitude }
+    const destinations = hospitals.map(h => ({
+      id: h.id,
+      latitude: h.coordinates.latitude,
+      longitude: h.coordinates.longitude,
+    }));
+
+    // getBatchRouteInfoConcurrent 호출 (최대 3개 동시)
+    const routeMap = await this.directionsClient.getBatchRouteInfoConcurrent(
+      { latitude: origin.latitude, longitude: origin.longitude },
+      destinations,
+      3
+    );
+
+    // 결과 매핑 (ID 기반)
+    const enrichedHospitals = hospitals.map((hospital) => {
+      const routeInfo = routeMap.get(hospital.id);
+      if (routeInfo) {
+        console.log(
+          `✅ Route to ${hospital.name}: ${Math.ceil(routeInfo.duration / 60)}분 (${(routeInfo.distance / 1000).toFixed(1)}km)`
         );
-
-        if (routeInfo) {
-          // 경로 정보가 있으면 업데이트된 병원 객체 생성
-          const enrichedHospital = hospital.withRouteInfo(
-            routeInfo.duration,
-            routeInfo.distance
-          );
-          console.log(
-            `✅ Route to ${hospital.name}: ${Math.ceil(routeInfo.duration / 60)}분 (${(routeInfo.distance / 1000).toFixed(1)}km)`
-          );
-          return enrichedHospital;
-        } else {
-          // 경로 정보 없으면 원본 병원 객체 그대로 사용
-          console.warn(`⚠️ Failed to get route info for ${hospital.name}`);
-          return hospital;
-        }
-      } catch (error) {
-        console.error(`Failed to calculate route for ${hospital.name}:`, error);
-        // 에러 발생 시 원본 병원 객체 그대로 사용
+        return hospital.withRouteInfo(routeInfo.duration, routeInfo.distance);
+      } else {
+        console.warn(`⚠️ Failed to get route info for ${hospital.name}`);
+        // UI에서 실패를 알 수 있도록 실패 상태만 반환 (현재 Hospital 객체 그대로 유지하되, UI 상태는 컴포넌트나 상위에서 관리)
         return hospital;
       }
     });
-
-    // 모든 Promise가 완료될 때까지 대기
-    const enrichedHospitals = await Promise.all(routePromises);
 
     return enrichedHospitals;
   }

@@ -18,6 +18,7 @@ interface HospitalCardProps {
   hospital: Hospital;
   userLocation: Coordinates | null;
   aiContext?: AIAnalysisContext | null;
+  routeStatus?: 'CALCULATING' | 'FAILED';
   onClick?: () => void;
 }
 
@@ -34,6 +35,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   hospital,
   userLocation,
   aiContext,
+  routeStatus,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -394,7 +396,21 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             {hospital.name}
           </h3>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            {routeDurationMinutes && (
+            {routeStatus === 'CALCULATING' ? (
+              <span className={cn(
+                'text-sm sm:text-base font-bold whitespace-nowrap animate-pulse',
+                isDark ? 'text-info/70' : 'text-[#1E88E5]/70'
+              )}>
+                🚗 경로 계산 중
+              </span>
+            ) : routeStatus === 'FAILED' || routeDurationMinutes === undefined ? (
+              <span className={cn(
+                'text-sm sm:text-base font-medium whitespace-nowrap',
+                isDark ? 'text-muted-foreground' : 'text-gray-500'
+              )}>
+                🚗 경로 시간 확인 필요
+              </span>
+            ) : (
               <span className={cn(
                 'text-base sm:text-lg font-bold whitespace-nowrap',
                 isDark ? 'text-info' : 'text-[#1E88E5]'
