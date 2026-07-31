@@ -403,7 +403,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
               )}>
                 🚗 경로 계산 중
               </span>
-            ) : routeStatus === 'FAILED' || routeDurationMinutes === undefined ? (
+            ) : routeStatus === 'FAILED' || routeDurationMinutes == null ? (
               <span className={cn(
                 'text-sm sm:text-base font-medium whitespace-nowrap',
                 isDark ? 'text-muted-foreground' : 'text-gray-500'
