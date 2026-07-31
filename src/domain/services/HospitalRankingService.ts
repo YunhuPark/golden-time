@@ -128,15 +128,17 @@ export class HospitalRankingService {
     const MAX_SCORE = 40;
 
     // Edge Case: 경로 정보 없음
+    // (이전에 20점을 부여했으나, 이는 점진적 렌더링에서 계산되지 않은 병원이 계산된 병원(느린 병원)을
+    // 역전하는 버그를 유발하므로 0점으로 처리하여 부당한 이득을 막음)
     if (!hospital.routeDuration) {
-      return MAX_SCORE * 0.5; // 중간 점수 (20점)
+      return 0; 
     }
 
     // 전체 병원 중 경로 정보가 있는 병원들만 추출
     const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration);
 
-    // Edge Case: 경로 정보 있는 병원이 1개뿐
-    if (hospitalsWithRoute.length === 1) {
+    // Edge Case: 경로 정보 있는 병원이 1개뿐이거나 없음
+    if (hospitalsWithRoute.length <= 1) {
       return MAX_SCORE;
     }
 
