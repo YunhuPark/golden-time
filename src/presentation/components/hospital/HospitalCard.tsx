@@ -390,7 +390,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
                 : "bg-blue-100 text-blue-800 border-blue-300"
           )}>
             {aiContext.triage === 'RED' ? '🚨 RED 우선 이송 후보' : aiContext.triage === 'YELLOW' ? '⚠️ 집중 모니터링 후보' : '💡 요구 역량 매칭'}
-            {' '} - {getConditionName(aiContext.primaryCondition)} (확인 조건 {aiMatch.matchedReasons.length}개)
+            {' '} - {(aiContext.secondaryConditions?.length ?? 0) > 0 ? '복합 응급 대응' : getConditionName(aiContext.primaryCondition)} (확인 조건 {aiMatch.matchedReasons.length}개)
           </div>
         )}
         <div className="flex justify-between items-start gap-2">
