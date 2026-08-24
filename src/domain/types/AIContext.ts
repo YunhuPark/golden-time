@@ -1,7 +1,7 @@
 export interface AIAnalysisContext {
   triage: string | null;
   primaryCondition: string | null;
-  secondaryConditions: string[];
+  secondaryConditions?: string[];
   analysisMode: string | null;
   analysisSources: string[];
   capabilities: string[];
