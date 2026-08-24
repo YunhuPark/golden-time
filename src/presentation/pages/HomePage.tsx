@@ -274,8 +274,8 @@ export const HomePage: React.FC = () => {
           has_warning: !!result.warning,
         });
 
-        // 백그라운드 경로 계산 비동기 실행 (await 하지 않음)
-        (async () => {
+        // 최종 후보가 확정될 때까지 로딩 상태를 유지해 중간 순위가 깜빡이지 않게 합니다.
+        await (async () => {
           try {
             const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
             
