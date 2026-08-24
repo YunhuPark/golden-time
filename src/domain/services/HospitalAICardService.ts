@@ -6,6 +6,39 @@ import { AIAnalysisContext, AIContextMatchResult } from '../types/AIContext';
  * '특화병원'을 추정하지 않고 응급실/중환자실/영상/수술 자원만 근거로 사용합니다.
  */
 export class HospitalAICardService {
+  private static scoreSystemicEmergency(
+    hospital: Hospital,
+    matchedReasons: string[],
+    unconfirmedReasons: string[]
+  ): { score: number; maxScore: number } {
+    let score = 0;
+    let maxScore = 0;
+
+    maxScore += 8;
+    if (hospital.availableBeds > 0) {
+      matchedReasons.push(`응급실 가용 ${hospital.availableBeds}병상`);
+      score += 8;
+    } else {
+      unconfirmedReasons.push('응급실 가용병상 없음');
+    }
+
+    maxScore += 8;
+    if (hospital.icuAvailableBeds > 0) {
+      matchedReasons.push(`일반 ICU 가용 ${hospital.icuAvailableBeds}병상`);
+      score += 8;
+    } else {
+      unconfirmedReasons.push('일반 ICU 가용 확인필요');
+    }
+
+    maxScore += 4;
+    if (hospital.isOperating) {
+      matchedReasons.push('응급실 운영');
+      score += 4;
+    }
+
+    return { score, maxScore };
+  }
+
   private static scoreCondition(
     hospital: Hospital,
     condition: string,
@@ -15,30 +48,10 @@ export class HospitalAICardService {
     let score = 0;
     let maxScore = 0;
 
-    if (condition === 'sepsis_demo') {
-      maxScore += 8;
-      if (hospital.availableBeds > 0) {
-        matchedReasons.push(`응급실 가용 ${hospital.availableBeds}병상`);
-        score += 8;
-      } else {
-        unconfirmedReasons.push('응급실 가용병상 없음');
-      }
-
-      maxScore += 8;
-      if (hospital.icuAvailableBeds > 0) {
-        matchedReasons.push(`일반 ICU 가용 ${hospital.icuAvailableBeds}병상`);
-        score += 8;
-      } else {
-        unconfirmedReasons.push('일반 ICU 가용 확인필요');
-      }
-
-      maxScore += 4;
-      if (hospital.isOperating) {
-        matchedReasons.push('응급실 운영');
-        score += 4;
-      }
-
-      return { score, maxScore };
+    // sepsis_demo는 기존 링크와의 하위 호환성용이고,
+    // systemic_deterioration_demo는 특정 질환을 확정하지 않는 RED 전신악화 컨텍스트입니다.
+    if (condition === 'sepsis_demo' || condition === 'systemic_deterioration_demo') {
+      return this.scoreSystemicEmergency(hospital, matchedReasons, unconfirmedReasons);
     }
 
     if (condition === 'brain_lesion_demo') {
