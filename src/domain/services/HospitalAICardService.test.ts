@@ -15,67 +15,85 @@ const createHospital = (overrides: Partial<Hospital>): Hospital => {
     '010',
     null,
     overrides.availableBeds ?? 10,
-    overrides.totalBeds ?? 20,
+    overrides.totalBeds ?? 10,
     overrides.specializations ?? [],
     null,
     overrides.isOperating ?? true,
     new Date(),
     overrides.hasCT ?? false,
     overrides.hasMRI ?? false,
-    overrides.hasSurgery ?? false
+    overrides.hasSurgery ?? false,
+    undefined,
+    undefined,
+    undefined,
+    overrides.icuAvailableBeds ?? 0,
+    overrides.neuroIcuAvailableBeds ?? 0
   );
 };
 
+const context = (primaryCondition: string, triage: string, secondaryConditions: string[] = []): AIAnalysisContext => ({
+  primaryCondition,
+  secondaryConditions,
+  triage,
+  capabilities: [],
+  specialties: [],
+  analysisMode: 'synthetic_demo',
+  analysisSources: [],
+  clinicalValidation: false,
+});
+
 describe('HospitalAICardService', () => {
-  it('should return null for normal access (aiContext is null)', () => {
-    const hospital = createHospital({});
-    const result = HospitalAICardService.evaluateMatch(hospital, null);
-    expect(result).toBeNull();
+  it('returns null for normal access', () => {
+    expect(HospitalAICardService.evaluateMatch(createHospital({}), null)).toBeNull();
   });
 
-  it('should match capabilities correctly', () => {
+  it('scores systemic deterioration using ER and ICU real-time resources', () => {
+    const hospital = createHospital({ availableBeds: 5, icuAvailableBeds: 2, isOperating: true });
+    const result = HospitalAICardService.evaluateMatch(hospital, context('sepsis_demo', 'RED'))!;
+
+    expect(result.score).toBe(20);
+    expect(result.maxScore).toBe(20);
+    expect(result.matchedReasons).toContain('응급실 가용 5병상');
+    expect(result.matchedReasons).toContain('일반 ICU 가용 2병상');
+    expect(result.matchedReasons).toContain('응급실 운영');
+  });
+
+  it('scores brain response using imaging, surgery and neuro ICU resources', () => {
+    const hospital = createHospital({ hasMRI: true, hasSurgery: true, neuroIcuAvailableBeds: 1 });
+    const result = HospitalAICardService.evaluateMatch(hospital, context('brain_lesion_demo', 'YELLOW'))!;
+
+    expect(result.score).toBe(25);
+    expect(result.maxScore).toBe(25);
+    expect(result.matchedReasons).toContain('영상 장비(CT/MRI) 가용');
+    expect(result.matchedReasons).toContain('수술실 가용');
+    expect(result.matchedReasons).toContain('신경 ICU 가용 1병상');
+  });
+
+  it('includes secondary brain condition only for RED composite triage', () => {
     const hospital = createHospital({
-      hasCT: true,
-      hasMRI: false,
-      hasSurgery: true,
       availableBeds: 5,
+      icuAvailableBeds: 2,
+      hasCT: true,
+      hasSurgery: true,
+      neuroIcuAvailableBeds: 1,
     });
 
-    const context: AIAnalysisContext = {
-      primaryCondition: 'sepsis_demo',
-      triage: 'RED',
-      capabilities: ['응급실 운영', 'CT', 'MRI', '수술'],
-      specialties: [],
-      analysisMode: 'synthetic_demo',
-      analysisSources: [],
-      clinicalValidation: false
-    };
+    const red = HospitalAICardService.evaluateMatch(
+      hospital,
+      context('sepsis_demo', 'RED', ['brain_lesion_demo'])
+    )!;
+    const yellow = HospitalAICardService.evaluateMatch(
+      hospital,
+      context('sepsis_demo', 'YELLOW', ['brain_lesion_demo'])
+    )!;
 
-    const result = HospitalAICardService.evaluateMatch(hospital, context);
-    expect(result).not.toBeNull();
-    // sepsis_demo expects: 1) isOperating(10), 2) availableBeds(10), 3) internal_medicine/icu(10)
-    // Here we did not provide icu or internal medicine, so maxScore is 20 and score is 20
-    expect(result!.score).toBe(20);
-    expect(result!.maxScore).toBe(20);
-    
-    expect(result!.matchedReasons).toContain('응급실 운영');
-    expect(result!.matchedReasons).toContain('가용 병상 5개');
+    expect(red.maxScore).toBe(45);
+    expect(yellow.maxScore).toBe(20);
   });
 
-  it('should not do automatic text matching like "대학" unless specified in capabilities', () => {
+  it('does not infer capability from hospital name', () => {
     const hospital = createHospital({ name: '서울대학교병원', availableBeds: 0, isOperating: false });
-    const context: AIAnalysisContext = {
-      primaryCondition: 'unknown_demo',
-      triage: 'YELLOW',
-      capabilities: [],
-      specialties: [],
-      analysisMode: 'synthetic_demo',
-      analysisSources: [],
-      clinicalValidation: false
-    };
-    
-    const result = HospitalAICardService.evaluateMatch(hospital, context);
-    expect(result).not.toBeNull();
-    expect(result!.score).toBe(0); // 대학병원이라고 점수 주지 않음 (isOperating false, availableBeds 0)
+    const result = HospitalAICardService.evaluateMatch(hospital, context('unknown_demo', 'YELLOW'))!;
+    expect(result.score).toBe(0);
   });
 });
