@@ -1,18 +1,17 @@
-import { Hospital, AvailabilityStatus } from '../entities/Hospital';
+import { Hospital } from '../entities/Hospital';
 import { AIAnalysisContext } from '../types/AIContext';
 import { HospitalAICardService } from './HospitalAICardService';
 
 /**
  * 응급 상황에서 최적의 병원을 선택하기 위한 점수 기반 랭킹 알고리즘.
  *
- * RED: 질환/역량 적합도를 가장 강하게 반영하고, 이동시간과 병상은 그 다음으로 본다.
- * YELLOW/기타: 이동시간과 병상 가용성을 더 크게 반영한다.
+ * RED: 복합 대응 자원 적합도를 가장 강하게 반영합니다.
+ * YELLOW/기타: 이동시간과 응급실 가용병상을 상대적으로 크게 반영합니다.
+ * 병상 점수는 E-Gen이 제공하는 실시간 응급실 가용 수(hvec)를 그대로 사용합니다.
  */
 export class HospitalRankingService {
   static rankHospitals(hospitals: Hospital[], aiContext?: AIAnalysisContext | null): Hospital[] {
-    if (hospitals.length <= 1) {
-      return hospitals;
-    }
+    if (hospitals.length <= 1) return hospitals;
 
     const hospitalsWithScore = hospitals.map((hospital) => ({
       hospital,
@@ -20,30 +19,24 @@ export class HospitalRankingService {
     }));
 
     hospitalsWithScore.sort((a, b) => {
-      if (Math.abs(a.score - b.score) > 0.001) {
-        return b.score - a.score;
-      }
+      if (Math.abs(a.score - b.score) > 0.001) return b.score - a.score;
 
       const hasRouteA = a.hospital.routeDuration != null;
       const hasRouteB = b.hospital.routeDuration != null;
       if (hasRouteA && !hasRouteB) return -1;
       if (!hasRouteA && hasRouteB) return 1;
-
-      if (hasRouteA && hasRouteB) {
-        return a.hospital.routeDuration! - b.hospital.routeDuration!;
-      }
-
-      return 0;
+      if (hasRouteA && hasRouteB) return a.hospital.routeDuration! - b.hospital.routeDuration!;
+      return b.hospital.availableBeds - a.hospital.availableBeds;
     });
 
-    console.log(`🏆 Hospital Ranking Results (Target Disease: ${aiContext?.primaryCondition || 'None'}):`);
+    console.log(`🏆 Hospital Ranking Results (Target: ${aiContext?.primaryCondition || 'None'}):`);
     hospitalsWithScore.slice(0, 5).forEach((item, index) => {
       const aiMatch = HospitalAICardService.evaluateMatch(item.hospital, aiContext || null);
       const isMatch = aiMatch && aiMatch.maxScore > 0 && aiMatch.score / aiMatch.maxScore >= 0.5;
       console.log(
         `${index + 1}. ${item.hospital.name}: ${item.score.toFixed(1)}점 ` +
           `(소요: ${item.hospital.getRouteDurationMinutes() || '?'}분, ` +
-          `병상: ${item.hospital.availableBeds}/${item.hospital.totalBeds})` +
+          `응급실 가용: ${item.hospital.availableBeds}, ICU: ${item.hospital.icuAvailableBeds})` +
           (isMatch ? ` ✨ [Capability Match: ${aiMatch.score}/${aiMatch.maxScore}]` : '')
       );
     });
@@ -57,11 +50,9 @@ export class HospitalRankingService {
     aiContext?: AIAnalysisContext | null
   ): number {
     const isRed = aiContext?.triage === 'RED';
-
-    // RED는 역량 적합도 중심, YELLOW/기타는 이동시간·병상 중심.
-    const timeWeight = isRed ? 0.75 : 1.0;   // 최대 30 / 40
-    const bedWeight = isRed ? 0.67 : 1.0;    // 최대 약 20 / 30
-    const traumaWeight = 0.5;                 // 최대 10
+    const timeWeight = isRed ? 0.75 : 1.0;
+    const bedWeight = isRed ? 0.67 : 1.0;
+    const traumaWeight = 0.5;
     const conditionMax = isRed ? 50 : 25;
 
     let score = 0;
@@ -80,55 +71,36 @@ export class HospitalRankingService {
     return score;
   }
 
-  private static calculateTimeScore(
-    hospital: Hospital,
-    allHospitals: Hospital[]
-  ): number {
+  private static calculateTimeScore(hospital: Hospital, allHospitals: Hospital[]): number {
     const MAX_SCORE = 40;
-
-    if (!hospital.routeDuration) {
-      return 0;
-    }
+    if (!hospital.routeDuration) return 0;
 
     const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration);
-    if (hospitalsWithRoute.length <= 1) {
-      return MAX_SCORE;
-    }
+    if (hospitalsWithRoute.length <= 1) return MAX_SCORE;
 
     const minDuration = Math.min(...hospitalsWithRoute.map((h) => h.routeDuration!));
     const maxDuration = Math.max(...hospitalsWithRoute.map((h) => h.routeDuration!));
+    if (minDuration === maxDuration) return MAX_SCORE;
 
-    if (minDuration === maxDuration) {
-      return MAX_SCORE;
-    }
-
-    const normalizedScore =
-      1 - (hospital.routeDuration - minDuration) / (maxDuration - minDuration);
+    const normalizedScore = 1 - (hospital.routeDuration - minDuration) / (maxDuration - minDuration);
     return normalizedScore * MAX_SCORE;
   }
 
+  /**
+   * 실시간 응급실 가용병상 수를 직접 점수화합니다.
+   * 0=만실, 1~4=제한, 5~9=양호, 10+=충분으로 단순화해
+   * 잘못된 '총병상 대비 비율' 추정을 사용하지 않습니다.
+   */
   private static calculateBedAvailabilityScore(hospital: Hospital): number {
-    const MAX_SCORE = 30;
-    const status = hospital.getAvailabilityStatus();
-
-    switch (status) {
-      case AvailabilityStatus.AVAILABLE: {
-        const availabilityRate = hospital.getAvailabilityRate();
-        return 20 + availabilityRate * 10;
-      }
-      case AvailabilityStatus.LIMITED:
-        return MAX_SCORE * 0.5;
-      case AvailabilityStatus.FULL:
-        return 0;
-      case AvailabilityStatus.UNKNOWN:
-      default:
-        return MAX_SCORE * 0.33;
-    }
+    const beds = hospital.availableBeds;
+    if (beds <= 0) return 0;
+    if (beds <= 4) return 15;
+    if (beds <= 9) return 24 + (beds - 5) * 1.25;
+    return 30;
   }
 
   private static calculateTraumaLevelScore(hospital: Hospital): number {
     const MAX_SCORE = 20;
-
     if (hospital.traumaLevel === 1) return MAX_SCORE;
     if (hospital.traumaLevel === 2) return MAX_SCORE * 0.75;
     if (hospital.traumaLevel === 3) return MAX_SCORE * 0.5;
@@ -139,10 +111,7 @@ export class HospitalRankingService {
     return hospital.isOperating ? 10 : 0;
   }
 
-  static analyzeHospitalScore(
-    hospital: Hospital,
-    allHospitals: Hospital[]
-  ): {
+  static analyzeHospitalScore(hospital: Hospital, allHospitals: Hospital[]): {
     totalScore: number;
     timeScore: number;
     bedScore: number;
