@@ -174,7 +174,9 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
 
   // AI 분석 결과 산출
   const aiMatch = HospitalAICardService.evaluateMatch(hospital, aiContext || null);
-  const isAiRecommended = aiMatch && aiMatch.score > 0;
+  const isAiRecommended = Boolean(
+    aiMatch && aiMatch.maxScore > 0 && aiMatch.score / aiMatch.maxScore >= 0.66
+  );
   
   // 조건명 한글 매핑
   const getConditionName = (condition: string | null) => {
@@ -387,7 +389,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
                 ? "bg-yellow-100 text-yellow-800 border-yellow-300"
                 : "bg-blue-100 text-blue-800 border-blue-300"
           )}>
-            {aiContext.triage === 'RED' ? '🚨 긴급 이송 거점' : aiContext.triage === 'YELLOW' ? '⚠️ 집중 모니터링' : '💡 요구 역량 매칭'}
+            {aiContext.triage === 'RED' ? '🚨 RED 우선 이송 후보' : aiContext.triage === 'YELLOW' ? '⚠️ 집중 모니터링 후보' : '💡 요구 역량 매칭'}
             {' '} - {getConditionName(aiContext.primaryCondition)} (확인 조건 {aiMatch.matchedReasons.length}개)
           </div>
         )}
@@ -456,7 +458,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
             styles.badgeBg
           )}
         >
-          {styles.label}
+          추정 {styles.label}
         </span>
       </div>
 
