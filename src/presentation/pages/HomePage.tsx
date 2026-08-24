@@ -91,6 +91,7 @@ export const HomePage: React.FC = () => {
     const aiContext = {
       triage: triage,
       primaryCondition: conditionStr,
+      secondaryConditions: parseArrayParam('secondaryConditions'),
       analysisMode: analysisMode,
       analysisSources: parseArrayParam('analysisSources'),
       capabilities: parseArrayParam('capabilities'),
@@ -111,18 +112,8 @@ export const HomePage: React.FC = () => {
     if (triage) {
       setTriageLevel(triage);
       
-      // RED 응급도일 경우 자동 필터링 적용
-      if (triage === 'RED') {
-        // 기존 상태가 초기화되기 전에 약간의 지연 후 필터 적용
-        setTimeout(() => {
-          const store = useAppStore.getState();
-          store.setFilters({
-            ...store.filters,
-            hasAvailableBeds: true,
-            hasSurgery: true, // 수술 가능 병원 우선
-          });
-        }, 100);
-      }
+      // 질환별 요구 역량은 HospitalAICardService/RankingService에서 반영합니다.
+      // RED라고 해서 모든 질환에 수술 가능 필터를 강제하지 않습니다.
     }
   }, []);
 
@@ -261,10 +252,9 @@ export const HomePage: React.FC = () => {
         }
 
         if (isCancelled) return;
-        setHospitals(result.hospitals, result.warning);
-
-        // 초기 로드 완료 (직선거리 및 AI 기반 1차 랭킹)
-        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API`);
+        // 초기 랭킹은 화면에 바로 노출하지 않습니다.
+        // 상위 후보의 실제 경로시간 계산 후 최종 랭킹을 한 번만 표시합니다.
+        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API; final ranking pending route info`);
 
         // 진행 중인 경로 계산 요청 ID 갱신
         searchRequestIdRef.current += 1;
@@ -284,8 +274,8 @@ export const HomePage: React.FC = () => {
           has_warning: !!result.warning,
         });
 
-        // 백그라운드 경로 계산 비동기 실행 (await 하지 않음)
-        (async () => {
+        // 최종 후보가 확정될 때까지 로딩 상태를 유지해 중간 순위가 깜빡이지 않게 합니다.
+        await (async () => {
           try {
             const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
             
@@ -317,6 +307,8 @@ export const HomePage: React.FC = () => {
           } catch (routeErr) {
             console.error('Failed to calculate routes in background:', routeErr);
             if (!isCancelled && searchRequestIdRef.current === currentReqId) {
+              // 경로 계산 실패 시에만 1차 랭킹을 fallback으로 표시합니다.
+              setHospitals(result.hospitals, result.warning);
               setRouteCalcStatus(prev => {
                 const nextStatus = { ...prev };
                 top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
