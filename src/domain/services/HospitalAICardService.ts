@@ -2,13 +2,8 @@ import { Hospital } from '../entities/Hospital';
 import { AIAnalysisContext, AIContextMatchResult } from '../types/AIContext';
 
 /**
- * AI 분석 요구사항과 실제 병원 데이터를 비교하여
- * 매칭 결과, 추천 근거, 점수를 산출하는 서비스.
- *
- * 중요:
- * - "특화 병원"을 추정하지 않는다.
- * - 현재 Hospital 엔티티에서 확인 가능한 운영/병상/진료과/장비/수술 가능 여부만 사용한다.
- * - RED에서는 secondaryConditions까지 함께 반영해 복합 요구역량을 더 엄격하게 본다.
+ * AI 분석 요구사항과 E-Gen에서 확인 가능한 실제 자원을 비교합니다.
+ * '특화병원'을 추정하지 않고 응급실/중환자실/영상/수술 자원만 근거로 사용합니다.
  */
 export class HospitalAICardService {
   private static scoreCondition(
@@ -21,28 +16,26 @@ export class HospitalAICardService {
     let maxScore = 0;
 
     if (condition === 'sepsis_demo') {
-      maxScore += 5;
+      maxScore += 8;
+      if (hospital.availableBeds > 0) {
+        matchedReasons.push(`응급실 가용 ${hospital.availableBeds}병상`);
+        score += 8;
+      } else {
+        unconfirmedReasons.push('응급실 가용병상 없음');
+      }
+
+      maxScore += 8;
+      if (hospital.icuAvailableBeds > 0) {
+        matchedReasons.push(`일반 ICU 가용 ${hospital.icuAvailableBeds}병상`);
+        score += 8;
+      } else {
+        unconfirmedReasons.push('일반 ICU 가용 확인필요');
+      }
+
+      maxScore += 4;
       if (hospital.isOperating) {
         matchedReasons.push('응급실 운영');
-        score += 5;
-      } else {
-        unconfirmedReasons.push('응급실 운영 확인필요');
-      }
-
-      maxScore += 5;
-      if (hospital.availableBeds > 0) {
-        matchedReasons.push(`추정 가용 병상 ${hospital.availableBeds}개`);
-        score += 5;
-      } else {
-        unconfirmedReasons.push('병상 가용성 확인필요');
-      }
-
-      maxScore += 10;
-      if (hospital.hasSpecialization('내과')) {
-        matchedReasons.push('내과 진료과');
-        score += 10;
-      } else {
-        unconfirmedReasons.push('내과 진료과 확인필요');
+        score += 4;
       }
 
       return { score, maxScore };
@@ -50,44 +43,37 @@ export class HospitalAICardService {
 
     if (condition === 'brain_lesion_demo') {
       maxScore += 10;
-      if (hospital.hasSpecialization('신경외과') || hospital.hasSpecialization('신경과')) {
-        matchedReasons.push('신경외과/신경과');
-        score += 10;
-      } else {
-        unconfirmedReasons.push('신경외과/신경과 확인필요');
-      }
-
-      maxScore += 10;
-      if (hospital.hasSurgery) {
-        matchedReasons.push('응급수술 가능');
-        score += 10;
-      } else {
-        unconfirmedReasons.push('응급수술 가능 여부 확인필요');
-      }
-
-      maxScore += 10;
       if (hospital.hasCT || hospital.hasMRI) {
-        matchedReasons.push('영상 장비(CT/MRI)');
+        matchedReasons.push('영상 장비(CT/MRI) 가용');
         score += 10;
       } else {
-        unconfirmedReasons.push('CT/MRI 장비 확인필요');
+        unconfirmedReasons.push('CT/MRI 가용 확인필요');
+      }
+
+      maxScore += 8;
+      if (hospital.hasSurgery) {
+        matchedReasons.push('수술실 가용');
+        score += 8;
+      } else {
+        unconfirmedReasons.push('수술실 가용 확인필요');
+      }
+
+      maxScore += 7;
+      if (hospital.neuroIcuAvailableBeds > 0) {
+        matchedReasons.push(`신경 ICU 가용 ${hospital.neuroIcuAvailableBeds}병상`);
+        score += 7;
+      } else {
+        unconfirmedReasons.push('신경 ICU 가용 확인필요');
       }
 
       return { score, maxScore };
     }
 
-    maxScore += 5;
-    if (hospital.isOperating) {
-      matchedReasons.push('응급실 운영');
-      score += 5;
-    }
-
-    maxScore += 5;
+    maxScore += 10;
     if (hospital.availableBeds > 0) {
-      matchedReasons.push(`추정 가용 병상 ${hospital.availableBeds}개`);
-      score += 5;
+      matchedReasons.push(`응급실 가용 ${hospital.availableBeds}병상`);
+      score += 10;
     }
-
     return { score, maxScore };
   }
 
@@ -95,9 +81,7 @@ export class HospitalAICardService {
     hospital: Hospital,
     aiContext: AIAnalysisContext | null
   ): AIContextMatchResult | null {
-    if (!aiContext || (!aiContext.primaryCondition && !aiContext.analysisMode)) {
-      return null;
-    }
+    if (!aiContext || (!aiContext.primaryCondition && !aiContext.analysisMode)) return null;
 
     const matchedReasons: string[] = [];
     const unconfirmedReasons: string[] = [];
@@ -105,29 +89,19 @@ export class HospitalAICardService {
     let maxScore = 0;
 
     const conditions: string[] = [];
-    if (aiContext.primaryCondition) {
-      conditions.push(aiContext.primaryCondition);
-    }
+    if (aiContext.primaryCondition) conditions.push(aiContext.primaryCondition);
 
+    // RED에서만 secondary condition까지 동시에 반영해 복합 대응 역량을 요구합니다.
     if (aiContext.triage === 'RED') {
       for (const condition of aiContext.secondaryConditions || []) {
-        if (condition && !conditions.includes(condition)) {
-          conditions.push(condition);
-        }
+        if (condition && !conditions.includes(condition)) conditions.push(condition);
       }
     }
 
-    if (conditions.length === 0) {
-      conditions.push('general_emergency');
-    }
+    if (conditions.length === 0) conditions.push('general_emergency');
 
     for (const condition of conditions) {
-      const result = this.scoreCondition(
-        hospital,
-        condition,
-        matchedReasons,
-        unconfirmedReasons
-      );
+      const result = this.scoreCondition(hospital, condition, matchedReasons, unconfirmedReasons);
       score += result.score;
       maxScore += result.maxScore;
     }
