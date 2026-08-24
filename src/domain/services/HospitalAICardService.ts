@@ -3,13 +3,98 @@ import { AIAnalysisContext, AIContextMatchResult } from '../types/AIContext';
 
 /**
  * AI 분석 요구사항과 실제 병원 데이터를 비교하여
- * 매칭 결과, 추천 근거, 점수를 산출하는 서비스
+ * 매칭 결과, 추천 근거, 점수를 산출하는 서비스.
+ *
+ * 중요:
+ * - "특화 병원"을 추정하지 않는다.
+ * - 현재 Hospital 엔티티에서 확인 가능한 운영/병상/진료과/장비/수술 가능 여부만 사용한다.
+ * - RED에서는 secondaryConditions까지 함께 반영해 복합 요구역량을 더 엄격하게 본다.
  */
 export class HospitalAICardService {
-  /**
-   * 병원의 실제 역량과 AI 요구 컨텍스트를 비교하여 매칭 결과를 반환
-   */
-  static evaluateMatch(hospital: Hospital, aiContext: AIAnalysisContext | null): AIContextMatchResult | null {
+  private static scoreCondition(
+    hospital: Hospital,
+    condition: string,
+    matchedReasons: string[],
+    unconfirmedReasons: string[]
+  ): { score: number; maxScore: number } {
+    let score = 0;
+    let maxScore = 0;
+
+    if (condition === 'sepsis_demo') {
+      maxScore += 5;
+      if (hospital.isOperating) {
+        matchedReasons.push('응급실 운영');
+        score += 5;
+      } else {
+        unconfirmedReasons.push('응급실 운영 확인필요');
+      }
+
+      maxScore += 5;
+      if (hospital.availableBeds > 0) {
+        matchedReasons.push(`추정 가용 병상 ${hospital.availableBeds}개`);
+        score += 5;
+      } else {
+        unconfirmedReasons.push('병상 가용성 확인필요');
+      }
+
+      maxScore += 10;
+      if (hospital.hasSpecialization('내과')) {
+        matchedReasons.push('내과 진료과');
+        score += 10;
+      } else {
+        unconfirmedReasons.push('내과 진료과 확인필요');
+      }
+
+      return { score, maxScore };
+    }
+
+    if (condition === 'brain_lesion_demo') {
+      maxScore += 10;
+      if (hospital.hasSpecialization('신경외과') || hospital.hasSpecialization('신경과')) {
+        matchedReasons.push('신경외과/신경과');
+        score += 10;
+      } else {
+        unconfirmedReasons.push('신경외과/신경과 확인필요');
+      }
+
+      maxScore += 10;
+      if (hospital.hasSurgery) {
+        matchedReasons.push('응급수술 가능');
+        score += 10;
+      } else {
+        unconfirmedReasons.push('응급수술 가능 여부 확인필요');
+      }
+
+      maxScore += 10;
+      if (hospital.hasCT || hospital.hasMRI) {
+        matchedReasons.push('영상 장비(CT/MRI)');
+        score += 10;
+      } else {
+        unconfirmedReasons.push('CT/MRI 장비 확인필요');
+      }
+
+      return { score, maxScore };
+    }
+
+    maxScore += 5;
+    if (hospital.isOperating) {
+      matchedReasons.push('응급실 운영');
+      score += 5;
+    }
+
+    maxScore += 5;
+    if (hospital.availableBeds > 0) {
+      matchedReasons.push(`추정 가용 병상 ${hospital.availableBeds}개`);
+      score += 5;
+    }
+
+    return { score, maxScore };
+  }
+
+  static evaluateMatch(
+    hospital: Hospital,
+    aiContext: AIAnalysisContext | null
+  ): AIContextMatchResult | null {
     if (!aiContext || (!aiContext.primaryCondition && !aiContext.analysisMode)) {
       return null;
     }
@@ -19,91 +104,39 @@ export class HospitalAICardService {
     let score = 0;
     let maxScore = 0;
 
-    const condition = aiContext.primaryCondition;
+    const conditions: string[] = [];
+    if (aiContext.primaryCondition) {
+      conditions.push(aiContext.primaryCondition);
+    }
 
-    // sepsis_demo (패혈증)
-    if (condition === 'sepsis_demo') {
-      // 1. 응급실 운영
-      maxScore += 10;
-      if (hospital.isOperating) {
-        matchedReasons.push('응급실 운영');
-        score += 10;
-      } else {
-        unconfirmedReasons.push('응급실 미운영/확인필요');
-      }
-
-      // 2. 가용 병상
-      maxScore += 10;
-      if (hospital.availableBeds > 0) {
-        matchedReasons.push(`가용 병상 ${hospital.availableBeds}개`);
-        score += 10;
-      } else {
-        unconfirmedReasons.push('병상 가용성 확인필요');
-      }
-
-      // 3. 내과 전문의 / 중환자실 (현재 데이터에 중환자실 여부가 없으면 병상으로 대체하거나 specializations 확인)
-      if (aiContext.specialties.includes('internal_medicine') || aiContext.capabilities.includes('icu')) {
-        maxScore += 10;
-        if (hospital.hasSpecialization('내과') || hospital.hasSpecialization('응급의학과')) {
-          matchedReasons.push('관련 전문의');
-          score += 10;
-        } else {
-          unconfirmedReasons.push('관련 전문의 확인필요');
-        }
-      }
-    } 
-    // brain_lesion_demo (뇌 병변)
-    else if (condition === 'brain_lesion_demo') {
-      // 1. 신경외과/신경과
-      maxScore += 10;
-      if (hospital.hasSpecialization('신경외과') || hospital.hasSpecialization('신경과')) {
-        matchedReasons.push('신경외과/신경과');
-        score += 10;
-      } else {
-        unconfirmedReasons.push('신경외과 확인필요');
-      }
-
-      // 2. 응급수술 가능 여부
-      if (aiContext.capabilities.includes('emergency_surgery')) {
-        maxScore += 10;
-        if (hospital.hasSurgery) {
-          matchedReasons.push('응급수술 가능');
-          score += 10;
-        } else {
-          unconfirmedReasons.push('응급수술 확인필요');
-        }
-      }
-
-      // 3. 뇌 영상 (CT/MRI)
-      if (aiContext.capabilities.includes('brain_imaging')) {
-        maxScore += 10;
-        if (hospital.hasCT || hospital.hasMRI) {
-          matchedReasons.push('영상 장비(CT/MRI)');
-          score += 10;
-        } else {
-          unconfirmedReasons.push('영상 장비 확인필요');
+    if (aiContext.triage === 'RED') {
+      for (const condition of aiContext.secondaryConditions || []) {
+        if (condition && !conditions.includes(condition)) {
+          conditions.push(condition);
         }
       }
     }
-    // 기타 / 알 수 없는 질환
-    else {
-      maxScore += 10;
-      if (hospital.isOperating) {
-        matchedReasons.push('응급실 운영');
-        score += 10;
-      }
-      maxScore += 10;
-      if (hospital.availableBeds > 0) {
-        matchedReasons.push(`가용 병상 ${hospital.availableBeds}개`);
-        score += 10;
-      }
+
+    if (conditions.length === 0) {
+      conditions.push('general_emergency');
+    }
+
+    for (const condition of conditions) {
+      const result = this.scoreCondition(
+        hospital,
+        condition,
+        matchedReasons,
+        unconfirmedReasons
+      );
+      score += result.score;
+      maxScore += result.maxScore;
     }
 
     return {
       score,
       maxScore,
-      matchedReasons,
-      unconfirmedReasons
+      matchedReasons: Array.from(new Set(matchedReasons)),
+      unconfirmedReasons: Array.from(new Set(unconfirmedReasons)),
     };
   }
 }

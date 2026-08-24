@@ -299,11 +299,8 @@ export class HospitalMapper {
       }
     });
 
-    // 기본값: 응급의학과는 항상 포함
-    if (!specializations.includes('응급의학과')) {
-      specializations.push('응급의학과');
-    }
-
+    // 확인되지 않은 진료과를 기본값으로 추가하지 않습니다.
+    // AI 매칭은 실제 응답에서 파싱된 진료과만 근거로 사용합니다.
     return specializations;
   }
 
