@@ -5,7 +5,7 @@ import { HospitalAICardService } from './HospitalAICardService';
 import { AIAnalysisContext } from '../types/AIContext';
 
 describe('HospitalAICardService RED systemic deterioration', () => {
-  it('combines systemic emergency and brain response resources', () => {
+  it('matches the explicit Medi-Matrix resource requirements without inferring extra resources', () => {
     const hospital = new Hospital(
       'H001',
       'Demo Hospital',
@@ -43,9 +43,10 @@ describe('HospitalAICardService RED systemic deterioration', () => {
     const result = HospitalAICardService.evaluateMatch(hospital, context);
     expect(result).not.toBeNull();
     expect(result!.matchedReasons).toContain('응급실 가용 10병상');
-    expect(result!.matchedReasons).toContain('일반 ICU 가용 5병상');
-    expect(result!.matchedReasons).toContain('응급실 운영');
+    expect(result!.matchedReasons).toContain('ICU 가용 5병상');
     expect(result!.matchedReasons).toContain('영상 장비(CT/MRI) 가용');
-    expect(result!.matchedReasons).toContain('수술실 가용');
+    expect(result!.matchedReasons).not.toContain('응급실 운영');
+    expect(result!.matchedReasons).not.toContain('수술실 가용');
+    expect(result!.score).toBe(result!.maxScore);
   });
 });
