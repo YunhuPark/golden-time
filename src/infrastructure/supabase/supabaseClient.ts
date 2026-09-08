@@ -1,20 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
+import { resolveSupabasePublicConfig } from './supabaseConfig';
 
 /**
  * Supabase Client
  * 인증 및 데이터베이스 연동을 위한 클라이언트
  */
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const configuredUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseConfig = resolveSupabasePublicConfig(configuredUrl, configuredAnonKey);
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (supabaseConfig.source === 'canonical-fallback') {
   console.warn(
-    '⚠️ WARNING: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not found. Auth features will not work.'
+    `⚠️ Supabase deployment configuration fallback activated (${supabaseConfig.reason}). ` +
+      'Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel.'
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
