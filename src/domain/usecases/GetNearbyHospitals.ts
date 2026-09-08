@@ -1,7 +1,6 @@
 import { Hospital } from '../entities/Hospital';
 import { Coordinates } from '../valueObjects/Coordinates';
 import { IHospitalRepository } from '../repositories/IHospitalRepository';
-import { HospitalSpecialtyService } from '../services/HospitalSpecialtyService';
 import { AIAnalysisContext } from '../types/AIContext';
 
 /**
@@ -42,10 +41,10 @@ export class GetNearbyHospitals {
     userLocation: Coordinates,
     aiContext?: AIAnalysisContext | null
   ): Promise<HospitalSearchResult> {
-    // 0. Supabase DB에서 전체 병원 전문/특화 분야 최신 데이터를 로드 (캐시됨)
-    await HospitalSpecialtyService.loadSpecialtiesFromDB();
-
-    // 점진적 확대 전략 제거: 모든 병원을 한 번에 가져옴 (거리 무제한)
+    // Hospital ranking no longer depends on the legacy hospital_specialties
+    // table. The current AI matching contract is based on E-Gen-confirmable
+    // resources (ER/ICU/CT/MRI/etc.), so do not block emergency search on an
+    // unrelated Supabase query.
     const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext);
 
     // 가용 병상이 있는 병원 필터링 (임시로 운영중인 병원만)
