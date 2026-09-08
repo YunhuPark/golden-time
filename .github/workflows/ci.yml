@@ -12,28 +12,74 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '24.x'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm install
-      
+
+    - name: Dependency audit report
+      shell: bash
+      run: |
+        npm audit --omit=dev --json > audit-prod.json || true
+        npm audit --json > audit-all.json || true
+        node --input-type=commonjs <<'NODE'
+        const fs = require('fs');
+
+        function printAudit(label, path) {
+          const audit = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const counts = audit.metadata?.vulnerabilities || {};
+          console.log(`\n=== ${label} ===`);
+          console.log('counts:', JSON.stringify(counts));
+
+          const vulnerabilities = Object.entries(audit.vulnerabilities || {})
+            .map(([name, value]) => ({ name, ...value }))
+            .sort((a, b) => {
+              const rank = { critical: 4, high: 3, moderate: 2, low: 1, info: 0 };
+              return (rank[b.severity] || 0) - (rank[a.severity] || 0) || a.name.localeCompare(b.name);
+            });
+
+          for (const v of vulnerabilities) {
+            const via = (v.via || []).map((item) =>
+              typeof item === 'string'
+                ? item
+                : `${item.name || 'advisory'}: ${item.title || item.url || 'security advisory'}`
+            );
+            console.log(JSON.stringify({
+              name: v.name,
+              severity: v.severity,
+              isDirect: v.isDirect,
+              range: v.range,
+              via,
+              effects: v.effects,
+              fixAvailable: v.fixAvailable,
+            }));
+          }
+        }
+
+        printAudit('PRODUCTION DEPENDENCIES ONLY', 'audit-prod.json');
+        printAudit('ALL DEPENDENCIES', 'audit-all.json');
+        NODE
+
+    - name: Production dependency security gate
+      run: npm audit --omit=dev --audit-level=moderate
+
     - name: Type Check (Frontend)
       run: npm run type-check
-      
+
     - name: Type Check (API)
       run: npm run type-check:api
-      
+
     - name: Lint
       run: npm run lint
-      
+
     - name: API Tests
       run: npm run test:api
-      
+
     - name: Build
       run: npm run build
       env:
