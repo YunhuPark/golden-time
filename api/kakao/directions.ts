@@ -8,8 +8,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { origin, destination, priority } = req.query;
-    
-    const KAKAO_KEY = process.env.KAKAO_REST_API_KEY;
+
+    const KAKAO_KEY = process.env['KAKAO_REST_API_KEY'];
     if (!KAKAO_KEY) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
@@ -24,10 +24,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Bad Request: Invalid coordinate format' });
     }
 
-    // Parse and validate bounds
-    const [oLng, oLat] = origin.split(',').map(Number);
-    const [dLng, dLat] = destination.split(',').map(Number);
-    if (oLng < -180 || oLng > 180 || dLng < -180 || dLng > 180 || oLat < -90 || oLat > 90 || dLat < -90 || dLat > 90) {
+    const originParts = origin.split(',').map(Number);
+    const destinationParts = destination.split(',').map(Number);
+    const oLng = originParts[0];
+    const oLat = originParts[1];
+    const dLng = destinationParts[0];
+    const dLat = destinationParts[1];
+
+    if (
+      oLng === undefined ||
+      oLat === undefined ||
+      dLng === undefined ||
+      dLat === undefined ||
+      !Number.isFinite(oLng) ||
+      !Number.isFinite(oLat) ||
+      !Number.isFinite(dLng) ||
+      !Number.isFinite(dLat)
+    ) {
+      return res.status(400).json({ error: 'Bad Request: Invalid coordinates' });
+    }
+
+    if (
+      oLng < -180 || oLng > 180 ||
+      dLng < -180 || dLng > 180 ||
+      oLat < -90 || oLat > 90 ||
+      dLat < -90 || dLat > 90
+    ) {
       return res.status(400).json({ error: 'Bad Request: Coordinates out of bounds' });
     }
 
@@ -56,25 +78,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       });
       clearTimeout(timeoutId);
-      
+
       if (response.status === 429) {
         return res.status(429).json({ error: 'Rate Limit Exceeded' });
       }
-      
+
       if (!response.ok) {
         return res.status(502).json({ error: 'Bad Gateway' });
       }
 
       const data = await response.json();
       return res.status(200).json(data);
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return res.status(504).json({ error: 'Gateway Timeout' });
       }
       return res.status(502).json({ error: 'Bad Gateway' });
     }
-  } catch (error) {
+  } catch {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
