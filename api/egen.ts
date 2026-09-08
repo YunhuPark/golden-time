@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Forbidden: Invalid endpoint' });
     }
 
-    const EGEN_KEY = process.env.EGEN_SERVICE_KEY;
+    const EGEN_KEY = process.env['EGEN_SERVICE_KEY'];
     if (!EGEN_KEY) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
@@ -74,9 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // 실시간성을 유지하면서 같은 발표 세션의 반복 요청은 Vercel CDN에서 잠시 재사용.
       res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
       return res.status(200).json(data);
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       clearTimeout(timeoutId);
-      if (fetchError?.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return res.status(504).json({ error: 'Gateway Timeout' });
       }
       return res.status(502).json({ error: 'Bad Gateway' });

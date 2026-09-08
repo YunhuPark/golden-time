@@ -34,6 +34,7 @@ test('Kakao Geocoding API', async (t) => {
     global.fetch = async () => {
       return {
         ok: true,
+        status: 200,
         json: async () => ({ mock: 'data' })
       } as Response;
     };
@@ -71,14 +72,15 @@ test('Kakao Geocoding API', async (t) => {
 
   await t.test('5. 서버 REST 키만 Authorization 헤더에 사용', async () => {
     let authHeader = '';
-    global.fetch = async (url: any, options: any) => {
-      authHeader = options?.headers?.Authorization || '';
+    global.fetch = async (_url: string | URL | Request, options?: RequestInit) => {
+      authHeader = new Headers(options?.headers).get('Authorization') || '';
       return {
         ok: true,
+        status: 200,
         json: async () => ({ mock: 'data' })
       } as Response;
     };
-    
+
     const { req, res } = createMockReqRes('GET', { type: 'address', query: 'Seoul' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 200);
