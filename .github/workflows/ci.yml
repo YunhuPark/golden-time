@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Dependency audit (report only)
+    - name: Dependency audit report
       shell: bash
       run: |
         npm audit --omit=dev --json > audit-prod.json || true
@@ -64,6 +64,9 @@ jobs:
         printAudit('PRODUCTION DEPENDENCIES ONLY', 'audit-prod.json');
         printAudit('ALL DEPENDENCIES', 'audit-all.json');
         NODE
+
+    - name: Production dependency security gate
+      run: npm audit --omit=dev --audit-level=moderate
 
     - name: Type Check (Frontend)
       run: npm run type-check
