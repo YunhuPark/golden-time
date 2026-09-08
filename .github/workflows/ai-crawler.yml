@@ -1,10 +1,11 @@
 name: Daily AI Hospital Crawler
 
+# The crawler is temporarily manual-only while the optional Supabase backend is
+# unavailable. Core E-Gen hospital search does not depend on this workflow.
+# Re-enable the schedule after a live Supabase project and fresh credentials are
+# configured and a manual run completes successfully.
 on:
-  schedule:
-    # 매일 자정 (KST 기준 오전 9시)
-    - cron: '0 0 * * *'
-  workflow_dispatch: # 수동 실행 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   run-crawler:
@@ -12,12 +13,13 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.x'
+          cache: npm
 
       - name: Install Dependencies
         run: npm ci
@@ -26,8 +28,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EGEN_SERVICE_KEY: ${{ secrets.EGEN_SERVICE_KEY }}
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CRAWLER_TEST_LIMIT: 0
+          CRAWLER_TEST_LIMIT: 5
         run: npm run crawler
