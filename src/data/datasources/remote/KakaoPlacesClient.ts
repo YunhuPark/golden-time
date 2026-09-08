@@ -167,7 +167,8 @@ export class KakaoPlacesClient {
       place.category_name?.includes('병원') ||
       place.category_name?.includes('의료')
     );
-    const firstResult = hospitals[0] || result[0];
+    const firstResult = hospitals[0] ?? result[0];
+    if (!firstResult) return null;
 
     const latitude = Number(firstResult.y);
     const longitude = Number(firstResult.x);
