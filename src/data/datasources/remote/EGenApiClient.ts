@@ -12,7 +12,7 @@ export class EGenApiClient {
   private readonly maxRetries: number;
   private readonly geocodingClient: KakaoPlacesClient;
 
-  constructor(timeout = 16000, maxRetries = 1) {
+  constructor(timeout = 16000, maxRetries = 2) {
     this.timeout = timeout;
     this.maxRetries = maxRetries;
     this.geocodingClient = new KakaoPlacesClient();
@@ -109,21 +109,40 @@ export class EGenApiClient {
 
     if (hospitalsNeedingGeocoding.length === 0) return;
 
+    // E-Gen's realtime bed feed does not consistently include coordinates.
+    // Geocoding every hospital sequentially made the Gwangju feed (61 rows)
+    // take many seconds before any results could be ranked. Use a small worker
+    // pool to improve latency while keeping Kakao request concurrency bounded.
+    const concurrency = Math.min(4, hospitalsNeedingGeocoding.length);
+    let nextIndex = 0;
     let successCount = 0;
-    for (const item of hospitalsNeedingGeocoding) {
-      try {
-        const result = await this.geocodingClient.keywordToCoordinates(item.basicInfo.dutyName, region);
-        if (result) {
-          item.basicInfo.wgs84Lat = result.latitude.toString();
-          item.basicInfo.wgs84Lon = result.longitude.toString();
-          item.basicInfo.dutyAddr = result.address;
-          successCount++;
+
+    const worker = async () => {
+      while (true) {
+        const currentIndex = nextIndex++;
+        if (currentIndex >= hospitalsNeedingGeocoding.length) return;
+
+        const item = hospitalsNeedingGeocoding[currentIndex];
+        if (!item) continue;
+
+        try {
+          const result = await this.geocodingClient.keywordToCoordinates(item.basicInfo.dutyName, region);
+          if (result) {
+            item.basicInfo.wgs84Lat = result.latitude.toString();
+            item.basicInfo.wgs84Lon = result.longitude.toString();
+            item.basicInfo.dutyAddr = result.address;
+            successCount++;
+          }
+          // Keep a small spacing between requests from each worker to avoid
+          // turning the latency optimization into an upstream request burst.
+          await this.sleep(50);
+        } catch (error) {
+          console.error(`❌ Failed to geocode "${item.basicInfo.dutyName}":`, error);
         }
-        await this.sleep(150);
-      } catch (error) {
-        console.error(`❌ Failed to geocode "${item.basicInfo.dutyName}":`, error);
       }
-    }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
     console.log(`✅ Geocoding complete: ${successCount}/${hospitalsNeedingGeocoding.length}`);
   }
 
