@@ -10,10 +10,18 @@ const configuredUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabaseConfig = resolveSupabasePublicConfig(configuredUrl, configuredAnonKey);
 
-if (supabaseConfig.source === 'canonical-fallback') {
+/**
+ * Optional Supabase-backed features (reviews, favorites, profiles, auth writes)
+ * must not issue network calls when the deployment configuration has already
+ * fallen back from an invalid/obsolete project. The emergency hospital-search
+ * flow does not depend on Supabase and must remain fully available.
+ */
+export const supabaseOptionalFeaturesEnabled = supabaseConfig.source === 'environment';
+
+if (!supabaseOptionalFeaturesEnabled) {
   console.warn(
-    `⚠️ Supabase deployment configuration fallback activated (${supabaseConfig.reason}). ` +
-      'Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel.'
+    `⚠️ Supabase optional features are temporarily disabled (${supabaseConfig.reason}). ` +
+      'Hospital search and E-Gen realtime data remain available.'
   );
 }
 
