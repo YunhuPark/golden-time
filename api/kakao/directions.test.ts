@@ -52,7 +52,7 @@ test('Kakao Directions API', async (t) => {
   });
 
   await t.test('2. origin 또는 destination 누락 400', async () => {
-    const { req, res } = createMockReqRes('GET', { origin: '127.0,37.0' }); // destination missing
+    const { req, res } = createMockReqRes('GET', { origin: '127.0,37.0' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
   });
@@ -77,14 +77,15 @@ test('Kakao Directions API', async (t) => {
 
   await t.test('6. 정상 요청에서 서버 REST 키만 사용', async () => {
     let authHeader = '';
-    global.fetch = async (url: any, options: any) => {
-      authHeader = options?.headers?.Authorization || '';
+    global.fetch = async (_url: string | URL | Request, options?: RequestInit) => {
+      authHeader = new Headers(options?.headers).get('Authorization') || '';
       return {
         ok: true,
+        status: 200,
         json: async () => ({ mock: 'data' })
       } as Response;
     };
-    
+
     const { req, res } = createMockReqRes('GET', { origin: '127.0,37.0', destination: '127.0,37.0' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 200);
