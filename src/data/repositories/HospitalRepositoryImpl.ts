@@ -93,10 +93,12 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       longitude: h.coordinates.longitude,
     }));
 
+    // Five concurrent requests keeps the batch bounded while reducing the
+    // top-10 enrichment from four request waves (3+3+3+1) to two (5+5).
     const routeMap = await this.directionsClient.getBatchRouteInfoConcurrent(
       { latitude: origin.latitude, longitude: origin.longitude },
       destinations,
-      3
+      5
     );
 
     return hospitals.map((hospital) => {
