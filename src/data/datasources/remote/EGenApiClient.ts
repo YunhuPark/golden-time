@@ -30,7 +30,13 @@ export class EGenApiClient {
       pageNo: '1',
       _type: 'json',
     });
-    if (stage1) params.append('STAGE1', stage1);
+
+    // The real-time bed endpoint currently returns zero rows for the full
+    // administrative label "광주광역시" while the upstream E-Gen service
+    // returns the live Gwangju/Jeonnam feed for "광주". Keep the app's full
+    // region label for geocoding/UI and normalize only this E-Gen request.
+    const emergencyBedStage1 = this.normalizeEmergencyBedStage1(stage1);
+    if (emergencyBedStage1) params.append('STAGE1', emergencyBedStage1);
     if (stage2) params.append('STAGE2', stage2);
 
     const response = await this.fetchWithRetry<EGenApiResponse<EmergencyRoomBedDTO>>(
@@ -134,6 +140,11 @@ export class EGenApiClient {
       dutyEmclsName: '',
       dutyEryn: '1',
     };
+  }
+
+  private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
+    if (stage1 === '광주광역시') return '광주';
+    return stage1;
   }
 
   private async fetchWithRetry<T>(url: string, retries = this.maxRetries): Promise<T> {
