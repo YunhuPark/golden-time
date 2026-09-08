@@ -33,8 +33,9 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
         const distanceKm = hospital.distanceFrom(coords) / 1000;
         if (distanceKm > MAX_DISTANCE_KM) {
-          console.warn(
-            `⚠️ Filtering out hospital "${hospital.name}" - too far from user (${distanceKm.toFixed(1)}km > ${MAX_DISTANCE_KM}km)`
+          // Normal filtering, not a warning/error condition.
+          console.debug(
+            `Filtering out hospital "${hospital.name}" - too far from user (${distanceKm.toFixed(1)}km > ${MAX_DISTANCE_KM}km)`
           );
           return false;
         }

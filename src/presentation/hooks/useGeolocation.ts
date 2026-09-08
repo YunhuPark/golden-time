@@ -27,7 +27,7 @@ export interface GeolocationState {
  *
  * Edge Cases 처리:
  * 1. 권한 거부 → Manual input fallback + Seoul City Hall default
- * 2. 타임아웃 → Retry with longer timeout → IP geolocation
+ * 2. 타임아웃 → Last known location 또는 기본 위치 fallback
  * 3. 위치 불가 → Last known location from localStorage
  * 4. 낮은 정확도 (>100m) → Warning banner
  * 5. 브라우저 미지원 → Error message
@@ -104,11 +104,16 @@ export function useGeolocation(
     };
 
     const handleError = (error: GeolocationPositionError) => {
-      console.error('Geolocation error:', error);
-
-      // Edge Case 3: Last known location fallback
+      // Browser geolocation timeouts/permission states are recoverable user/device
+      // conditions, not application failures. The UI already communicates the
+      // fallback state, so avoid reporting them as console errors.
       const lastKnown = getLastKnownLocation();
       if (lastKnown) {
+        console.info('ℹ️ Geolocation unavailable; using last known location', {
+          code: error.code,
+          message: error.message,
+          ageMinutes: lastKnown.ageMinutes,
+        });
         setState({
           location: lastKnown.coords,
           error: {
@@ -141,6 +146,10 @@ export function useGeolocation(
         },
       };
 
+      console.info('ℹ️ Geolocation unavailable; using default location', {
+        code: error.code,
+        message: error.message,
+      });
       setState({
         location: getSeoulCityHall(),
         error: errorMessages[error.code] ?? {
@@ -161,7 +170,7 @@ export function useGeolocation(
       // 타임아웃 안전장치 (디바이스에 따라 동적 조정)
       const fallbackTimeout = setTimeout(() => {
         timedOut = true;
-        console.warn(`⚠️ Geolocation timeout (>${fallbackDuration/1000}s), using fallback location`);
+        console.info(`ℹ️ Geolocation timeout (>${fallbackDuration/1000}s), using fallback location`);
         setState({
           location: getSeoulCityHall(),
           error: {
@@ -189,13 +198,6 @@ export function useGeolocation(
         (error) => {
           if (timedOut) return; // 이미 타임아웃된 경우 무시
           clearTimeout(fallbackTimeout);
-          console.error('❌ Geolocation error:', {
-            code: error.code,
-            message: error.message,
-            PERMISSION_DENIED: error.PERMISSION_DENIED,
-            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-            TIMEOUT: error.TIMEOUT,
-          });
           handleError(error);
         },
         { ...options, timeout: timeoutDuration } // 모바일/데스크톱 동적 조정

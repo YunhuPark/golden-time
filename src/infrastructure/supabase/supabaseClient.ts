@@ -19,8 +19,8 @@ const supabaseConfig = resolveSupabasePublicConfig(configuredUrl, configuredAnon
 export const supabaseOptionalFeaturesEnabled = supabaseConfig.source === 'environment';
 
 if (!supabaseOptionalFeaturesEnabled) {
-  console.warn(
-    `⚠️ Supabase optional features are temporarily disabled (${supabaseConfig.reason}). ` +
+  console.info(
+    `ℹ️ Supabase optional features disabled (${supabaseConfig.reason}). ` +
       'Hospital search and E-Gen realtime data remain available.'
   );
 }
