@@ -252,9 +252,11 @@ export const HomePage: React.FC = () => {
         }
 
         if (isCancelled) return;
-        // 초기 랭킹은 화면에 바로 노출하지 않습니다.
-        // 상위 후보의 실제 경로시간 계산 후 최종 랭킹을 한 번만 표시합니다.
-        console.log(`✅ Loaded ${result.hospitals.length} hospitals from API; final ranking pending route info`);
+        // E-Gen/지오코딩 결과는 이미 AI/응급도 기준으로 1차 랭킹되어 있습니다.
+        // 실제 도로 경로 계산은 느릴 수 있으므로 병원 목록을 즉시 노출하고,
+        // 상위 후보의 경로시간만 백그라운드에서 보강한 뒤 최종 랭킹을 갱신합니다.
+        setHospitals(result.hospitals, result.warning);
+        console.log(`✅ Showing ${result.hospitals.length} hospitals immediately; enriching top 10 route info in background`);
 
         // 진행 중인 경로 계산 요청 ID 갱신
         searchRequestIdRef.current += 1;
@@ -274,8 +276,8 @@ export const HomePage: React.FC = () => {
           has_warning: !!result.warning,
         });
 
-        // 최종 후보가 확정될 때까지 로딩 상태를 유지해 중간 순위가 깜빡이지 않게 합니다.
-        await (async () => {
+        // 경로 계산은 초기 결과 렌더링을 막지 않습니다.
+        void (async () => {
           try {
             const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
             
@@ -307,8 +309,7 @@ export const HomePage: React.FC = () => {
           } catch (routeErr) {
             console.error('Failed to calculate routes in background:', routeErr);
             if (!isCancelled && searchRequestIdRef.current === currentReqId) {
-              // 경로 계산 실패 시에만 1차 랭킹을 fallback으로 표시합니다.
-              setHospitals(result.hospitals, result.warning);
+              // 초기 병원 목록은 이미 노출되어 있으므로 유지하고 경로 상태만 실패로 표시합니다.
               setRouteCalcStatus(prev => {
                 const nextStatus = { ...prev };
                 top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
