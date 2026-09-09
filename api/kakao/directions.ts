@@ -18,7 +18,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Bad Request: origin and destination are required' });
     }
 
-    // Validate coordinates format (lng,lat)
     const coordRegex = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
     if (!coordRegex.test(origin) || !coordRegex.test(destination)) {
       return res.status(400).json({ error: 'Bad Request: Invalid coordinate format' });
@@ -66,8 +65,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     targetUrl.searchParams.set('destination', destination);
     if (priority) targetUrl.searchParams.set('priority', priority);
 
+    // Keep the server budget shorter than the browser budget. This lets the
+    // client receive an explicit 504 and retry once instead of abandoning a
+    // still-running serverless request after its own timeout.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     try {
       const response = await fetch(targetUrl.toString(), {
@@ -81,6 +83,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (response.status === 429) {
         return res.status(429).json({ error: 'Rate Limit Exceeded' });
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return res.status(response.status).json({ error: 'Unauthorized' });
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        return res.status(response.status).json({ error: 'Bad Request' });
       }
 
       if (!response.ok) {
