@@ -54,7 +54,7 @@ export class EGenApiClient {
     QZ = 'Y',
     numOfRows = 300
   ): Promise<HospitalBasicInfoDTO[]> {
-    const endpoint = '/ErmctInfoInqireService/getHsptlBassInfoInqire';
+    const endpoint = '/HsptlAsembySearchService/getHsptlBassInfoInqire';
     const params = new URLSearchParams({
       _endpoint: endpoint,
       numOfRows: numOfRows.toString(),
@@ -65,8 +65,6 @@ export class EGenApiClient {
     if (Q0) params.append('Q0', Q0);
     if (Q1) params.append('Q1', Q1);
 
-    // Basic metadata is an optimization, not a hard dependency. Keep its
-    // latency budget short and do not retry so Kakao fallback remains reliable.
     const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(
       `/api/egen?${params.toString()}`,
       1,
