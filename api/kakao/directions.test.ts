@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import handler from './directions';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { ApiRequest, ApiResponse } from '../httpTypes';
 
 function createMockReqRes(method: string, query: Record<string, any>) {
-  const req = { method, query } as unknown as VercelRequest;
+  const req = { method, query } as ApiRequest;
   const res: any = {
     statusCode: 200,
     headers: {},
@@ -22,7 +22,7 @@ function createMockReqRes(method: string, query: Record<string, any>) {
       return this;
     }
   };
-  return { req, res: res as VercelResponse & { statusCode: number; headers: any; body: any } };
+  return { req, res: res as ApiResponse & { statusCode: number; headers: any; body: any } };
 }
 
 test('Kakao Directions API', async (t) => {
