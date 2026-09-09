@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
  * Edge Cases:
  * - 네트워크 끊김 시 즉시 오프라인 모드 전환
  * - 네트워크 복구 시 자동 새로고침 옵션 제공
- * - 느린 네트워크 감지 (연결은 되어있지만 매우 느림)
+ * - 브라우저 navigator.onLine 오탐 보정
  */
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState<boolean>(
@@ -17,24 +17,20 @@ export function useNetworkStatus() {
   const [justReconnected, setJustReconnected] = useState<boolean>(false);
 
   useEffect(() => {
-    // 온라인 상태 변경 핸들러
     const handleOnline = () => {
       console.log('✅ Network connection restored');
       setIsOnline(true);
 
-      // 오프라인에서 복구된 경우
       if (wasOffline) {
         setJustReconnected(true);
         setWasOffline(false);
 
-        // 5초 후 자동으로 "방금 재연결됨" 플래그 해제
         setTimeout(() => {
           setJustReconnected(false);
         }, 5000);
       }
     };
 
-    // 오프라인 상태 변경 핸들러
     const handleOffline = () => {
       console.warn('⚠️ Network connection lost');
       setIsOnline(false);
@@ -42,34 +38,39 @@ export function useNetworkStatus() {
       setJustReconnected(false);
     };
 
-    // 이벤트 리스너 등록
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // 초기 상태 확인 (브라우저 API와 실제 네트워크 상태가 다를 수 있음)
     const checkInitialStatus = async () => {
-      try {
-        // 실제 네트워크 요청으로 확인
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3초 타임아웃
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        await fetch('https://www.google.com/favicon.ico', {
-          mode: 'no-cors',
+      try {
+        // Same-origin request keeps CSP strict and avoids leaking a third-party
+        // connectivity probe. `no-store` prevents a cached shell from being
+        // mistaken for a live network connection.
+        const response = await fetch('/', {
+          method: 'HEAD',
+          cache: 'no-store',
           signal: controller.signal,
         });
 
-        clearTimeout(timeoutId);
+        if (!response.ok) {
+          throw new Error(`Network health check returned ${response.status}`);
+        }
+
         setIsOnline(true);
-      } catch (error) {
+      } catch {
         console.warn('Initial network check failed, assuming offline');
         setIsOnline(false);
         setWasOffline(true);
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
 
-    checkInitialStatus();
+    void checkInitialStatus();
 
-    // Cleanup
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
