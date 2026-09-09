@@ -11,7 +11,7 @@ import { KakaoPlacesClient } from './KakaoPlacesClient';
 export class EGenApiClient {
   private readonly timeout: number;
   private readonly maxRetries: number;
-  private readonly performanceSearchId?: number;
+  private performanceSearchId?: number;
   private readonly geocodingClient: KakaoPlacesClient;
 
   constructor(timeout = 16000, maxRetries = 2, performanceSearchId?: number) {
@@ -19,6 +19,10 @@ export class EGenApiClient {
     this.maxRetries = maxRetries;
     this.performanceSearchId = performanceSearchId;
     this.geocodingClient = new KakaoPlacesClient();
+  }
+
+  setPerformanceSearchId(searchId: number | null): void {
+    this.performanceSearchId = searchId ?? undefined;
   }
 
   async getEmergencyRoomBeds(
