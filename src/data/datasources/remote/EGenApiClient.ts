@@ -78,11 +78,13 @@ export class EGenApiClient {
     Q0?: string,
     Q1?: string
   ): Promise<HospitalBasicInfoDTO[]> {
+    const normalizedQ0 = this.normalizeHospitalListRegion(Q0);
+
     // A/B/C cover the main emergency institution classes used by the public
     // regional list API. Missing institutions still fall back to Kakao below.
     const typeResults = await Promise.all(
       ['A', 'B', 'C'].map((QZ) =>
-        this.getHospitalListByType(Q0, Q1, QZ).catch(() => [] as HospitalBasicInfoDTO[])
+        this.getHospitalListByType(normalizedQ0, Q1, QZ).catch(() => [] as HospitalBasicInfoDTO[])
       )
     );
 
@@ -258,6 +260,11 @@ export class EGenApiClient {
   private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
     if (stage1 === '광주광역시') return '광주';
     return stage1;
+  }
+
+  private normalizeHospitalListRegion(region?: string): string | undefined {
+    if (region === '광주광역시') return '광주';
+    return region;
   }
 
   private async fetchWithRetry<T>(
