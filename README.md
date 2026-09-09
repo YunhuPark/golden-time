@@ -1,487 +1,339 @@
-# 🚑 Golden-Time - 실시간 응급실 검색 시스템
+# 🚑 Golden-Time
 
-> **응급 상황 발생 시 최적의 병상 검색 지원 (포트폴리오/프로토타입)**
-> 전국 응급실 병상 가용 현황을 파악하여 적합한 병원으로 안내를 돕는 시스템입니다.
-> ⚠️ 이 프로젝트는 포트폴리오 목적이며, 실제 의료 판단이나 응급 구조 요청(119)을 대체하지 않습니다.
+> 실시간 응급실 가용 병상, 병원 위치, 이동시간을 결합해 **현재 위치에서 실제로 갈 만한 응급의료기관을 빠르게 찾는 웹 애플리케이션**입니다.
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live-success?style=for-the-badge&logo=vercel)](https://golden-time.vercel.app)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-golden--time.vercel.app-000000?style=for-the-badge&logo=vercel)](https://golden-time.vercel.app/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/Node-24.x-339933?style=flat-square&logo=node.js)](https://nodejs.org/)
 
----
-
-## 📋 프로젝트 개요
-
-**Golden-Time**은 응급 상황에서 환자를 수용 가능한 병원으로 안내하는 **응급실 검색 시스템**입니다.
-추후 외부 의료 영상 분석 프로젝트인 **Medi-Matrix**와 연동하여 분석 결과를 기반으로 적합한 병원을 찾을 수 있도록 구상 중인 독립적인 웹 애플리케이션입니다.
+> [!IMPORTANT]
+> Golden-Time은 포트폴리오/프로토타입입니다. 의료기기나 진단 시스템이 아니며 119, 의료진의 판단, 실제 병원의 수용 가능 여부 확인을 대체하지 않습니다.
 
 ---
 
-## ✨ 핵심 기능
+## 1. 문제 정의
 
-### 🚨 실시간 응급실 검색 & 추천 매칭
-- **병상 가용률 실시간 파악**: 국립중앙의료원(E-Gen) API를 호출하여 현재 가용 병상이 있는 병원을 우선적으로 안내합니다.
-- **다중 요소 스코어링**: 최단 소요 시간, 병상 여유, 질환 적합도, 외상센터 등급, 운영 여부를 기반으로 점수를 합산하여 병원을 추천합니다.
-- **만실 긴급 경고**: 반경 내 응급실이 모두 만실일 경우, 레드 알럿(119 호출 안내) UI로 전환됩니다.
+응급 상황에서 단순히 "가까운 병원"만 찾는 것으로는 충분하지 않습니다.
 
-### 🤖 AI 기반 병원 특화 분야 데이터 파이프라인
-- **전국 병원 무인 자동 모니터링**: 백그라운드 파이프라인을 통해 각 병원의 최신 진료 특화 분야 데이터를 지속 갱신합니다.
-- **비용 최적화 캐싱**: 빈번한 API 호출을 줄이고 데이터 최신성을 보장하기 위해 TTL 기반 Negative 캐싱을 적극 활용합니다.
+- 가까워도 응급실 가용 병상이 없을 수 있습니다.
+- 직선거리와 실제 도로 이동시간은 다릅니다.
+- 공공 API 데이터와 지도 API 데이터는 서로 다른 식별자/좌표 품질을 가질 수 있습니다.
+- 외부 API 하나가 느리거나 실패하면 전체 검색 UI가 같이 멈출 수 있습니다.
 
-### 🗺️ 정밀 GPS 탐색 및 카카오 모빌리티 연동
-- **위치 기반 자동 반경 확장 검색**: 환자 주변 5km 이내 병원이 부족하면 10km → 20km → 50km로 반경을 스마트하게 확대합니다.
-- **Kakao Directions API**: 실시간 교통 상황을 반영한 정확한 도착 예상 시간(ETA)과 경로를 제공합니다.
-
-### 👤 로컬 의료 프로필 암호화 시연 (Web Crypto API)
-- **로컬 보안 저장**: 기저질환, 알레르기 등을 브라우저 내장 Web Crypto API (AES-256-GCM)로 암호화하여 기기에 저장하는 기능을 시연합니다. (주의: 프론트엔드 환경의 특성상 완전한 보안을 보장하지 않습니다.)
-- **응급 의료진용 QR 코드**: 의료 정보를 담은 QR 코드를 생성합니다.
+Golden-Time은 이 문제를 **실시간 병상 + 공식 병원 좌표 + 실제 경로시간 + 부분 실패 허용** 구조로 해결하는 것을 목표로 합니다.
 
 ---
 
-## 🏗️ 기술 스택
+## 2. 현재 동작 방식
 
-### Frontend
-- **React 18** + **TypeScript** - 타입 안정성 보장
-- **Vite 6** - 초고속 개발 서버 및 빌드 (HMR)
-- **Zustand** - 경량 상태 관리 라이브러리
-- **Tailwind CSS** + **shadcn/ui** - Utility-first CSS + 디자인 시스템
-- **Kakao Maps SDK** - 지도 및 경로 안내
+```text
+사용자 위치
+   ↓
+행정지역 추론
+   ↓
+E-Gen 실시간 병상 API ─────────────┐
+E-Gen 지역 병원목록 A/B/C ────────┤  병렬 조회
+                                   ↓
+                         HPID 기준 정확 병합
+                                   ↓
+                    공식 좌표 우선 사용
+                                   ↓
+              좌표 누락 건만 Kakao Geocoding
+                                   ↓
+                 거리 필터 + 1차 병원 랭킹
+                                   ↓
+                    병원 목록 즉시 화면 표시
+                                   ↓
+              상위 10개 Kakao Directions 계산
+                                   ↓
+                 실제 이동시간 반영 최종 랭킹
+```
 
-### Backend & Infrastructure
-- **Supabase** - PostgreSQL 기반 백엔드 (인증, DB, RLS)
-- **Vercel** - 글로벌 CDN 배포 및 서버리스 함수
-- **Google OAuth 2.0** - 소셜 로그인
-- **IndexedDB** - 클라이언트 사이드 캐싱
-
-### Security & Monitoring
-- **Web Crypto API** - 의료 데이터 암호화 구현 시연
-- **Row-Level Security** - Supabase 데이터베이스 접근 제어
-- **Sentry** - 에러 추적 및 성능 모니터링
+핵심은 **경로 계산이 끝날 때까지 병원 목록 전체를 기다리지 않는 것**입니다. 먼저 E-Gen 기반 후보를 보여주고, 상위 후보의 실제 이동시간을 백그라운드에서 보강한 뒤 최종 순서를 갱신합니다.
 
 ---
 
-## 📂 프로젝트 구조 (Clean Architecture)
+## 3. 핵심 기능
 
-```
-golden-time/
-├── src/
-│   ├── domain/                     # 비즈니스 로직 (프레임워크 독립적)
-│   │   ├── entities/               # 핵심 엔티티
-│   │   │   ├── Hospital.ts         # 병원 정보
-│   │   │   ├── HospitalRoute.ts    # 경로 정보
-│   │   │   └── UserProfile.ts      # 사용자 프로필
-│   │   ├── usecases/               # 유즈케이스
-│   │   │   ├── GetNearbyHospitals.ts
-│   │   │   └── CalculateOptimalRoute.ts
-│   │   ├── repositories/           # Repository 인터페이스
-│   │   │   └── IHospitalRepository.ts
-│   │   └── types/                  # 도메인 타입
-│   │       ├── HospitalFilter.ts
-│   │       └── SortOption.ts
-│   │
-│   ├── data/                       # 데이터 접근 계층
-│   │   ├── datasources/
-│   │   │   ├── remote/
-│   │   │   │   ├── EGenApiClient.ts  # 응급의료포털 API
-│   │   │   │   └── KakaoMapClient.ts # 카카오맵 API
-│   │   │   └── local/
-│   │   │       └── IndexedDBClient.ts
-│   │   ├── repositories/
-│   │   │   └── HospitalRepositoryImpl.ts
-│   │   └── models/                 # DTO 및 Mapper
-│   │       └── HospitalDTO.ts
-│   │
-│   ├── presentation/               # UI 계층
-│   │   ├── components/
-│   │   │   ├── hospital/           # 병원 관련 컴포넌트
-│   │   │   │   ├── HospitalList.tsx
-│   │   │   │   ├── HospitalCard.tsx
-│   │   │   │   ├── HospitalDetailModal.tsx
-│   │   │   │   ├── HospitalBottomSheet.tsx
-│   │   │   │   └── HospitalFilterPanel.tsx
-│   │   │   ├── profile/            # 프로필 관련 컴포넌트
-│   │   │   │   ├── MedicalProfileForm.tsx
-│   │   │   │   ├── EmergencyQRGenerator.tsx
-│   │   │   │   ├── VisitHistoryList.tsx
-│   │   │   │   ├── FavoritesList.tsx
-│   │   │   │   └── MyReviewsList.tsx
-│   │   │   ├── review/             # 리뷰 관련 컴포넌트
-│   │   │   │   ├── ReviewList.tsx
-│   │   │   │   └── ReviewForm.tsx
-│   │   │   ├── map/                # 지도 컴포넌트
-│   │   │   │   └── KakaoMap.tsx
-│   │   │   ├── auth/               # 인증 컴포넌트
-│   │   │   │   └── LoginModal.tsx
-│   │   │   └── common/             # 공통 컴포넌트
-│   │   │       ├── EcgLoader.tsx   # ECG 애니메이션 로더
-│   │   │       ├── ThemeToggle.tsx # 다크모드 토글
-│   │   │       └── NetworkStatusBanner.tsx
-│   │   ├── pages/
-│   │   │   ├── HomePage.tsx        # 메인 페이지
-│   │   │   └── ProfilePage.tsx     # 프로필 페이지
-│   │   ├── hooks/                  # Custom Hooks
-│   │   │   ├── useGeolocation.ts   # GPS 위치 정보
-│   │   │   ├── useAuth.ts          # 인증 상태
-│   │   │   └── useNetworkStatus.ts # 네트워크 상태
-│   │   └── styles/
-│   │       ├── global.css          # 글로벌 스타일 (Tailwind)
-│   │       └── theme.ts            # 테마 설정
-│   │
-│   └── infrastructure/             # 횡단 관심사
-│       ├── state/
-│       │   └── store.ts            # Zustand 글로벌 스토어
-│       ├── supabase/
-│       │   └── supabaseClient.ts   # Supabase 초기화
-│       ├── cache/
-│       │   └── HospitalCache.ts    # 병원 데이터 캐싱
-│       ├── monitoring/
-│       │   └── sentry.ts           # Sentry 에러 추적
-│       └── utils/
-│           ├── encryption.ts       # AES-256-GCM 암호화
-│           └── validation.ts       # 입력값 검증
-│
-├── public/                         # 정적 파일
-│   └── icons/                      # 앱 아이콘
-│
-├── scripts/                        # 유틸리티 스크립트
-│   └── apply-schema.js             # Supabase 스키마 적용
-│
-└── supabase/                       # Supabase 설정
-    └── migrations/                 # DB 마이그레이션
-```
+### 🏥 E-Gen 실시간 응급실 검색
+
+- 국립중앙의료원 E-Gen 실시간 가용병상 데이터 조회
+- 지역 병원목록을 병렬 조회하고 `HPID`로 실시간 병상 데이터와 병합
+- E-Gen 공식 위도/경도를 우선 사용
+- 좌표가 없는 병원만 Kakao Geocoding fallback
+- 현재 위치 기준 100km 이내 후보 필터링
+
+### 🚗 Progressive Route Enrichment
+
+- 병원 목록을 먼저 렌더링하고 상위 10개 경로를 백그라운드 계산
+- Kakao Directions 동시 요청 수 제한
+- 성공한 경로는 메모리 캐시(60초)
+- 동일 경로의 in-flight 요청 deduplication
+- 502/503/504, timeout, 일시적 network failure만 1회 재시도
+- 한 병원의 경로 실패가 전체 검색 실패로 전파되지 않음
+
+### 🏆 결정론적 병원 랭킹
+
+현재 Golden-Time 자체가 진단 AI를 실행하지는 않습니다. 병원 추천은 아래 정보를 조합하는 **설명 가능한 점수 기반 로직**입니다.
+
+- 실제 도로 이동시간
+- 응급실 가용 병상
+- ICU 가용 병상/대응 자원
+- 외상 대응 등급
+- 운영 상태
+- 외부 AI 프로젝트가 전달한 `AIAnalysisContext`가 있는 경우 질환/중증도 기반 capability match
+
+즉 Medi-Matrix 같은 외부 분석 시스템과 연결될 수 있지만, Golden-Time 내부의 랭킹 결과를 "AI 진단"으로 표현하지 않습니다.
+
+### 📍 지역 인식 캐시 fallback
+
+- 최근 병원 검색 결과를 브라우저에 30분 TTL로 저장
+- 저장 지역은 문자열 하드코딩이 아니라 현재 좌표에서 계산
+- 현재 지역과 캐시 지역이 다르면 사용하지 않음
+- 위치가 100km 이상 달라진 캐시도 무효화
+- API 장애 시에만 최근 데이터를 fallback으로 사용하고 stale 상태를 UI에 표시
+
+### 👤 선택적 계정 기능
+
+Supabase 기반 인증/즐겨찾기/프로필/리뷰/방문기록은 **선택 기능**입니다.
+
+- 기본값: `VITE_SUPABASE_ENABLED=false`
+- 명시적으로 활성화하지 않으면 외부 Supabase 네트워크 요청을 차단
+- URL/key 누락, 잘못된 URL, 알려진 비가용 프로젝트, project mismatch 시 fail-closed
+- Supabase가 없어도 병원 검색, E-Gen, Kakao 기능은 정상 동작
+
+### 🔐 로컬 암호화 시연
+
+의료 프로필 관련 일부 로컬 데이터에 Web Crypto API(AES-GCM)를 사용하는 시연 코드가 포함되어 있습니다.
+
+`VITE_ENCRYPTION_KEY`는 Vite 클라이언트 번들에 포함되는 값이므로 **서버 비밀키가 아니며 실제 민감 의료정보 저장용 보안 모델로 간주하지 않습니다.**
 
 ---
 
-## 🚀 빠른 시작
+## 4. 성능 개선 사례
 
-### 1. 사전 요구사항
+병원 검색이 느렸던 가장 큰 원인은 E-Gen 실시간 병상 응답에 좌표가 없어 **수십 개 병원을 Kakao로 전부 geocoding**하던 구조였습니다.
 
-- **Node.js** 18 이상
-- **npm** 또는 **yarn**
+이를 다음과 같이 개선했습니다.
 
-### 2. 설치
+1. E-Gen 지역 병원목록을 실시간 병상 조회와 병렬 호출
+2. `HPID` 기준으로 공식 좌표를 정확 병합
+3. 공식 좌표가 없는 병원만 Kakao fallback
+4. 경로 계산은 초기 렌더링 이후 background enrichment
+5. 경로 캐시 + in-flight dedup + 제한적 retry 적용
 
-```bash
-# 저장소 클론
-git clone https://github.com/YunhuPark/golden-time.git
-cd golden-time
+### 수동 계측 예시: 광주 검색
 
-# 의존성 설치
-npm install
-```
+| 항목 | 개선 전 | 개선 후 관찰값 |
+| --- | ---: | ---: |
+| E-Gen fetch | 약 1.5s | 약 1~2s |
+| Geocoding | **12,206ms** | **1ms** |
+| Ranking | 1ms | 수 ms |
+| E-Gen coordinate match | - | 61/61 (해당 실행) |
 
-### 3. 환경 변수 설정
+> 위 값은 브라우저의 내장 성능 telemetry로 관찰한 특정 실행 예시이며 공식 벤치마크가 아닙니다. 네트워크와 외부 API 상태에 따라 달라질 수 있습니다.
 
-`.env.example`을 `.env`로 복사하고 실제 값을 입력하세요:
-
-```bash
-cp .env.example .env
-```
-
-필수 환경 변수:
-
-```env
-# 서버 전용 환경 변수 (브라우저에 노출되지 않음)
-EGEN_SERVICE_KEY=your_egen_api_key_here
-KAKAO_REST_API_KEY=your_kakao_rest_key_here
-
-# 브라우저 전용 환경 변수
-# ⚠️ VITE_ 접두사가 붙은 변수는 브라우저 번들에 포함되므로 실제 비밀 키를 넣지 마세요!
-VITE_KAKAO_MAP_APP_KEY=your_kakao_map_key_here
-
-# 클라이언트 사이드 암호화 키 (주의: 소스 코드에 노출되므로 완전한 보안이 아님)
-VITE_ENCRYPTION_KEY=your_encryption_key_here
-
-# Supabase 설정
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Google OAuth (선택)
-VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
-
-# Sentry (선택)
-VITE_SENTRY_DSN=your_sentry_dsn
-```
-
-### 4. 개발 서버 실행
-
-```bash
-npm run dev
-```
-
-브라우저에서 http://localhost:3000 접속
-
-### 5. 프로덕션 빌드
-
-```bash
-npm run build
-npm run preview  # 빌드 결과 미리보기
-```
+개발 중에는 콘솔의 `[PERF] hospital_search_initial`, `[PERF] hospital_search_complete`와 `window.__GOLDEN_TIME_PERF__`에서 최근 검색 계측값을 확인할 수 있습니다. 위치 좌표나 병원명은 성능 기록에 저장하지 않습니다.
 
 ---
 
-## 🔑 API 키 발급 가이드
-
-### 1. 응급의료포털 API (필수)
-
-1. [공공데이터포털](https://www.data.go.kr) 회원가입 및 로그인
-2. 다음 API 신청:
-   - **실시간 응급실 병상 정보 조회 서비스**
-   - **응급의료기관 기본정보 조회 서비스**
-3. 승인 후 서비스 키를 `.env`의 `EGEN_SERVICE_KEY`에 입력
-
-> ⚠️ 개발용/운영용 키가 다르므로 주의하세요. 활용 신청 시 "운영 계정 활용 신청"을 선택하세요.
-
-### 2. Kakao Maps API (필수)
-
-1. [Kakao Developers](https://developers.kakao.com) 로그인
-2. **내 애플리케이션** → **애플리케이션 추가하기**
-3. **플랫폼** → **Web 플랫폼 추가** → 사이트 도메인 등록 (예: `http://localhost:3000`)
-4. **앱 키** → **JavaScript 키** 복사 후 `.env`의 `VITE_KAKAO_MAP_APP_KEY`에 입력
-5. **REST API 키** 복사 후 `.env`의 `KAKAO_REST_API_KEY`에 입력
-
-### 3. Supabase (선택 - 사용자 프로필 기능용)
-
-1. [Supabase](https://supabase.com) 회원가입
-2. **New Project** 생성
-3. **Project Settings** → **API**에서:
-   - **Project URL** → `VITE_SUPABASE_URL`
-   - **Project API keys** → **anon public** → `VITE_SUPABASE_ANON_KEY`
-4. 데이터베이스 스키마 적용:
-   ```bash
-   npm run apply-schema
-   ```
-
-### 4. Google OAuth (선택 - 소셜 로그인용)
-
-1. [Google Cloud Console](https://console.cloud.google.com) 접속
-2. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth Client ID**
-3. **Application type**: Web application
-4. **Authorized JavaScript origins**: `http://localhost:3000`, `https://your-domain.com`
-5. **Authorized redirect URIs**: `https://your-supabase-project.supabase.co/auth/v1/callback`
-6. Client ID 복사 → `.env`의 `VITE_GOOGLE_CLIENT_ID`에 입력
-
----
-
-## 🧪 테스트
-
-```bash
-# 프론트엔드 타입 체크
-npm run type-check
-
-# API 타입 체크
-npm run type-check:api
-
-# API 단위 테스트
-npm run test:api
-
-# Playwright E2E 테스트
-npm run test:e2e
-
-# 린트
-npm run lint
-```
-
----
-
-## 🛡️ 보안
-
-### 의료 데이터 암호화
-
-모든 민감한 의료 정보는 **AES-256-GCM** 알고리즘으로 클라이언트 사이드에서 암호화됩니다.
-
-```typescript
-import { encryptString, decryptString } from '@/infrastructure/utils/encryption';
-
-// 저장 전 암호화
-const encrypted = await encryptString('A+');
-
-// 불러올 때 복호화
-const decrypted = await decryptString(encrypted); // 'A+'
-```
-
-### Supabase Row-Level Security (RLS)
-
-데이터베이스 접근 제어:
-
-```sql
--- 사용자는 자신의 의료 정보만 조회/수정 가능
-CREATE POLICY "Users can view own medical profile"
-  ON medical_profiles FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own medical profile"
-  ON medical_profiles FOR UPDATE
-  USING (auth.uid() = user_id);
-```
+## 5. 보안/운영 하드닝
 
 ### API 키 보호
 
-- ❌ 프론트엔드 코드에 API 키 직접 노출 금지
-- ✅ 환경 변수 사용 (`.env` 파일은 `.gitignore`에 포함)
-- ✅ Vercel 환경 변수에 프로덕션 키 등록
+- `EGEN_SERVICE_KEY`, `KAKAO_REST_API_KEY`는 Vercel Serverless Function에서만 사용
+- 브라우저는 `/api/egen`, `/api/kakao/*` 프록시만 호출
+- E-Gen endpoint allowlist
+- GET-only / query validation / timeout / upstream error normalization
+- 비밀값을 URL 로그나 저장소에 하드코딩하지 않음
 
----
+### Content Security Policy
 
-## 📊 알고리즘: 최적 병원 선정
+Production은 `Content-Security-Policy`를 **실제 enforce 상태**로 사용합니다.
 
-Golden Time은 다중 요소 점수 시스템으로 최적의 병원을 추천합니다.
+- `default-src 'self'`
+- `object-src 'none'`
+- `frame-ancestors 'none'`
+- Kakao Maps SDK/지도 리소스만 필요한 범위에서 허용
+- Supabase/Sentry는 선택 기능 연결 범위만 허용
 
-### 점수 항목 (총점 130점)
+Kakao Maps SDK 내부 동작 때문에 현재 `script-src`에는 `'unsafe-eval'`이 포함됩니다. 애플리케이션 자체 inline JavaScript는 제거했습니다.
 
-- **경로 소요시간 (최대 40점)**: 가장 빠른 병원 40점, 가장 느린 병원 0점 비례 할당. 경로 정보가 없으면 기본 20점.
-- **병상 가용률 (최대 30점)**: 가용 비율에 따라 20~30점 부여. 제한적일 시 15점, 만실이면 0점 처리.
-- **질환 적합도 (최대 30점)**: 환자의 질환과 병원의 진료 특화 분야가 매칭될 경우 추가 점수.
-- **외상센터 등급 (최대 20점)**: 권역외상센터 20점, 지역외상센터 15점, 일반센터 10점, 없음 5점.
-- **응급실 운영 여부 (최대 10점)**: 현재 운영 중일 시 10점.
+### CI Security Gate
 
-### 검색 반경 전략
+GitHub Actions는 Node 24.x에서 `npm ci` 기반으로 재현 가능한 설치를 수행하고 아래 검증을 통과해야 합니다.
 
-1. **1단계**: 5km 이내 검색 → 10개 이상 병원 발견 시 중단
-2. **2단계**: 10km 이내 검색 → 5개 이상 병원 발견 시 중단
-3. **3단계**: 20km 이내 검색 → 3개 이상 병원 발견 시 중단
-4. **최종**: 50km 이내 모든 병원 반환
-
----
-
-## ⚠️ Edge Case 처리
-
-Golden Time은 **모든 예외 상황**을 안전하게 처리합니다:
-
-| 상황 | 처리 방법 |
-|------|----------|
-| 위치 권한 거부 | 수동 위치 입력 옵션 + 서울시청 기본 위치 제공 |
-| GPS 타임아웃 (모바일) | 10초 대기 후 최후 위치 사용 |
-| GPS 타임아웃 (데스크톱) | 30초 대기 (Wi-Fi 기반 위치 측정) |
-| API 타임아웃 | 15초 타임아웃 + IndexedDB 캐시 사용 |
-| 주변에 병원 없음 | "119 호출" 버튼 + 검색 반경 확대 제안 |
-| 모든 응급실 만실 | 119 병상 배정 요청 안내 표시 |
-| 네트워크 오프라인 | 캐시된 데이터 사용 (최대 5분) + 배너 표시 |
-| 낮은 GPS 정확도 (>100m) | 경고 배너 + Wi-Fi 활성화 권장 |
-| 암호화 키 없음 | 의료 정보 저장 불가 + 안내 메시지 |
-| Supabase 연결 실패 | 로컬 저장소 사용 + 동기화 대기 |
-
----
-
-## 🎨 UX 원칙 (응급 상황 최적화)
-
-### 패닉 프루프 디자인
-
-- **대형 터치 영역**: 최소 44px × 44px - 떨리는 손도 정확한 탭 가능
-- **색상 코딩**: 🟢 녹색(가능) / 🟡 노랑(제한) / 🔴 빨강(만실) - 직관적 상태 인식
-- **단순한 계층**: 상위 3개 병원은 스크롤 없이 표시
-- **원터치 액션**: 전화 걸기, 경로 안내 등 확인 대화상자 최소화
-- **ECG 로딩 애니메이션**: 사용자가 시스템 작동을 인지하도록 심전도 애니메이션 표시
-- **다크 모드 Neon Glow**: 야간 응급 상황에서도 가독성 확보
-
-
-
-## 🤝 기여 가이드
-
-1. 이 저장소를 Fork합니다
-2. 새 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'feat: Add amazing feature'`)
-4. 브랜치에 Push합니다 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성합니다
-
-### 커밋 컨벤션
-
+```text
+npm audit --omit=dev --audit-level=moderate
+Environment validation tests
+Frontend Type Check
+API Type Check
+ESLint
+API Tests
+Production Build
 ```
-feat: 새로운 기능 추가
-fix: 버그 수정
-docs: 문서 수정
-style: 코드 포맷팅 (기능 변경 없음)
-refactor: 코드 리팩토링
-test: 테스트 코드 추가
-chore: 빌드 설정 변경
-perf: 성능 개선
+
+Production dependency에서 moderate 이상 취약점이 발견되면 CI가 실패합니다.
+
+---
+
+## 6. 기술 스택
+
+| 영역 | 기술 |
+| --- | --- |
+| Frontend | React 18, TypeScript 5.6, Vite 6 |
+| State | Zustand |
+| Styling | Tailwind CSS |
+| Public data | National Emergency Medical Center E-Gen |
+| Maps / Route | Kakao Maps SDK, Kakao Geocoding, Kakao Directions |
+| Server boundary | Vercel Serverless Functions |
+| Optional account backend | Supabase |
+| Optional monitoring | Sentry (`VITE_SENTRY_DSN`이 있을 때만 초기화) |
+| Testing | Node test runner, Vitest, Playwright |
+| CI/CD | GitHub Actions, Vercel |
+| Runtime | Node.js 24.x |
+
+---
+
+## 7. 프로젝트 구조
+
+```text
+golden-time/
+├─ api/                         # Vercel serverless API proxies
+│  ├─ egen.ts
+│  └─ kakao/
+├─ src/
+│  ├─ domain/                  # Entities, value objects, ranking/use cases
+│  ├─ data/                    # E-Gen/Kakao clients, repository implementation
+│  ├─ infrastructure/          # Cache, Supabase, monitoring, security utilities
+│  └─ presentation/            # React pages/components/hooks
+├─ scripts/                    # env validation, crawler/maintenance scripts
+├─ e2e/                        # Playwright scenarios
+├─ docs/                       # operational/supporting documentation
+├─ vercel.json                 # routing, cache headers, CSP
+└─ .github/workflows/ci.yml    # quality/security gate
 ```
 
 ---
 
-## 📈 성능 최적화
+## 8. 로컬 실행
 
-- **Code Splitting**: 라우트 기반 동적 import로 초기 로딩 속도 개선
-- **이미지 최적화**: WebP 포맷 + lazy loading
-- **API 요청 최적화**: Debouncing + Request Deduplication
-- **상태 관리 최적화**: Zustand의 선택적 구독으로 불필요한 리렌더링 방지
-- **Bundle 크기 최적화**: Tree-shaking + 미사용 코드 제거
+### 요구사항
 
----
+- Node.js **24.x**
+- npm
+- E-Gen API service key
+- Kakao REST API key
+- Kakao JavaScript key
 
-## 🌍 브라우저 지원
+### 설치
 
-- ✅ Chrome 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Edge 90+
-- ✅ 모바일 브라우저 (iOS Safari, Chrome Mobile)
+```bash
+git clone https://github.com/YunhuPark/golden-time.git
+cd golden-time
+npm ci
+cp .env.example .env
+```
 
----
+Windows PowerShell에서는 `.env.example`을 `.env`로 직접 복사해도 됩니다.
 
-## 📜 라이선스
+### 핵심 환경 변수
 
-이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+```env
+# Server-only secrets
+EGEN_SERVICE_KEY=...
+KAKAO_REST_API_KEY=...
 
----
+# Browser public/config values
+VITE_KAKAO_MAP_APP_KEY=...
+VITE_ENCRYPTION_KEY=...
 
-## 📚 상세 문서
+# Optional account features: disabled by default
+VITE_SUPABASE_ENABLED=false
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 
-자세한 설정 및 사용 가이드는 다음 문서를 참조하세요:
+# Optional monitoring
+VITE_SENTRY_DSN=
+```
 
-- **[📖 전체 문서 목록](./docs/)** - 모든 상세 문서
-- **[🗄️ 데이터베이스 스키마](./supabase/)** - Supabase 스키마 및 마이그레이션
-- **[🚀 빠른 시작](./docs/QUICKSTART.md)** - 5분 안에 프로젝트 실행
-- **[🔐 Supabase 설정](./docs/SUPABASE_SETUP.md)** - 백엔드 초기 설정
-- **[🚢 배포 가이드](./docs/DEPLOYMENT.md)** - Vercel 배포 방법
+> `VITE_`로 시작하는 값은 브라우저 번들에 포함될 수 있으므로 서버 비밀값을 넣으면 안 됩니다.
 
----
+### 실행
 
-## 📞 문의
+```bash
+# Vercel serverless proxy까지 포함한 로컬 개발
+npm run dev
 
-프로젝트 관련 문의사항은 [Issues](https://github.com/YunhuPark/golden-time/issues)에 등록해주세요.
+# UI만 빠르게 실행
+npm run dev:ui
+```
 
----
+### 품질 검증
 
-## 🙏 감사의 말
-
-- **국립중앙의료원** - 응급의료포털 API 제공
-- **Kakao** - Kakao Maps API 제공
-- **공공데이터포털** - 오픈 API 플랫폼
-- **Supabase** - 백엔드 인프라
-- **Vercel** - 배포 플랫폼
-
----
-
-## 🗺️ 로드맵
-
-### Phase 1: Core Features ✅ (완료)
-- [x] 실시간 응급실 검색
-- [x] Kakao Maps 경로 안내
-- [x] 의료 프로필 관리
-- [x] 응급 QR 생성
-- [x] 병원 리뷰 시스템
-- [x] 다크 모드 지원
-
-### Phase 2: Enhancement (진행 중)
-- [ ] Service Worker 완전한 오프라인 지원
-- [ ] 푸시 알림 (병상 변동 시)
-- [ ] 다국어 지원 (영어, 일본어, 중국어)
-- [ ] 음성 안내 기능
-
-### Phase 3: Advanced Features (예정)
-- [ ] AI 기반 증상 분석 및 병원 추천
-- [ ] 응급 상황 실시간 공유 (가족/보호자)
-- [ ] 병원 혼잡도 예측 (머신러닝)
-- [ ] Apple Watch / Wear OS 연동
+```bash
+npm run type-check
+npm run type-check:api
+npm run lint
+npm run test:api
+npm run build
+```
 
 ---
 
-**⚠️ 면책 조항**: 이 애플리케이션은 정보 제공 목적으로만 사용됩니다. 실제 응급 상황에서는 반드시 119에 먼저 연락하시기 바랍니다.
+## 9. 장애 대응 설계
+
+Golden-Time은 외부 API를 많이 사용하므로 "항상 성공한다"고 가정하지 않습니다.
+
+| 실패 지점 | 대응 |
+| --- | --- |
+| 위치 권한 거부/timeout | 별도 UI와 fallback 처리 |
+| E-Gen 실패 | 최근 같은 지역 병원 캐시 사용 가능 |
+| E-Gen 공식 좌표 일부 누락 | 해당 병원만 Kakao geocoding fallback |
+| Kakao route timeout/5xx | 해당 요청만 1회 재시도 |
+| 특정 병원 route 실패 | 다른 병원 결과 유지 |
+| Supabase 장애/미설정 | 계정 기능만 fail-closed, 검색 기능 유지 |
+| 오래되거나 다른 지역의 cache | 사용하지 않음 |
 
 ---
 
-<div align="center">
-  <strong>생명을 구하는 골든타임, 함께 지켜요 🚑</strong>
-</div>
+## 10. 현재 제한사항
+
+- 공공데이터의 갱신 시점과 실제 현장 수용 가능 상태는 다를 수 있습니다.
+- 병원이 표시되더라도 실제 환자 수용 가능 여부를 보장하지 않습니다.
+- 경로시간은 Kakao API 응답과 당시 교통정보에 의존합니다.
+- 행정지역 추론은 좌표 bounding rule 기반이며 법정 행정경계 GIS 판정이 아닙니다.
+- Supabase 계정 기능은 기본 비활성이고, 운영하려면 별도 프로젝트/RLS 검증이 필요합니다.
+- Sentry는 DSN이 설정된 경우에만 활성화됩니다.
+- 클라이언트 암호화 기능은 보안 개념 시연이며 실제 의료정보 보관 설계가 아닙니다.
+
+---
+
+## 11. 포트폴리오에서 보여주려는 것
+
+이 프로젝트의 핵심은 단순한 지도 UI가 아니라 아래 엔지니어링 문제를 실제 production 배포까지 해결한 과정입니다.
+
+- 서로 다른 외부 데이터 소스의 식별자/좌표 병합
+- 느린 critical path를 telemetry로 찾아 구조적으로 제거
+- progressive rendering과 background enrichment
+- timeout/retry/cache/dedup을 통한 외부 API resilience
+- optional dependency의 fail-closed 설계
+- 서버 비밀값 격리와 CSP enforcement
+- CI 기반 dependency audit / type / lint / API regression gate
+- 장애 시 stale cache를 명시적으로 표시하는 graceful degradation
+
+---
+
+## 12. 관련 문서
+
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — 배포 관련 가이드
+- [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md) — 배포 전/후 체크리스트
+- [`docs/EXCEPTION_HANDLING_GUIDE.md`](docs/EXCEPTION_HANDLING_GUIDE.md) — 예외 처리 설계
+- [`.env.example`](.env.example) — 현재 환경 변수 계약
+
+---
+
+## License / Disclaimer
+
+개인 포트폴리오 프로젝트입니다. 실제 응급 상황에서는 **119 또는 의료기관의 공식 안내를 우선**하세요.
