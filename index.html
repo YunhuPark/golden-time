@@ -21,31 +21,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#FF3B30" />
 
-    <!-- Security (CSP - Content Security Policy) -->
-    <!-- TEMPORARY: CSP 완전 비활성화 (디버깅용) -->
-    <!-- <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://dapi.kakao.com;
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https:;
-      font-src 'self' data:;
-      connect-src 'self' https://apis.data.go.kr https://dapi.kakao.com;
-      base-uri 'self';
-      form-action 'self';
-    " /> -->
+    <!-- Security policy is delivered as an HTTP header from vercel.json. -->
 
-    <!-- Resource Hints for Performance (LCP < 1.5s 최적화) -->
-    <!-- DNS Prefetch: DNS 조회 미리 수행 -->
-    <link rel="dns-prefetch" href="https://apis.data.go.kr" />
+    <!-- Kakao Maps SDK is the only critical external browser resource. -->
     <link rel="dns-prefetch" href="https://dapi.kakao.com" />
-    <link rel="dns-prefetch" href="https://supabase.co" />
-
-    <!-- Preconnect: DNS + TCP + TLS 핸드셰이크 미리 수행 (Critical resources) -->
-    <link rel="preconnect" href="https://apis.data.go.kr" crossorigin />
     <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
-
-    <!-- Prefetch: 다음에 필요할 리소스 미리 로드 (Idle time에 로드) -->
-    <link rel="prefetch" href="https://supabase.co" />
 
     <!-- Kakao Maps SDK will be loaded dynamically from main.tsx -->
     <!-- Force Dark Mode initially to prevent FOUC -->
@@ -56,7 +36,6 @@
       }
     </style>
     <script>
-      // 스크립트 실행 시점에도 강제로 다크모드 주입
       document.documentElement.classList.add('dark');
       document.documentElement.setAttribute('data-theme', 'dark');
     </script>
@@ -64,6 +43,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-
   </body>
 </html>
