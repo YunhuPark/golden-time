@@ -52,7 +52,7 @@ export class EGenApiClient {
     Q0?: string,
     Q1?: string,
     QZ = 'Y',
-    numOfRows = 100
+    numOfRows = 300
   ): Promise<HospitalBasicInfoDTO[]> {
     const endpoint = '/ErmctInfoInqireService/getHsptlBassInfoInqire';
     const params = new URLSearchParams({
@@ -65,8 +65,12 @@ export class EGenApiClient {
     if (Q0) params.append('Q0', Q0);
     if (Q1) params.append('Q1', Q1);
 
+    // Basic metadata is an optimization, not a hard dependency. Keep its
+    // latency budget short and do not retry so Kakao fallback remains reliable.
     const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(
-      `/api/egen?${params.toString()}`
+      `/api/egen?${params.toString()}`,
+      1,
+      3500
     );
     return this.extractItems(response);
   }
@@ -78,14 +82,40 @@ export class EGenApiClient {
     console.log('🏥 병원 정보 조회 시작:', { stage1, stage2 });
 
     const fetchStartedAt = performance.now();
-    const beds = await this.getEmergencyRoomBeds(stage1, stage2, 100);
-    const eGenFetchMs = performance.now() - fetchStartedAt;
-    console.log(`✅ 병상 정보: ${beds.length}개 수신`);
+    const basicInfoPromise = this.getHospitalBasicInfo(stage1, stage2).catch((error) => {
+      console.warn('⚠️ E-Gen basic hospital info unavailable; using Kakao fallback', error);
+      return [] as HospitalBasicInfoDTO[];
+    });
+    const bedsPromise = this.getEmergencyRoomBeds(stage1, stage2, 100);
 
-    const combinedList: CombinedHospitalDTO[] = beds.map((bed) => ({
-      basicInfo: this.createBasicInfoFromBedInfo(bed),
-      bedInfo: bed,
-    }));
+    const [beds, basicInfo] = await Promise.all([bedsPromise, basicInfoPromise]);
+    const eGenFetchMs = performance.now() - fetchStartedAt;
+    console.log(`✅ 병상 정보: ${beds.length}개 수신 / 기본정보: ${basicInfo.length}개 수신`);
+
+    const basicInfoByHpid = new Map(
+      basicInfo
+        .filter((item) => Boolean(item.hpid))
+        .map((item) => [item.hpid, item] as const)
+    );
+
+    let basicInfoCoordinateHits = 0;
+    const combinedList: CombinedHospitalDTO[] = beds.map((bed) => {
+      const basic = basicInfoByHpid.get(bed.hpid);
+      if (basic && this.hasValidCoordinates(basic.wgs84Lat, basic.wgs84Lon)) {
+        basicInfoCoordinateHits++;
+      }
+
+      return {
+        basicInfo: basic
+          ? this.mergeBasicInfoWithBed(basic, bed)
+          : this.createBasicInfoFromBedInfo(bed),
+        bedInfo: bed,
+      };
+    });
+
+    if (basicInfo.length > 0) {
+      console.log(`✅ E-Gen coordinate match: ${basicInfoCoordinateHits}/${beds.length}`);
+    }
 
     const geocodingStartedAt = performance.now();
     const geocodingStats = await this.enrichCoordinatesWithGeocoding(combinedList, stage1);
@@ -109,10 +139,7 @@ export class EGenApiClient {
   ): Promise<{ requested: number; succeeded: number }> {
     const hospitalsNeedingGeocoding = combinedList.filter((item) => {
       const { wgs84Lat, wgs84Lon, dutyName } = item.basicInfo;
-      const lat = parseFloat(wgs84Lat || '0');
-      const lon = parseFloat(wgs84Lon || '0');
-      const hasNoCoords =
-        !wgs84Lat || !wgs84Lon || lat === 0 || lon === 0 || Number.isNaN(lat) || Number.isNaN(lon);
+      const hasNoCoords = !this.hasValidCoordinates(wgs84Lat, wgs84Lon);
       const hasValidName = Boolean(
         dutyName &&
         !dutyName.includes('정보 없음') &&
@@ -154,10 +181,29 @@ export class EGenApiClient {
     };
 
     await Promise.all(Array.from({ length: concurrency }, () => worker()));
-    console.log(`✅ Geocoding complete: ${successCount}/${hospitalsNeedingGeocoding.length}`);
+    console.log(`✅ Kakao geocoding fallback: ${successCount}/${hospitalsNeedingGeocoding.length}`);
     return {
       requested: hospitalsNeedingGeocoding.length,
       succeeded: successCount,
+    };
+  }
+
+  private mergeBasicInfoWithBed(
+    basic: HospitalBasicInfoDTO,
+    bed: EmergencyRoomBedDTO
+  ): HospitalBasicInfoDTO {
+    return {
+      ...basic,
+      hpid: bed.hpid,
+      dutyName: basic.dutyName || bed.dutyName || '정보 없음',
+      dutyAddr: basic.dutyAddr || bed.dutyAddr || '주소 정보 없음',
+      dutyTel1: basic.dutyTel1 || bed.dutyTel1 || undefined,
+      dutyTel3: basic.dutyTel3 || bed.dutyTel3 || undefined,
+      wgs84Lat: basic.wgs84Lat?.toString() || bed.wgs84Lat?.toString() || '0',
+      wgs84Lon: basic.wgs84Lon?.toString() || bed.wgs84Lon?.toString() || '0',
+      dutyEmcls: basic.dutyEmcls || '',
+      dutyEmclsName: basic.dutyEmclsName || '',
+      dutyEryn: basic.dutyEryn || '1',
     };
   }
 
@@ -176,15 +222,32 @@ export class EGenApiClient {
     };
   }
 
+  private hasValidCoordinates(latValue?: string, lonValue?: string): boolean {
+    const lat = Number(latValue);
+    const lon = Number(lonValue);
+    return (
+      Number.isFinite(lat) &&
+      Number.isFinite(lon) &&
+      lat >= 33 &&
+      lat <= 39 &&
+      lon >= 124 &&
+      lon <= 132
+    );
+  }
+
   private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
     if (stage1 === '광주광역시') return '광주';
     return stage1;
   }
 
-  private async fetchWithRetry<T>(url: string, retries = this.maxRetries): Promise<T> {
+  private async fetchWithRetry<T>(
+    url: string,
+    retries = this.maxRetries,
+    timeoutMs = this.timeout
+  ): Promise<T> {
     for (let attempt = 0; attempt < retries; attempt++) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const response = await fetch(url, {
