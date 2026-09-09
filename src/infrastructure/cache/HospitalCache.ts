@@ -1,5 +1,6 @@
 import { Hospital } from '../../domain/entities/Hospital';
 import { Coordinates } from '../../domain/valueObjects/Coordinates';
+import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
 
 /**
  * 캐싱된 병원 데이터 인터페이스
@@ -29,13 +30,23 @@ export class HospitalCache {
 
   /**
    * 병원 데이터 캐시에 저장
+   *
+   * region 인자는 과거 호출부 호환을 위해 남겨두지만 실제 저장 지역은
+   * 반드시 현재 좌표에서 계산합니다. 호출자가 잘못된 지역 문자열을 넘겨도
+   * 캐시가 오염되지 않도록 하기 위함입니다.
    */
   static save(
     hospitals: Hospital[],
     location: Coordinates,
-    region: string
+    _legacyRegion?: string
   ): void {
     try {
+      const region = inferRegionFromCoordinates(location);
+      if (!region) {
+        console.warn('Skipping hospital cache because the current region could not be inferred safely');
+        return;
+      }
+
       // Hospital 객체를 직렬화 가능한 형태로 변환
       const serializedHospitals = hospitals.map((h) => ({
         id: h.id,
@@ -109,14 +120,27 @@ export class HospitalCache {
         return null;
       }
 
-      // 위치가 너무 다르면 캐시 무효 (100km 이상 차이)
+      // 현재 위치의 행정지역과 저장된 캐시 지역이 다르면 사용하지 않습니다.
+      // 이전 버전에서 광주 검색 결과를 서울 지역으로 잘못 저장한 캐시도 여기서 차단됩니다.
+      const currentRegion = inferRegionFromCoordinates(userLocation);
+      if (!currentRegion) {
+        console.log('Current region could not be inferred safely; ignoring hospital cache');
+        return null;
+      }
+      if (!cacheData.region || cacheData.region !== currentRegion) {
+        console.log(
+          `Cache region mismatch (${cacheData.region || 'unknown'} != ${currentRegion}), ignoring cache`
+        );
+        return null;
+      }
+
+      // 같은 지역이어도 위치가 너무 다르면 캐시 무효 (100km 이상 차이)
       const cachedLocation = new Coordinates(
         cacheData.location.latitude,
         cacheData.location.longitude
       );
       const distance = userLocation.distanceTo(cachedLocation);
       if (distance > 100000) {
-        // 100km
         console.log(`Cache location too far (${(distance / 1000).toFixed(1)}km), ignoring cache`);
         return null;
       }
@@ -128,7 +152,7 @@ export class HospitalCache {
 
       const isFresh = age < 5 * 60 * 1000; // 5분 이내는 fresh로 간주
 
-      console.log(`✅ Loaded ${hospitals.length} hospitals from cache (${ageMinutes} minutes old, ${isFresh ? 'FRESH' : 'STALE'})`);
+      console.log(`✅ Loaded ${hospitals.length} hospitals from cache (${currentRegion}, ${ageMinutes} minutes old, ${isFresh ? 'FRESH' : 'STALE'})`);
 
       return {
         hospitals,
