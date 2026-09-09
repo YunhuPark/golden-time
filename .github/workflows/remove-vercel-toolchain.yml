@@ -26,6 +26,8 @@ jobs:
         run: |
           npm uninstall --save-dev vercel @vercel/node
           npm pkg set scripts.dev="vite"
+      - name: Apply non-breaking audit fixes
+        run: npm audit fix
       - name: Full dependency audit
         run: npm audit --json > audit-all.json || true
       - name: Print audit summary
