@@ -1,9 +1,90 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
+const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
+const BASIC_INFO_ENDPOINT = '/HsptlAsembySearchService/getHsptlBassInfoInqire';
+
 const ALLOWED_ENDPOINTS = [
-  '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
-  '/ErmctInfoInqireService/getHsptlBassInfoInqire'
+  REALTIME_BEDS_ENDPOINT,
+  BASIC_INFO_ENDPOINT,
 ];
+
+const decodeXmlEntities = (value: string): string =>
+  value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, decimal: string) => String.fromCodePoint(Number.parseInt(decimal, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+const getXmlTag = (xml: string, tagName: string): string | undefined => {
+  const match = xml.match(new RegExp(`<${tagName}>([\\s\\S]*?)<\\/${tagName}>`, 'i'));
+  return match?.[1] === undefined ? undefined : decodeXmlEntities(match[1].trim());
+};
+
+const parseXmlItem = (xml: string): Record<string, string> => {
+  const item: Record<string, string> = {};
+  const tagPattern = /<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagPattern.exec(xml)) !== null) {
+    const [, key, rawValue] = match;
+    if (!key || rawValue === undefined) continue;
+    item[key] = decodeXmlEntities(rawValue.trim());
+  }
+
+  return item;
+};
+
+const parseOptionalNumber = (value?: string): number | undefined => {
+  if (value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const parseEGenXml = (xml: string) => {
+  const headerXml = getXmlTag(xml, 'header') ?? '';
+  const bodyXml = getXmlTag(xml, 'body') ?? '';
+  const itemsXml = getXmlTag(bodyXml, 'items') ?? '';
+
+  const items: Record<string, string>[] = [];
+  const itemPattern = /<item>([\s\S]*?)<\/item>/gi;
+  let itemMatch: RegExpExecArray | null;
+  while ((itemMatch = itemPattern.exec(itemsXml)) !== null) {
+    if (itemMatch[1] !== undefined) {
+      items.push(parseXmlItem(itemMatch[1]));
+    }
+  }
+
+  const body: {
+    items?: { item: Record<string, string> | Record<string, string>[] };
+    numOfRows?: number;
+    pageNo?: number;
+    totalCount?: number;
+  } = {};
+
+  if (items.length === 1) {
+    body.items = { item: items[0]! };
+  } else if (items.length > 1) {
+    body.items = { item: items };
+  }
+
+  body.numOfRows = parseOptionalNumber(getXmlTag(bodyXml, 'numOfRows'));
+  body.pageNo = parseOptionalNumber(getXmlTag(bodyXml, 'pageNo'));
+  body.totalCount = parseOptionalNumber(getXmlTag(bodyXml, 'totalCount'));
+
+  return {
+    response: {
+      header: {
+        resultCode: getXmlTag(headerXml, 'resultCode') ?? '99',
+        resultMsg: getXmlTag(headerXml, 'resultMsg') ?? 'UNKNOWN RESPONSE',
+      },
+      body,
+    },
+  };
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -62,7 +143,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const response = await fetch(targetUrl.toString(), {
         signal: controller.signal,
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json, application/xml, text/xml' },
       });
       clearTimeout(timeoutId);
 
@@ -70,9 +151,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(502).json({ error: 'Bad Gateway' });
       }
 
-      const data = await response.json();
-      // 실시간성을 유지하면서 같은 발표 세션의 반복 요청은 Vercel CDN에서 잠시 재사용.
-      res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+      const contentType = response.headers?.get?.('content-type')?.toLowerCase() ?? '';
+      let data: unknown;
+
+      if (contentType.includes('xml')) {
+        const xml = await response.text();
+        data = parseEGenXml(xml);
+      } else {
+        data = await response.json();
+      }
+
+      if (_endpoint === BASIC_INFO_ENDPOINT) {
+        res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
+      } else {
+        res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
+      }
       return res.status(200).json(data);
     } catch (fetchError: unknown) {
       clearTimeout(timeoutId);

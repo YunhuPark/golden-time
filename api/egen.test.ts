@@ -34,6 +34,8 @@ test('EGen API', async (t) => {
     global.fetch = async () => {
       return {
         ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ mock: 'data' })
       } as Response;
     };
@@ -70,21 +72,26 @@ test('EGen API', async (t) => {
   });
 
   await t.test('5. 잘못된 numOfRows는 400', async () => {
-    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: 'abc' });
+    const endpoint = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
+
+    const { req, res } = createMockReqRes('GET', { _endpoint: endpoint, numOfRows: 'abc' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
 
-    const { req: req2, res: res2 } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: '301' });
+    const { req: req2, res: res2 } = createMockReqRes('GET', { _endpoint: endpoint, numOfRows: '301' });
     await handler(req2, res2);
     assert.strictEqual(res2.statusCode, 400);
 
-    const { req: req3, res: res3 } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', numOfRows: '1.5' });
+    const { req: req3, res: res3 } = createMockReqRes('GET', { _endpoint: endpoint, numOfRows: '1.5' });
     await handler(req3, res3);
     assert.strictEqual(res3.statusCode, 400);
   });
 
   await t.test('5-1. 잘못된 _type은 400', async () => {
-    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', _type: 'xml' });
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      _type: 'xml'
+    });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
   });
@@ -95,11 +102,16 @@ test('EGen API', async (t) => {
       requestedUrl = url.toString();
       return {
         ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => ({ mock: 'data' })
       } as Response;
     };
-    
-    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire', serviceKey: 'client_key_attack' });
+
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire',
+      serviceKey: 'client_key_attack'
+    });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 200);
     const urlObj = new URL(requestedUrl);
@@ -113,7 +125,9 @@ test('EGen API', async (t) => {
       error.name = 'AbortError';
       throw error;
     };
-    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire' });
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire'
+    });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 504);
   });
@@ -122,8 +136,60 @@ test('EGen API', async (t) => {
     global.fetch = async () => {
       throw new Error('Some random network error');
     };
-    const { req, res } = createMockReqRes('GET', { _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire' });
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire'
+    });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 502);
+  });
+
+  await t.test('10. XML 기본정보 응답을 기존 JSON 형태로 정규화', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+      <response>
+        <header>
+          <resultCode>00</resultCode>
+          <resultMsg>NORMAL SERVICE.</resultMsg>
+        </header>
+        <body>
+          <items>
+            <item>
+              <hpid>A1500002</hpid>
+              <dutyName><![CDATA[전남대학교병원]]></dutyName>
+              <dutyAddr>광주광역시 동구 제봉로 42</dutyAddr>
+              <wgs84Lat>35.142</wgs84Lat>
+              <wgs84Lon>126.921</wgs84Lon>
+            </item>
+          </items>
+          <numOfRows>1</numOfRows>
+          <pageNo>1</pageNo>
+          <totalCount>1</totalCount>
+        </body>
+      </response>`;
+
+    global.fetch = async () => {
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/xml; charset=utf-8' }),
+        text: async () => xml
+      } as Response;
+    };
+
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/HsptlAsembySearchService/getHsptlBassInfoInqire',
+      numOfRows: '1',
+      pageNo: '1',
+      _type: 'json',
+      Q0: '광주광역시'
+    });
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.response.header.resultCode, '00');
+    assert.strictEqual(res.body.response.body.totalCount, 1);
+    assert.strictEqual(res.body.response.body.items.item.hpid, 'A1500002');
+    assert.strictEqual(res.body.response.body.items.item.dutyName, '전남대학교병원');
+    assert.strictEqual(res.body.response.body.items.item.wgs84Lat, '35.142');
+    assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
   });
 });
