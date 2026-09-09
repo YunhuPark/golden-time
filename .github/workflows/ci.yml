@@ -68,6 +68,9 @@ jobs:
     - name: Production dependency security gate
       run: npm audit --omit=dev --audit-level=moderate
 
+    - name: Environment validation tests
+      run: node --test scripts/validate-env.test.cjs
+
     - name: Type Check (Frontend)
       run: npm run type-check
 
@@ -83,10 +86,9 @@ jobs:
     - name: Build
       run: npm run build
       env:
-        # Dummy values to pass validate-env.cjs in CI
+        # Non-secret CI placeholders for build-time validation only.
         VITE_KAKAO_MAP_APP_KEY: dummy_kakao_key
-        VITE_SUPABASE_URL: https://dummy.supabase.co
-        VITE_SUPABASE_ANON_KEY: dummy_anon_key
+        VITE_SUPABASE_ENABLED: 'false'
         VITE_ENCRYPTION_KEY: dummy_encryption_key_that_is_long_enough_for_aes_256_gcm
         EGEN_SERVICE_KEY: dummy_egen_key
         KAKAO_REST_API_KEY: dummy_kakao_rest_key
