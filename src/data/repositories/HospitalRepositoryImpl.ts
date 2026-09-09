@@ -6,17 +6,15 @@ import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
 import { AIAnalysisContext } from '../../domain/types/AIContext';
+import { recordRankingPerformance } from '../../infrastructure/monitoring/searchPerformance';
 
-/**
- * Hospital Repository Implementation
- * Domain Layer의 IHospitalRepository 인터페이스 구현
- */
 export class HospitalRepositoryImpl implements IHospitalRepository {
   private readonly directionsClient: KakaoDirectionsClient;
 
   constructor(
     private readonly apiClient: EGenApiClient,
-    directionsClient?: KakaoDirectionsClient
+    directionsClient?: KakaoDirectionsClient,
+    private readonly performanceSearchId?: number
   ) {
     this.directionsClient = directionsClient || new KakaoDirectionsClient();
   }
@@ -33,7 +31,6 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
         const distanceKm = hospital.distanceFrom(coords) / 1000;
         if (distanceKm > MAX_DISTANCE_KM) {
-          // Normal filtering, not a warning/error condition.
           console.debug(
             `Filtering out hospital "${hospital.name}" - too far from user (${distanceKm.toFixed(1)}km > ${MAX_DISTANCE_KM}km)`
           );
@@ -46,7 +43,14 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       console.log(`✅ Found ${validHospitals.length} hospitals with coordinates (filtered by distance < ${MAX_DISTANCE_KM}km)`);
 
+      const rankingStartedAt = performance.now();
       const rankedHospitals = HospitalRankingService.rankHospitals(validHospitals, aiContext);
+      if (this.performanceSearchId !== undefined) {
+        recordRankingPerformance(
+          this.performanceSearchId,
+          performance.now() - rankingStartedAt
+        );
+      }
       console.log(`✅ Returning ${rankedHospitals.length} hospitals (initially ranked without route info)`);
       return rankedHospitals;
     } catch (error) {
@@ -93,8 +97,6 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       longitude: h.coordinates.longitude,
     }));
 
-    // Five concurrent requests keeps the batch bounded while reducing the
-    // top-10 enrichment from four request waves (3+3+3+1) to two (5+5).
     const routeMap = await this.directionsClient.getBatchRouteInfoConcurrent(
       { latitude: origin.latitude, longitude: origin.longitude },
       destinations,
@@ -134,7 +136,6 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   private inferStage1FromCoords(coords: Coordinates): string {
     const { latitude, longitude } = coords;
 
-    // Metropolitan/special cities first so their bounding boxes are not swallowed by provinces.
     if (latitude >= 37.4 && latitude <= 37.7 && longitude >= 126.7 && longitude <= 127.2) {
       return '서울특별시';
     } else if (latitude >= 37.3 && latitude <= 37.6 && longitude >= 126.5 && longitude <= 126.8) {
