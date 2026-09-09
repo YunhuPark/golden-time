@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ } = req.query;
+    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD } = req.query;
 
     if (!_endpoint || typeof _endpoint !== 'string') {
       return res.status(400).json({ error: 'Bad Request: Missing _endpoint' });
@@ -117,6 +117,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (_type && _type !== 'json') {
       return res.status(400).json({ error: 'Bad Request: Invalid _type, only json is allowed' });
     }
+    if (ORD && (typeof ORD !== 'string' || !['ADDR', 'NAME'].includes(ORD))) {
+      return res.status(400).json({ error: 'Bad Request: Invalid ORD' });
+    }
 
     const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
@@ -130,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (QZ && typeof QZ === 'string' && ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'M', 'N', 'P', 'U', 'V', 'W', 'Y', 'Z'].includes(QZ)) {
       targetUrl.searchParams.set('QZ', QZ);
     }
+    if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
