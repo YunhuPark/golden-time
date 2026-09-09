@@ -248,7 +248,7 @@ export const HomePage: React.FC = () => {
 
         // API 성공 시 캐시에 저장
         if (result.hospitals.length > 0) {
-          HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론
+          HospitalCache.save(result.hospitals, userLocation);
         }
 
         if (isCancelled) return;
@@ -326,12 +326,6 @@ export const HomePage: React.FC = () => {
         logError(err as Error, {
           area: 'api',
           severity: 'high',
-          extra: {
-            location: {
-              lat: userLocation.latitude,
-              lon: userLocation.longitude,
-            },
-          },
         });
 
         // API 실패 시 캐시 데이터 시도
