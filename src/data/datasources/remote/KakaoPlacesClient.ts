@@ -55,7 +55,7 @@ export class KakaoPlacesClient {
 
     if (window.kakaoSDKReady) {
       const isReady = await window.kakaoSDKReady;
-      if (!isReady) return;
+      if (!isReady || typeof window === 'undefined') return;
     }
 
     if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
@@ -69,6 +69,15 @@ export class KakaoPlacesClient {
 
     return new Promise((resolve) => {
       const checkSDK = setInterval(() => {
+        // jsdom/SSR environments may remove the browser global while this
+        // asynchronous poll is still alive. Stop cleanly instead of touching
+        // a destroyed window object.
+        if (typeof window === 'undefined') {
+          clearInterval(checkSDK);
+          resolve();
+          return;
+        }
+
         if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
           clearInterval(checkSDK);
           this.placesService = new window.kakao.maps.services.Places();
