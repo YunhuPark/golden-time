@@ -1,68 +1,27 @@
-# 📚 Documentation
+# 📚 Golden-Time Documentation
 
-이 폴더에는 Golden Time 프로젝트의 상세 문서들이 포함되어 있습니다.
+이 폴더에는 현재 Production 기준으로 유지할 가치가 있는 보조 문서만 둡니다. 프로젝트의 최신 개요, 아키텍처, 성능 개선 내역, 로컬 실행 방법은 루트 [`README.md`](../README.md)를 기준으로 합니다.
 
-## 📋 문서 목록
+## 운영/배포
 
-### 시작하기
-- **[QUICKSTART.md](./QUICKSTART.md)** - 빠른 시작 가이드 (5분 안에 프로젝트 실행)
+- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Vercel 배포 및 환경 변수 설정
+- [`PRODUCTION_CHECKLIST.md`](./PRODUCTION_CHECKLIST.md) — 배포 전후 확인 항목
+- [`.env.example`](../.env.example) — 현재 환경 변수 계약
 
-### 배포 및 운영
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Vercel 배포 가이드
-- **[PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md)** - 프로덕션 배포 전 체크리스트
+## 선택 기능
 
-### 백엔드 설정
-- **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** - Supabase 초기 설정 가이드
-- **[SUPABASE_QUICKFIX.md](./SUPABASE_QUICKFIX.md)** - Supabase 관련 빠른 문제 해결
-- **[GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)** - Google OAuth 소셜 로그인 설정
+- [`SUPABASE_SETUP.md`](./SUPABASE_SETUP.md) — Supabase 기반 인증/즐겨찾기/프로필/리뷰 기능을 **명시적으로 활성화할 때만** 참고
+- [`GOOGLE_OAUTH_SETUP.md`](./GOOGLE_OAUTH_SETUP.md) — Supabase Auth에서 Google OAuth를 활성화할 때 참고
+- [`EMERGENCY_QR_SETUP.md`](./EMERGENCY_QR_SETUP.md) — 응급 QR 관련 설명
+- [`VISIT_TRACKING_GUIDE.md`](./VISIT_TRACKING_GUIDE.md) — 방문 기록 기능 설명
 
-### 기능별 가이드
-- **[EMERGENCY_QR_SETUP.md](./EMERGENCY_QR_SETUP.md)** - 응급 QR 코드 생성 기능 가이드
-- **[VISIT_TRACKING_GUIDE.md](./VISIT_TRACKING_GUIDE.md)** - 병원 방문 기록 기능 가이드
-- **[EXCEPTION_HANDLING_GUIDE.md](./EXCEPTION_HANDLING_GUIDE.md)** - 예외 처리 및 에러 핸들링 가이드
+## 설계 참고
 
-### 테스트 및 품질
-- **[TEST_REPORT.md](./TEST_REPORT.md)** - Playwright E2E 테스트 보고서
+- [`EXCEPTION_HANDLING_GUIDE.md`](./EXCEPTION_HANDLING_GUIDE.md) — 장애/예외 처리 설계 참고
 
-### 개발자 노트
-- **[claude.md](./claude.md)** - Claude Code 프로젝트 헌법 및 개발 가이드라인
+## 문서 원칙
 
----
-
-## 🗂️ 문서 카테고리별 색인
-
-### 🚀 새로운 개발자를 위한 순서
-1. [QUICKSTART.md](./QUICKSTART.md) - 프로젝트 실행
-2. [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) - 백엔드 설정
-3. [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - 로그인 기능 설정
-4. [claude.md](./claude.md) - 개발 가이드라인 숙지
-
-### 🔧 기능 개발자를 위한 가이드
-- 응급 QR 기능: [EMERGENCY_QR_SETUP.md](./EMERGENCY_QR_SETUP.md)
-- 방문 기록 기능: [VISIT_TRACKING_GUIDE.md](./VISIT_TRACKING_GUIDE.md)
-- 에러 처리: [EXCEPTION_HANDLING_GUIDE.md](./EXCEPTION_HANDLING_GUIDE.md)
-
-### 🚢 배포 담당자를 위한 가이드
-1. [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) - 배포 전 체크
-2. [DEPLOYMENT.md](./DEPLOYMENT.md) - Vercel 배포
-3. [TEST_REPORT.md](./TEST_REPORT.md) - 테스트 결과 확인
-
----
-
-## 📖 문서 작성 규칙
-
-새로운 문서를 추가할 때는 다음 규칙을 따라주세요:
-
-1. **파일명**: `UPPERCASE_WITH_UNDERSCORES.md` 형식 사용
-2. **헤더**: 이모지를 포함한 명확한 제목
-3. **목차**: 긴 문서는 목차 포함
-4. **코드 블록**: 언어 지정 (```typescript, ```bash 등)
-5. **스크린샷**: 필요시 `docs/images/` 폴더에 저장
-
----
-
-## 🔗 관련 링크
-
-- [메인 README](../README.md)
-- [Supabase 마이그레이션](../supabase/migrations/)
-- [테스트 코드](../tests/)
+- 구현과 다른 과거 계획/Phase 문서는 유지하지 않습니다.
+- 비밀키, 실제 토큰, 실제 사용자 위치나 개인정보를 예시에 넣지 않습니다.
+- Supabase/Sentry처럼 선택 기능은 기본 활성 기능처럼 표현하지 않습니다.
+- 실제 Production 동작과 CI 상태가 바뀌면 루트 README를 먼저 갱신합니다.
