@@ -1,26 +1,33 @@
 /**
  * Golden Time Supabase public client configuration.
  *
- * Supabase anon/publishable keys are public browser credentials; access control
- * is enforced by Row Level Security (RLS). Environment variables remain the
- * preferred source, but we recover from the obsolete Production project ref
- * that currently fails DNS resolution.
+ * Supabase-backed account features are optional. They are enabled only when
+ * the deployment explicitly opts in and provides a usable URL/key pair.
+ * Invalid, missing, or known-dead projects fail closed instead of falling back
+ * to another remote project.
  */
 
-export const CANONICAL_SUPABASE_URL = 'https://aiggzhblnuxkgzzmsgrl.supabase.co';
+export const DISABLED_SUPABASE_URL = 'https://disabled.invalid';
+export const DISABLED_SUPABASE_ANON_KEY = 'supabase-disabled';
 
-export const CANONICAL_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpZ2d6aGJsbnV4a2d6em1zZ3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjM4MzMsImV4cCI6MjA4MjYzOTgzM30.f2-BrgPCKhZ_lHLfvOBY2Q4f55xFsGGYGGjAgxttcHc';
+const KNOWN_UNAVAILABLE_SUPABASE_PROJECT_REFS = new Set([
+  'ojmqbhrixmgezavipvxa',
+  'aiggzhblnuxkgzzmsgrl',
+]);
 
-const LEGACY_SUPABASE_PROJECT_REFS = new Set(['ojmqbhrixmgezavipvxa']);
-
-export type SupabaseConfigSource = 'environment' | 'canonical-fallback';
+export type SupabaseConfigSource = 'environment' | 'disabled';
+export type SupabaseDisabledReason =
+  | 'not-enabled'
+  | 'missing'
+  | 'invalid-url'
+  | 'unavailable-project'
+  | 'project-mismatch';
 
 export interface SupabasePublicConfig {
   url: string;
   anonKey: string;
   source: SupabaseConfigSource;
-  reason?: 'missing' | 'invalid-url' | 'legacy-project' | 'project-mismatch';
+  reason?: SupabaseDisabledReason;
 }
 
 export function getSupabaseProjectRefFromUrl(url: string): string | null {
@@ -49,46 +56,38 @@ export function getSupabaseProjectRefFromJwt(key: string): string | null {
   }
 }
 
+const disabledConfig = (reason: SupabaseDisabledReason): SupabasePublicConfig => ({
+  url: DISABLED_SUPABASE_URL,
+  anonKey: DISABLED_SUPABASE_ANON_KEY,
+  source: 'disabled',
+  reason,
+});
+
 export function resolveSupabasePublicConfig(
   configuredUrl?: string,
-  configuredAnonKey?: string
+  configuredAnonKey?: string,
+  explicitlyEnabled = false
 ): SupabasePublicConfig {
+  if (!explicitlyEnabled) {
+    return disabledConfig('not-enabled');
+  }
+
   if (!configuredUrl || !configuredAnonKey) {
-    return {
-      url: CANONICAL_SUPABASE_URL,
-      anonKey: CANONICAL_SUPABASE_ANON_KEY,
-      source: 'canonical-fallback',
-      reason: 'missing',
-    };
+    return disabledConfig('missing');
   }
 
   const urlRef = getSupabaseProjectRefFromUrl(configuredUrl);
   if (!urlRef) {
-    return {
-      url: CANONICAL_SUPABASE_URL,
-      anonKey: CANONICAL_SUPABASE_ANON_KEY,
-      source: 'canonical-fallback',
-      reason: 'invalid-url',
-    };
+    return disabledConfig('invalid-url');
   }
 
-  if (LEGACY_SUPABASE_PROJECT_REFS.has(urlRef)) {
-    return {
-      url: CANONICAL_SUPABASE_URL,
-      anonKey: CANONICAL_SUPABASE_ANON_KEY,
-      source: 'canonical-fallback',
-      reason: 'legacy-project',
-    };
+  if (KNOWN_UNAVAILABLE_SUPABASE_PROJECT_REFS.has(urlRef)) {
+    return disabledConfig('unavailable-project');
   }
 
   const keyRef = getSupabaseProjectRefFromJwt(configuredAnonKey);
   if (keyRef && keyRef !== urlRef) {
-    return {
-      url: CANONICAL_SUPABASE_URL,
-      anonKey: CANONICAL_SUPABASE_ANON_KEY,
-      source: 'canonical-fallback',
-      reason: 'project-mismatch',
-    };
+    return disabledConfig('project-mismatch');
   }
 
   return {
