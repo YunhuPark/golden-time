@@ -1,191 +1,87 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { useAuth } from '../hooks/useAuth';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../infrastructure/state/store';
-import { HospitalList } from '../components/hospital/HospitalList';
-import { HospitalDetailModal } from '../components/hospital/HospitalDetailModal';
-import { HospitalBottomSheet } from '../components/hospital/HospitalBottomSheet';
-import { HospitalFilterPanel } from '../components/hospital/HospitalFilterPanel';
-import { FavoritesBottomSheet } from '../components/hospital/FavoritesBottomSheet';
-import { EmptyHospitalList } from '../components/hospital/EmptyHospitalList';
-import { KakaoMap } from '../components/map/KakaoMap';
-import { LoginModal } from '../components/auth/LoginModal';
-import { ProfilePage } from './ProfilePage';
-import { EcgLoader } from '../components/common/EcgLoader';
-import { ThemeToggle } from '../components/common/ThemeToggle';
-import { LocationPermissionPrompt } from '../components/common/LocationPermissionPrompt';
-import { NetworkStatusBanner } from '../components/common/NetworkStatusBanner';
-import { lightTheme, darkTheme } from '../styles/theme';
-import { GetNearbyHospitals } from '../../domain/usecases/GetNearbyHospitals';
+import { useGeolocation } from '../hooks/useGeolocation';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { HospitalRepositoryImpl } from '../../data/repositories/HospitalRepositoryImpl';
 import { EGenApiClient } from '../../data/datasources/remote/EGenApiClient';
+import { GetNearbyHospitals } from '../../domain/usecases/GetNearbyHospitals';
+import { Hospital } from '../../domain/entities/Hospital';
 import { HospitalCache } from '../../infrastructure/cache/HospitalCache';
 import { logError, logEvent } from '../../infrastructure/monitoring/sentry';
 import { supabase } from '../../infrastructure/supabase/supabaseClient';
-import { Hospital } from '../../domain/entities/Hospital';
-import { applyFilters } from '../../domain/types/HospitalFilter';
+import { recordFirstHospitalResults } from '../../infrastructure/monitoring/searchPerformance';
+import { HospitalCard } from '../components/hospital/HospitalCard';
+import { HospitalDetailModal } from '../components/hospital/HospitalDetailModal';
+import { HospitalBottomSheet } from '../components/hospital/HospitalBottomSheet';
+import { HospitalFilterPanel } from '../components/hospital/HospitalFilterPanel';
+import { EcgLoader } from '../components/common/EcgLoader';
+import { NetworkStatusBanner } from '../components/common/NetworkStatusBanner';
+import { LocationPermissionPrompt } from '../components/common/LocationPermissionPrompt';
+import { SessionExpiredModal } from '../components/common/SessionExpiredModal';
+import { useAuth } from '../hooks/useAuth';
+import { useAuthSession } from '../hooks/useAuthSession';
 
-/**
- * HomePage Component
- * 메인 페이지: 사용자 위치 기반 주변 병원 검색
- */
-export const HomePage: React.FC = () => {
+export default function HomePage() {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const {
-    themeMode,
-    userLocation,
     hospitals,
-    searchWarning,
-    isLoadingHospitals,
-    selectedHospital,
-    sortOption,
-    filters,
-    user,
-    setUserLocation,
-    setLocationError,
     setHospitals,
-    setLoadingHospitals,
+    selectedHospital,
     setSelectedHospital,
-    setSortOption,
-    setUser,
-    openLoginModal,
+    filters,
+    setFilters,
+    resetFilters,
+    aiContext,
   } = useAppStore();
 
-  // 현재 테마
-  const theme = themeMode === 'light' ? lightTheme : darkTheme;
+  const { location: userLocation, error: locationError, loading: locationLoading, retry: retryLocation } = useGeolocation();
+  const { isOffline } = useNetworkStatus();
+  const { sessionExpired, closeSessionExpiredModal, reopenLogin } = useAuthSession();
 
-  // 위치 정보 획득
-  const { location, error, isLoading: isLoadingLocation } = useGeolocation();
-
-  // 네트워크 상태 감지
-  const { isOffline, justReconnected } = useNetworkStatus();
-
-  // 인증 상태
-  const { user: authUser, signOut } = useAuth();
-
-  // URL 쿼리 파라미터 확인 (Medical AI 연동)
-  const [triageLevel, setTriageLevel] = useState<string | null>(null);
-  
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    
-    // 질환명 파싱 (우선순위: primaryCondition -> condition -> disease)
-    const conditionStr = params.get('primaryCondition') || params.get('condition') || params.get('disease');
-    
-    // 배열형 파라미터 안전한 파싱
-    const parseArrayParam = (paramName: string): string[] => {
-      const val = params.get(paramName);
-      if (!val) return [];
-      try {
-        return decodeURIComponent(val).split(',').map(s => s.trim()).filter(Boolean);
-      } catch (e) {
-        return val.split(',').map(s => s.trim()).filter(Boolean);
-      }
-    };
-
-    const triage = params.get('triage');
-    const analysisMode = params.get('analysisMode');
-    const clinicalValidation = params.get('clinicalValidation') === 'true';
-    
-    // AI 분석 컨텍스트 구성
-    const aiContext = {
-      triage: triage,
-      primaryCondition: conditionStr,
-      secondaryConditions: parseArrayParam('secondaryConditions'),
-      analysisMode: analysisMode,
-      analysisSources: parseArrayParam('analysisSources'),
-      capabilities: parseArrayParam('capabilities'),
-      specialties: parseArrayParam('specialties'),
-      clinicalValidation: clinicalValidation
-    };
-
-    // 조건이 있거나 analysisMode가 ai 관련이면 AI 컨텍스트로 설정
-    const isAiMode = analysisMode === 'ai_triage' || analysisMode === 'synthetic_demo' || conditionStr !== null;
-    
-    if (isAiMode) {
-      useAppStore.getState().setAiContext(aiContext);
-    }
-
-    
-
-    
-    if (triage) {
-      setTriageLevel(triage);
-      
-      // 질환별 요구 역량은 HospitalAICardService/RankingService에서 반영합니다.
-      // RED라고 해서 모든 질환에 수술 가능 필터를 강제하지 않습니다.
-    }
-  }, []);
-
-  // 인증 상태 동기화
-  useEffect(() => {
-    setUser(authUser);
-  }, [authUser, setUser]);
-
-  // 테마 모드 동기화 (body data-theme 속성 업데이트)
-  useEffect(() => {
-    document.body.setAttribute('data-theme', themeMode);
-  }, [themeMode]);
-
-  // 로그아웃 핸들러
-  const handleLogout = async () => {
-    await signOut();
-    alert('✅ 로그아웃되었습니다.');
-    window.location.reload();
-  };
-
-  // 지도/리스트 뷰 토글 (모바일용)
-  const [showMapView, setShowMapView] = useState(false);
-
-  // 프로필 페이지 표시 여부
-  const [showProfilePage, setShowProfilePage] = useState(false);
-
-  // 병원 상세 모달 (리뷰 표시)
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [modalHospital, setModalHospital] = useState<Hospital | null>(null);
-
-  // Bottom Sheet (지도 마커 클릭용)
-  const [showBottomSheet, setShowBottomSheet] = useState(false);
-  const [bottomSheetHospital, setBottomSheetHospital] = useState<Hospital | null>(null);
-
-  // Filter Bottom Sheet
-  const [showFilterSheet, setShowFilterSheet] = useState(false);
-
-  // Favorites Bottom Sheet
-  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
-
-  // 강제 새로고침 플래그
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // 경로 계산 UI 상태
-  const [routeCalcStatus, setRouteCalcStatus] = useState<Record<string, 'CALCULATING' | 'FAILED'>>({});
-  const searchRequestIdRef = React.useRef(0);
-
-  // 즐겨찾기한 병원 목록
-  const [favoriteHospitals, setFavoriteHospitals] = useState<Hospital[]>([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
+  const [favoriteHospitals, setFavoriteHospitals] = useState<Hospital[]>([]);
+  const [routeCalcStatus, setRouteCalcStatus] = useState<Record<string, 'CALCULATING' | 'FAILED'>>({});
+  const [showLocationPermissionPrompt, setShowLocationPermissionPrompt] = useState(false);
 
-  // 필터가 적용된 병원 목록 (useMemo로 최적화)
-  const filteredHospitals = useMemo(() => {
-    return applyFilters(hospitals, filters, userLocation);
-  }, [hospitals, filters, userLocation]);
+  const searchRequestIdRef = useRef(0);
 
-  // 위치 정보를 스토어에 동기화
+  const filteredHospitals = hospitals.filter((hospital) => {
+    if (filters.onlyAvailable && !hospital.hasAvailableBeds()) return false;
+    if (filters.hasCT && !hospital.hasCT) return false;
+    if (filters.hasMRI && !hospital.hasMRI) return false;
+    if (filters.hasSurgery && !hospital.hasSurgery) return false;
+    if (filters.traumaCenterOnly && hospital.traumaLevel !== 1) return false;
+    if (filters.minBeds > 0 && hospital.availableBeds < filters.minBeds) return false;
+    return true;
+  });
+
+  const handleHospitalClick = useCallback((hospital: Hospital) => {
+    setSelectedHospital(hospital);
+  }, [setSelectedHospital]);
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedHospital(null);
+  }, [setSelectedHospital]);
+
   useEffect(() => {
-    if (location) {
-      setUserLocation(location);
+    if (!locationLoading && locationError && !userLocation) {
+      setShowLocationPermissionPrompt(true);
+    } else if (userLocation) {
+      setShowLocationPermissionPrompt(false);
     }
-    if (error) {
-      setLocationError(error.message);
-    }
-  }, [location, error, setUserLocation, setLocationError]);
+  }, [locationLoading, locationError, userLocation]);
 
-  // 즐겨찾기한 병원 ID 목록 로드 및 매칭
   useEffect(() => {
     if (!user || hospitals.length === 0) {
       setFavoriteHospitals([]);
       return;
     }
+
+    let isCancelled = false;
 
     const loadFavorites = async () => {
       setLoadingFavorites(true);
@@ -195,10 +91,9 @@ export const HomePage: React.FC = () => {
           .select('hospital_id')
           .eq('user_id', user.id);
 
-        if (fetchError) {
-          console.error('Failed to load favorites:', fetchError);
+        if (isCancelled) return;
 
-          // Supabase 에러 로깅
+        if (fetchError) {
           logError(new Error(`Favorites fetch error: ${fetchError.message}`), {
             area: 'auth',
             severity: 'medium',
@@ -214,23 +109,24 @@ export const HomePage: React.FC = () => {
         logEvent('favorites_loaded', { count: favHospitals.length });
       } catch (err) {
         console.error('Error loading favorites:', err);
-
         logError(err as Error, {
           area: 'auth',
           severity: 'low',
         });
       } finally {
-        setLoadingFavorites(false);
+        if (!isCancelled) setLoadingFavorites(false);
       }
     };
 
     loadFavorites();
+    return () => {
+      isCancelled = true;
+    };
   }, [user, hospitals]);
 
-  // 병원 검색 (위치가 확정되면 자동 실행)
   useEffect(() => {
     if (!userLocation) return;
-    
+
     let isCancelled = false;
 
     const searchHospitals = async () => {
@@ -238,81 +134,74 @@ export const HomePage: React.FC = () => {
       setLoadingHospitals(true);
 
       try {
-        // Use Case 실행
         const apiClient = new EGenApiClient();
         const repository = new HospitalRepositoryImpl(apiClient);
         const useCase = new GetNearbyHospitals(repository);
-        const { aiContext } = useAppStore.getState();
+        const { aiContext: currentAiContext } = useAppStore.getState();
 
-        const result = await useCase.execute(userLocation, aiContext);
+        const result = await useCase.execute(userLocation, currentAiContext);
 
-        // API 성공 시 캐시에 저장
         if (result.hospitals.length > 0) {
-          HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론
+          HospitalCache.save(result.hospitals, userLocation);
         }
 
         if (isCancelled) return;
-        // E-Gen/지오코딩 결과는 이미 AI/응급도 기준으로 1차 랭킹되어 있습니다.
-        // 실제 도로 경로 계산은 느릴 수 있으므로 병원 목록을 즉시 노출하고,
-        // 상위 후보의 경로시간만 백그라운드에서 보강한 뒤 최종 랭킹을 갱신합니다.
         setHospitals(result.hospitals, result.warning);
+        recordFirstHospitalResults(result.hospitals.length);
         console.log(`✅ Showing ${result.hospitals.length} hospitals immediately; enriching top 10 route info in background`);
 
-        // 진행 중인 경로 계산 요청 ID 갱신
         searchRequestIdRef.current += 1;
         const currentReqId = searchRequestIdRef.current;
-
-        // 상위 10개 병원 추출 (화면에 먼저 보일 병원들)
         const top10 = result.hospitals.slice(0, 10);
-        
-        // UI를 "경로 계산 중" 상태로 업데이트
+
         const newRouteCalcStatus: Record<string, 'CALCULATING' | 'FAILED'> = {};
-        top10.forEach(h => { newRouteCalcStatus[h.id] = 'CALCULATING'; });
+        top10.forEach((hospital) => {
+          newRouteCalcStatus[hospital.id] = 'CALCULATING';
+        });
         setRouteCalcStatus(newRouteCalcStatus);
 
-        // 성공 이벤트 로깅
         logEvent('hospital_search_success', {
           hospital_count: result.hospitals.length,
           has_warning: !!result.warning,
         });
 
-        // 경로 계산은 초기 결과 렌더링을 막지 않습니다.
         void (async () => {
           try {
-            const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
-            
-            // 만약 새 검색이 시작되었거나 언마운트되었다면 무시
+            const fetchedHospitals = await repository.loadMoreRouteInfo(
+              userLocation,
+              result.hospitals,
+              0,
+              10
+            );
+
             if (isCancelled || searchRequestIdRef.current !== currentReqId) return;
 
-            // 상태 업데이트
-            setRouteCalcStatus(prev => {
+            setRouteCalcStatus((prev) => {
               const nextStatus = { ...prev };
-              fetchedHospitals.forEach(h => {
-                if (h.routeDuration === undefined) {
-                  nextStatus[h.id] = 'FAILED';
+              fetchedHospitals.forEach((hospital) => {
+                if (hospital.routeDuration === undefined) {
+                  nextStatus[hospital.id] = 'FAILED';
                 } else {
-                  delete nextStatus[h.id]; // 성공 시 상태 삭제
+                  delete nextStatus[hospital.id];
                 }
               });
               return nextStatus;
             });
 
-            // 전체 병원 목록 합치기
             const newAllHospitals = [...fetchedHospitals, ...result.hospitals.slice(10)];
-            // 최종 재정렬 (경로 시간 반영)
             const { HospitalRankingService } = await import('../../domain/services/HospitalRankingService');
-            const finalRanked = HospitalRankingService.rankHospitals(newAllHospitals, aiContext);
-            
-            // 상태 갱신
+            const finalRanked = HospitalRankingService.rankHospitals(newAllHospitals, currentAiContext);
+
             setHospitals(finalRanked, result.warning);
-            console.log(`✅ Final ranking completed with route info for top 10 hospitals`);
+            console.log('✅ Final ranking completed with route info for top 10 hospitals');
           } catch (routeErr) {
             console.error('Failed to calculate routes in background:', routeErr);
             if (!isCancelled && searchRequestIdRef.current === currentReqId) {
-              // 초기 병원 목록은 이미 노출되어 있으므로 유지하고 경로 상태만 실패로 표시합니다.
-              setRouteCalcStatus(prev => {
+              setRouteCalcStatus((prev) => {
                 const nextStatus = { ...prev };
-                top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
+                top10.forEach((hospital) => {
+                  nextStatus[hospital.id] = 'FAILED';
+                });
                 return nextStatus;
               });
             }
@@ -322,25 +211,16 @@ export const HomePage: React.FC = () => {
         console.error('❌ Failed to search hospitals from API:', err);
         if (isCancelled) return;
 
-        // 에러 로깅 (Sentry)
         logError(err as Error, {
           area: 'api',
           severity: 'high',
-          extra: {
-            location: {
-              lat: userLocation.latitude,
-              lon: userLocation.longitude,
-            },
-          },
+          extra: { has_location: true },
         });
 
-        // API 실패 시 캐시 데이터 시도
         const cached = HospitalCache.load(userLocation);
 
         if (cached) {
           console.warn(`⚠️ Using cached hospital data (${cached.ageMinutes} minutes old)`);
-
-          // 캐시 사용 이벤트 로깅
           logEvent('hospital_search_fallback_cache', {
             cache_age_minutes: cached.ageMinutes,
             is_fresh: cached.isFresh,
@@ -352,464 +232,140 @@ export const HomePage: React.FC = () => {
             message: `서버 연결에 실패하여 ${cached.ageMinutes}분 전 데이터를 사용하고 있습니다. ${cached.isFresh ? '' : '정보가 오래되었을 수 있습니다.'}`,
           });
         } else {
-          // 캐시도 없으면 에러 표시
           logEvent('hospital_search_complete_failure', {
             has_cache: false,
           });
-
           setHospitals([], {
-            type: 'NO_HOSPITALS_FOUND',
-            message: '병원 검색 중 오류가 발생했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.',
+            type: 'API_ERROR',
+            message: '병원 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
           });
         }
       } finally {
-        if (!isCancelled) {
-          setLoadingHospitals(false);
-        }
+        if (!isCancelled) setLoadingHospitals(false);
       }
     };
 
     searchHospitals();
-    
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation, refreshTrigger]);
+  }, [userLocation, setHospitals]);
 
-  // 119 긴급 호출
-  const handleEmergencyCall = () => {
-    if (window.confirm('119 구급대에 전화를 걸까요?')) {
-      window.location.href = 'tel:119';
-    }
-  };
+  const hasActiveFilters =
+    filters.onlyAvailable ||
+    filters.hasCT ||
+    filters.hasMRI ||
+    filters.hasSurgery ||
+    filters.traumaCenterOnly ||
+    filters.minBeds > 0;
 
-  // 병원 검색 새로고침
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
-
-  // 추가 병원 경로 정보 로드 (현재 사용하지 않음 - 향후 무한 스크롤 구현 시 사용)
-  // const handleLoadMoreRoutes = async () => {
-  //   if (!userLocation || isLoadingMoreRoutes) return;
-  //   setLoadingMoreRoutes(true);
-  //   try {
-  //     const apiClient = new EGenApiClient();
-  //     const repository = new HospitalRepositoryImpl(apiClient);
-  //     const hospitalsWithRoutes = await repository.loadMoreRouteInfo(
-  //       userLocation,
-  //       hospitals,
-  //       loadedRouteCount,
-  //       10
-  //     );
-  //     updateHospitalsWithRoutes(hospitalsWithRoutes);
-  //     setLoadedRouteCount(loadedRouteCount + hospitalsWithRoutes.length);
-  //     console.log(`✅ Loaded route info for ${hospitalsWithRoutes.length} more hospitals`);
-  //   } catch (err) {
-  //     console.error('Failed to load more route info:', err);
-  //   } finally {
-  //     setLoadingMoreRoutes(false);
-  //   }
-  // };
-
-  // 프로필 페이지가 표시되면 해당 페이지만 렌더링
-  if (showProfilePage) {
-    return <ProfilePage onBack={() => setShowProfilePage(false)} />;
-  }
-
-  // 초기 로딩 상태 (위치 + 병원 데이터)
-  if (isLoadingLocation && !userLocation) {
-    return <EcgLoader message="Acquiring GPS Coordinates..." />;
-  }
-
-  if (isLoadingHospitals && hospitals.length === 0) {
-    return <EcgLoader message="Loading Emergency Facilities..." />;
+  if (locationLoading && !userLocation) {
+    return <EcgLoader message="현재 위치를 확인하고 있습니다" />;
   }
 
   return (
-    <>
-      {/* 네트워크 상태 배너 */}
-      <NetworkStatusBanner
-        isOffline={isOffline}
-        justReconnected={justReconnected}
-        onRefresh={handleRefresh}
-      />
+    <div className="min-h-screen bg-background text-foreground">
+      <NetworkStatusBanner />
 
-      <div style={{
-        maxWidth: '800px',
-        margin: '0 auto',
-        padding: '12px',
-        paddingTop: isOffline || justReconnected ? '68px' : '12px', // 배너 높이만큼 여백 (모바일 최적화)
-        backgroundColor: theme.background.primary,
-        minHeight: '100vh',
-        transition: 'background-color 0.3s ease, padding-top 0.3s ease',
-      }}>
-        {/* 헤더 - 모바일 최적화 */}
-      <header style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '6px' }}>
-          <h1 style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            color: theme.status.critical,
-            margin: '8px 0',
-            transition: 'color 0.3s ease',
-            flexShrink: 1,
-            minWidth: 0,
-          }}>
-            🏥 Golden Time
-          </h1>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
-            {/* 테마 토글 */}
-            <ThemeToggle />
-
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div>
+            <h1 className="text-xl font-bold">Golden Time</h1>
+            <p className="text-sm text-muted-foreground">실시간 응급실 검색</p>
+          </div>
+          <div className="flex items-center gap-2">
             {user && (
               <button
-                onClick={() => setShowProfilePage(true)}
-                style={{
-                  padding: '5px 8px',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  backgroundColor: '#007AFF',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '3px',
-                  whiteSpace: 'nowrap',
-                }}
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
               >
-                👤 프로필
+                프로필
               </button>
             )}
-            {user ? (
-              <button
-                onClick={handleLogout}
-                style={{
-                  padding: '5px 8px',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  backgroundColor: '#F3F4F6',
-                  color: '#374151',
-                  border: '2px solid #E5E7EB',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '3px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                🚪 로그아웃
-              </button>
-            ) : (
-              <button
-                onClick={() => openLoginModal()}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  backgroundColor: '#FF3B30',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                🔐 로그인
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowFilters((value) => !value)}
+              className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+            >
+              필터{hasActiveFilters ? ' •' : ''}
+            </button>
           </div>
         </div>
-        <p style={{ fontSize: '13px', color: theme.text.secondary, margin: 0, textAlign: 'center', transition: 'color 0.3s ease' }}>
-          실시간 응급실 병상 현황 및 경로 안내
-        </p>
       </header>
 
-      {/* Medical AI 연동 알림 배너 */}
-      {(triageLevel === 'RED' || triageLevel === 'YELLOW') && (
-        <div style={{
-          backgroundColor: triageLevel === 'RED' ? '#ef4444' : '#eab308',
-          color: triageLevel === 'RED' ? 'white' : '#1f2937',
-          padding: '12px 16px',
-          borderRadius: '10px',
-          marginBottom: '16px',
-          fontWeight: 'bold',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: `0 4px 12px ${triageLevel === 'RED' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(234, 179, 8, 0.4)'}`,
-          animation: triageLevel === 'RED' ? 'pulse 2s infinite' : 'none'
-        }}>
-          <span style={{ fontSize: '20px' }}>{triageLevel === 'RED' ? '🚨' : '⚠️'}</span>
-          <div>
-            <div style={{ fontSize: '15px' }}>
-              {useAppStore.getState().aiContext?.analysisMode === 'synthetic_demo' ? '[합성 데이터 기반 데모] ' : '[AI 분석 완료] '}
-              {triageLevel === 'RED' ? '초응급(RED) 환자 이송 모드' : '응급(YELLOW) 환자 집중 관찰'}
-            </div>
-            <div style={{ fontSize: '12px', fontWeight: 'normal', opacity: 0.9, marginTop: '2px' }}>
-              {triageLevel === 'RED' ? '수술 가능한 중환자실(ICU) 빈 병상을 최우선 탐색합니다.' : '집중 모니터링 및 병원 역량 확인을 권고합니다. 임상 진단 아님.'}
+      <main className="mx-auto max-w-6xl px-4 py-4">
+        {aiContext && (
+          <div className="mb-4 rounded-lg border border-border bg-card p-4">
+            <div className="text-sm font-semibold">외부 분석 컨텍스트 적용 중</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              {aiContext.primaryCondition || '상태 미지정'} · {aiContext.triage || '중증도 미지정'}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 긴급 호출 버튼 (항상 표시) - 모바일 최적화 */}
-      <button
-        onClick={handleEmergencyCall}
-        style={{
-          width: '100%',
-          height: '54px',
-          fontSize: '18px',
-          fontWeight: '700',
-          backgroundColor: '#FF3B30',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '10px',
-          marginBottom: '16px',
-          cursor: 'pointer',
-          boxShadow: '0 3px 10px rgba(255, 59, 48, 0.3)',
-        }}
-        aria-label="119 긴급 전화"
-      >
-        🚨 119 구급대 호출
-      </button>
-
-      {/* 위치 정보 에러 */}
-      {error && (
-        <LocationPermissionPrompt
-          error={error}
-          onRetry={handleRefresh}
-        />
-      )}
-
-      {userLocation && (
-        <div
-          style={{
-            backgroundColor: themeMode === 'dark' ? theme.background.secondary : '#E8F5E9',
-            padding: '10px',
-            borderRadius: '8px',
-            marginBottom: '12px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'background-color 0.3s ease',
-          }}
-        >
-          <div style={{ fontSize: '13px', color: themeMode === 'dark' ? theme.status.safe : '#1B5E20', flex: 1, transition: 'color 0.3s ease', wordBreak: 'break-all' }}>
-            ✅ 현재 위치: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-            {userLocation.accuracy && <div style={{ fontSize: '11px', marginTop: '2px' }}>정확도: ±{Math.round(userLocation.accuracy)}m</div>}
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isLoadingHospitals}
-            style={{
-              padding: '6px 10px',
-              fontSize: '13px',
-              fontWeight: '600',
-              backgroundColor: isLoadingHospitals ? '#ccc' : '#007AFF',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isLoadingHospitals ? 'not-allowed' : 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-            aria-label="병원 검색 새로고침"
-          >
-            🔄 새로고침
-          </button>
-        </div>
-      )}
-
-      {/* 필터 & 즐겨찾기 버튼 */}
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
-        {user && favoriteHospitals.length > 0 && (
-          <button
-            onClick={() => setShowFavoritesSheet(true)}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              fontSize: '15px',
-              fontWeight: '600',
-              backgroundColor: themeMode === 'dark' ? theme.background.secondary : '#FFF7ED',
-              color: themeMode === 'dark' ? theme.text.primary : '#C2410C',
-              border: `2px solid ${themeMode === 'dark' ? theme.border.primary : '#FDBA74'}`,
-              borderRadius: '10px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            ⭐ 즐겨찾기 ({favoriteHospitals.length})
-          </button>
         )}
-        <button
-          onClick={() => setShowFilterSheet(true)}
-          style={{
-            flex: user && favoriteHospitals.length > 0 ? 1 : 'unset',
-            minWidth: user && favoriteHospitals.length > 0 ? 'unset' : '100%',
-            padding: '12px 16px',
-            fontSize: '15px',
-            fontWeight: '600',
-            backgroundColor: themeMode === 'dark' ? theme.background.secondary : '#fff',
-            color: theme.text.primary,
-            border: `2px solid ${theme.border.primary}`,
-            borderRadius: '10px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          🔍 필터 {Object.values(filters).filter(v => v).length > 0 && `(${Object.values(filters).filter(v => v).length})`}
-        </button>
-      </div>
 
-      {/* 뷰 전환 버튼 (모바일용) */}
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', width: '100%' }}>
-        <button
-          onClick={() => setShowMapView(false)}
-          style={{
-            flex: 1,
-            padding: '12px 8px',
-            fontSize: '14px',
-            fontWeight: showMapView ? '400' : '700',
-            backgroundColor: showMapView ? '#F3F4F6' : '#FF3B30',
-            color: showMapView ? '#6B7280' : '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          📋 목록 보기
-        </button>
-        <button
-          onClick={() => setShowMapView(!showMapView)}
-          style={{
-            flex: 1,
-            padding: '12px 8px',
-            fontSize: '14px',
-            fontWeight: showMapView ? '700' : '400',
-            backgroundColor: showMapView ? '#FF3B30' : '#F3F4F6',
-            color: showMapView ? '#fff' : '#6B7280',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          🗺️ 지도 보기
-        </button>
-      </div>
+        {showFilters && (
+          <div className="mb-4">
+            <HospitalFilterPanel
+              filters={filters}
+              onChange={setFilters}
+              onReset={resetFilters}
+            />
+          </div>
+        )}
 
+        {loadingHospitals && hospitals.length === 0 ? (
+          <EcgLoader message="주변 응급실을 찾고 있습니다" />
+        ) : filteredHospitals.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-8 text-center">
+            <p className="font-semibold">조건에 맞는 병원이 없습니다.</p>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="mt-4 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
+            >
+              필터 초기화
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredHospitals.map((hospital) => (
+              <HospitalCard
+                key={hospital.id}
+                hospital={hospital}
+                isFavorite={favoriteHospitals.some((favorite) => favorite.id === hospital.id)}
+                loadingFavorite={loadingFavorites}
+                routeStatus={routeCalcStatus[hospital.id]}
+                onClick={() => handleHospitalClick(hospital)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
 
-      {/* 지도 뷰 */}
-      {showMapView && (
-        <div style={{ marginBottom: '16px' }}>
-          <KakaoMap
-            userLocation={userLocation}
-            hospitals={filteredHospitals}
-            selectedHospitalId={selectedHospital?.id}
-            onHospitalClick={(hospital) => {
-              setSelectedHospital(hospital);
-              setBottomSheetHospital(hospital);
-              setShowBottomSheet(true);
-            }}
-            className="rounded-lg shadow-lg"
-            style={{ height: '500px', borderRadius: '12px', overflow: 'hidden' }}
-          />
-        </div>
-      )}
-
-      {/* 병원 목록 뷰 */}
-      {!showMapView && (
+      {selectedHospital && (
         <>
-          {filteredHospitals.length === 0 && !isLoadingHospitals ? (
-            <EmptyHospitalList
-              hasActiveFilters={Object.values(filters).some(v => v)}
-              onClearFilters={() => useAppStore.getState().clearFilters()}
-              onExpandRadius={undefined} // TODO: 반경 확대 기능 구현 시 추가
-            />
-          ) : (
-            <HospitalList
-              hospitals={filteredHospitals}
-              userLocation={userLocation}
-              warning={searchWarning}
-              isLoading={isLoadingHospitals}
-              sortOption={sortOption}
-              onSortChange={setSortOption}
-              routeCalcStatus={routeCalcStatus}
-              onHospitalClick={(hospital) => {
-                setSelectedHospital(hospital);
-                setModalHospital(hospital);
-                setShowDetailModal(true);
-              }}
-            />
-          )}
+          <HospitalDetailModal hospital={selectedHospital} onClose={handleCloseDetail} />
+          <HospitalBottomSheet hospital={selectedHospital} onClose={handleCloseDetail} />
         </>
       )}
 
-      {/* 로그인 모달 */}
-      <LoginModal />
-
-      {/* 병원 상세 모달 (리뷰) - 목록 뷰용 */}
-      {showDetailModal && modalHospital && (
-        <HospitalDetailModal
-          hospital={modalHospital}
-          onClose={() => {
-            setShowDetailModal(false);
-            setModalHospital(null);
+      {showLocationPermissionPrompt && (
+        <LocationPermissionPrompt
+          error={locationError}
+          onRetry={() => {
+            setShowLocationPermissionPrompt(false);
+            retryLocation();
           }}
+          onClose={() => setShowLocationPermissionPrompt(false)}
         />
       )}
 
-      {/* Bottom Sheet (지도 마커 클릭용) */}
-      <HospitalBottomSheet
-        hospital={bottomSheetHospital}
-        isOpen={showBottomSheet}
-        onClose={() => {
-          setShowBottomSheet(false);
-          setBottomSheetHospital(null);
-        }}
+      <SessionExpiredModal
+        open={sessionExpired}
+        onClose={closeSessionExpiredModal}
+        onRelogin={reopenLogin}
       />
-
-      {/* Filter Bottom Sheet */}
-      <HospitalFilterPanel
-        isOpen={showFilterSheet}
-        onClose={() => setShowFilterSheet(false)}
-      />
-
-      {/* Favorites Bottom Sheet */}
-      <FavoritesBottomSheet
-        isOpen={showFavoritesSheet}
-        onClose={() => setShowFavoritesSheet(false)}
-        favoriteHospitals={favoriteHospitals}
-        userLocation={userLocation}
-        isLoading={loadingFavorites}
-        onHospitalClick={(hospital) => {
-          setSelectedHospital(hospital);
-          setModalHospital(hospital);
-          setShowDetailModal(true);
-          setShowFavoritesSheet(false);
-        }}
-      />
-      </div>
-    </>
+    </div>
   );
-};
+}
