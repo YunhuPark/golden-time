@@ -33,19 +33,29 @@ export default defineConfig({
 
     rollupOptions: {
       output: {
-        // 코드 스플리팅 전략
-        manualChunks: {
-          // React 관련
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-
-          // 유틸리티 라이브러리
-          'vendor-utils': ['dompurify', 'zustand', 'clsx', 'tailwind-merge'],
-
-          // Supabase
-          'vendor-supabase': ['@supabase/supabase-js'],
-
-          // Sentry (선택적 로드)
-          'vendor-sentry': ['@sentry/react'],
+        // Vite 8/Rolldown expects manualChunks to be a function.
+        // Keep the existing vendor split without relying on deprecated object syntax.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router/') ||
+            id.includes('/react-router-dom/')
+          ) {
+            return 'vendor-react';
+          }
+          if (
+            id.includes('/dompurify/') ||
+            id.includes('/zustand/') ||
+            id.includes('/clsx/') ||
+            id.includes('/tailwind-merge/')
+          ) {
+            return 'vendor-utils';
+          }
+          if (id.includes('/@supabase/')) return 'vendor-supabase';
+          if (id.includes('/@sentry/')) return 'vendor-sentry';
+          return undefined;
         },
 
         // 파일명 패턴 설정
@@ -57,11 +67,5 @@ export default defineConfig({
 
     // CSS 코드 스플리팅
     cssCodeSplit: true,
-  },
-
-  // 프로덕션 최적화
-  esbuild: {
-    // console.log 유지 (디버깅용)
-    drop: [],
   },
 });
