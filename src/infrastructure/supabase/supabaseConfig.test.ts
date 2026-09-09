@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CANONICAL_SUPABASE_URL,
+  DISABLED_SUPABASE_URL,
   getSupabaseProjectRefFromJwt,
   getSupabaseProjectRefFromUrl,
   resolveSupabasePublicConfig,
@@ -11,21 +11,37 @@ describe('Supabase public config', () => {
     expect(getSupabaseProjectRefFromUrl('https://exampleproject.supabase.co')).toBe('exampleproject');
   });
 
-  it('uses the canonical project when the obsolete production project ref is configured', () => {
+  it('fails closed unless Supabase is explicitly enabled', () => {
     const result = resolveSupabasePublicConfig(
-      'https://ojmqbhrixmgezavipvxa.supabase.co',
-      'legacy-key'
+      'https://exampleproject.supabase.co',
+      'sb_publishable_example'
     );
 
-    expect(result.url).toBe(CANONICAL_SUPABASE_URL);
-    expect(result.source).toBe('canonical-fallback');
-    expect(result.reason).toBe('legacy-project');
+    expect(result).toEqual({
+      url: DISABLED_SUPABASE_URL,
+      anonKey: 'supabase-disabled',
+      source: 'disabled',
+      reason: 'not-enabled',
+    });
   });
 
-  it('uses the environment configuration when the URL and key are usable', () => {
+  it('fails closed for known unavailable projects even when enabled', () => {
+    const result = resolveSupabasePublicConfig(
+      'https://aiggzhblnuxkgzzmsgrl.supabase.co',
+      'legacy-key',
+      true
+    );
+
+    expect(result.url).toBe(DISABLED_SUPABASE_URL);
+    expect(result.source).toBe('disabled');
+    expect(result.reason).toBe('unavailable-project');
+  });
+
+  it('uses environment configuration only when explicitly enabled and usable', () => {
     const result = resolveSupabasePublicConfig(
       'https://anotherproject.supabase.co',
-      'sb_publishable_example'
+      'sb_publishable_example',
+      true
     );
 
     expect(result).toEqual({
@@ -35,8 +51,20 @@ describe('Supabase public config', () => {
     });
   });
 
-  it('decodes the project ref from the canonical legacy anon JWT', async () => {
-    const { CANONICAL_SUPABASE_ANON_KEY } = await import('./supabaseConfig');
-    expect(getSupabaseProjectRefFromJwt(CANONICAL_SUPABASE_ANON_KEY)).toBe('aiggzhblnuxkgzzmsgrl');
+  it('rejects a JWT whose project ref does not match the URL', () => {
+    const payload = btoa(JSON.stringify({ ref: 'differentproject' }))
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    const jwt = `header.${payload}.signature`;
+
+    expect(getSupabaseProjectRefFromJwt(jwt)).toBe('differentproject');
+    expect(
+      resolveSupabasePublicConfig(
+        'https://anotherproject.supabase.co',
+        jwt,
+        true
+      ).reason
+    ).toBe('project-mismatch');
   });
 });
