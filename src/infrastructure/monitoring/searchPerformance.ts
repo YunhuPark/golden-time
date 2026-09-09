@@ -28,7 +28,6 @@ type SearchPerformanceState = HospitalSearchPerformanceSnapshot & {
 
 const MAX_TRACKED_SEARCHES = 20;
 let nextSearchId = 1;
-let activeSearchId: number | null = null;
 const searches = new Map<number, SearchPerformanceState>();
 
 const nowMs = (): number => {
@@ -86,7 +85,6 @@ const pruneSearches = (): void => {
 
 export const startHospitalSearchPerformance = (): number => {
   const searchId = nextSearchId++;
-  activeSearchId = searchId;
   searches.set(searchId, {
     searchId,
     status: 'running',
@@ -123,11 +121,13 @@ export const recordRankingPerformance = (
   state.rankingMs = roundMs(rankingMs);
 };
 
-export const recordFirstHospitalResults = (hospitalCount: number): void => {
-  const state = getState(activeSearchId);
+export const recordFirstHospitalResults = (
+  searchId: number,
+  hospitalCount: number
+): void => {
+  const state = getState(searchId);
   if (!state || state.firstResultsStateMs !== undefined || state.status === 'failed') return;
 
-  const searchId = state.searchId;
   state.hospitalCount = hospitalCount;
   state.firstResultsStateMs = roundMs(nowMs() - state.startedAtMs);
   if (state.status !== 'complete') {
