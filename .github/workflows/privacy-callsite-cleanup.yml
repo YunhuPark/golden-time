@@ -12,47 +12,20 @@ permissions:
 
 jobs:
   cleanup:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: privacy/remove-location-from-error-context
-      - name: Remove precise location from error context
+      - name: Update HomePage privacy callsites
+        shell: bash
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const path = 'src/presentation/pages/HomePage.tsx';
-          let text = fs.readFileSync(path, 'utf8');
-
-          const cacheBefore = "HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론";
-          const cacheAfter = 'HospitalCache.save(result.hospitals, userLocation);';
-          if (!text.includes(cacheBefore)) {
-            throw new Error('Expected legacy HospitalCache.save call was not found');
-          }
-          text = text.replace(cacheBefore, cacheAfter);
-
-          const telemetryBefore = `        logError(err as Error, {
-          area: 'api',
-          severity: 'high',
-          extra: {
-            location: {
-              lat: userLocation.latitude,
-              lon: userLocation.longitude,
-            },
-          },
-        });`;
-          const telemetryAfter = `        logError(err as Error, {
-          area: 'api',
-          severity: 'high',
-        });`;
-          if (!text.includes(telemetryBefore)) {
-            throw new Error('Expected precise-location error context was not found');
-          }
-          text = text.replace(telemetryBefore, telemetryAfter);
-
-          fs.writeFileSync(path, text);
-          NODE
-      - name: Commit privacy cleanup
+          perl -0pi -e "s/HospitalCache\.save\(result\.hospitals, userLocation, '서울특별시'\); \/\/ TODO: 실제 지역 추론/HospitalCache.save(result.hospitals, userLocation);/g" src/presentation/pages/HomePage.tsx
+          perl -0pi -e "s/\n          extra: \{\n            location: \{\n              lat: userLocation\.latitude,\n              lon: userLocation\.longitude,\n            \},\n          \},//g" src/presentation/pages/HomePage.tsx
+          grep -F "HospitalCache.save(result.hospitals, userLocation);" src/presentation/pages/HomePage.tsx
+          if grep -F "lat: userLocation.latitude" src/presentation/pages/HomePage.tsx; then exit 1; fi
+      - name: Commit changes
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
