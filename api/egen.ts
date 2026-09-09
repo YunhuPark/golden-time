@@ -1,9 +1,14 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-const BASIC_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+const LOCATION_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+const HOSPITAL_LIST_ENDPOINT = '/ErmctInfoInqireService/getEgytListInfoInqire';
 
-const ALLOWED_ENDPOINTS = [REALTIME_BEDS_ENDPOINT, BASIC_INFO_ENDPOINT];
+const ALLOWED_ENDPOINTS = [
+  REALTIME_BEDS_ENDPOINT,
+  LOCATION_INFO_ENDPOINT,
+  HOSPITAL_LIST_ENDPOINT,
+];
 
 const decodeXmlEntities = (value: string): string =>
   value
@@ -143,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (contentType.includes('xml')) data = parseEGenXml(await response.text());
       else data = await response.json();
 
-      if (_endpoint === BASIC_INFO_ENDPOINT) {
+      if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT) {
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
       } else {
         res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
