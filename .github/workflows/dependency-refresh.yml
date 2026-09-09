@@ -42,7 +42,8 @@ jobs:
         run: npm run test:api
       - name: Build
         env:
-          VITE_KAKAO_MAP_API_KEY: test-kakao-map-key
+          VITE_KAKAO_MAP_APP_KEY: test-kakao-map-key
+          VITE_ENCRYPTION_KEY: test-encryption-key-for-ci
           EGEN_SERVICE_KEY: test-egen-service-key
           KAKAO_REST_API_KEY: test-kakao-rest-key
           VITE_SUPABASE_ENABLED: 'false'
