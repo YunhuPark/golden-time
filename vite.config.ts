@@ -7,11 +7,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@domain': path.resolve(__dirname, './src/domain'),
-      '@data': path.resolve(__dirname, './src/data'),
-      '@presentation': path.resolve(__dirname, './src/presentation'),
-      '@infrastructure': path.resolve(__dirname, './src/infrastructure'),
+      '@': path.resolve(import.meta.dirname, './src'),
+      '@domain': path.resolve(import.meta.dirname, './src/domain'),
+      '@data': path.resolve(import.meta.dirname, './src/data'),
+      '@presentation': path.resolve(import.meta.dirname, './src/presentation'),
+      '@infrastructure': path.resolve(import.meta.dirname, './src/infrastructure'),
     },
   },
   server: {
