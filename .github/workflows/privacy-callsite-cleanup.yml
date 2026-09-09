@@ -1,0 +1,61 @@
+name: Privacy Callsite Cleanup
+
+on:
+  push:
+    branches:
+      - privacy/remove-location-from-error-context
+    paths:
+      - .github/workflows/privacy-callsite-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: privacy/remove-location-from-error-context
+      - name: Remove precise location from error context
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'src/presentation/pages/HomePage.tsx';
+          let text = fs.readFileSync(path, 'utf8');
+
+          const cacheBefore = "HospitalCache.save(result.hospitals, userLocation, '서울특별시'); // TODO: 실제 지역 추론";
+          const cacheAfter = 'HospitalCache.save(result.hospitals, userLocation);';
+          if (!text.includes(cacheBefore)) {
+            throw new Error('Expected legacy HospitalCache.save call was not found');
+          }
+          text = text.replace(cacheBefore, cacheAfter);
+
+          const telemetryBefore = `        logError(err as Error, {
+          area: 'api',
+          severity: 'high',
+          extra: {
+            location: {
+              lat: userLocation.latitude,
+              lon: userLocation.longitude,
+            },
+          },
+        });`;
+          const telemetryAfter = `        logError(err as Error, {
+          area: 'api',
+          severity: 'high',
+        });`;
+          if (!text.includes(telemetryBefore)) {
+            throw new Error('Expected precise-location error context was not found');
+          }
+          text = text.replace(telemetryBefore, telemetryAfter);
+
+          fs.writeFileSync(path, text);
+          NODE
+      - name: Commit privacy cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/presentation/pages/HomePage.tsx
+          git commit -m "Stop attaching precise location to API error telemetry"
+          git push origin HEAD:privacy/remove-location-from-error-context
