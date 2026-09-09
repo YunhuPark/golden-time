@@ -1,9 +1,14 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-const BASIC_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+const LOCATION_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+const HOSPITAL_LIST_ENDPOINT = '/ErmctInfoInqireService/getEgytListInfoInqire';
 
-const ALLOWED_ENDPOINTS = [REALTIME_BEDS_ENDPOINT, BASIC_INFO_ENDPOINT];
+const ALLOWED_ENDPOINTS = [
+  REALTIME_BEDS_ENDPOINT,
+  LOCATION_INFO_ENDPOINT,
+  HOSPITAL_LIST_ENDPOINT,
+];
 
 const decodeXmlEntities = (value: string): string =>
   value
@@ -85,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ } = req.query;
+    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD } = req.query;
 
     if (!_endpoint || typeof _endpoint !== 'string') {
       return res.status(400).json({ error: 'Bad Request: Missing _endpoint' });
@@ -112,6 +117,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (_type && _type !== 'json') {
       return res.status(400).json({ error: 'Bad Request: Invalid _type, only json is allowed' });
     }
+    if (ORD && (typeof ORD !== 'string' || !['ADDR', 'NAME'].includes(ORD))) {
+      return res.status(400).json({ error: 'Bad Request: Invalid ORD' });
+    }
 
     const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
@@ -125,6 +133,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (QZ && typeof QZ === 'string' && ['A', 'B', 'C', 'D', 'E', 'G', 'H', 'I', 'M', 'N', 'P', 'U', 'V', 'W', 'Y', 'Z'].includes(QZ)) {
       targetUrl.searchParams.set('QZ', QZ);
     }
+    if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -143,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (contentType.includes('xml')) data = parseEGenXml(await response.text());
       else data = await response.json();
 
-      if (_endpoint === BASIC_INFO_ENDPOINT) {
+      if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT) {
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
       } else {
         res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');

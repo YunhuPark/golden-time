@@ -180,4 +180,36 @@ test('EGen API', async (t) => {
     assert.strictEqual(res.body.response.body.items.item.wgs84Lat, '35.142');
     assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
   });
+
+  await t.test('11. 지역 병원목록 endpoint는 Q0/QZ/ORD를 안전하게 upstream으로 전달', async () => {
+    let requestedUrl = '';
+    global.fetch = async (url: any) => {
+      requestedUrl = url.toString();
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ response: { header: { resultCode: '00', resultMsg: 'OK' }, body: { totalCount: 0 } } })
+      } as Response;
+    };
+
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEgytListInfoInqire',
+      numOfRows: '300',
+      pageNo: '1',
+      _type: 'json',
+      Q0: '광주광역시',
+      QZ: 'A',
+      ORD: 'ADDR'
+    });
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    const urlObj = new URL(requestedUrl);
+    assert.strictEqual(urlObj.pathname.endsWith('/ErmctInfoInqireService/getEgytListInfoInqire'), true);
+    assert.strictEqual(urlObj.searchParams.get('Q0'), '광주광역시');
+    assert.strictEqual(urlObj.searchParams.get('QZ'), 'A');
+    assert.strictEqual(urlObj.searchParams.get('ORD'), 'ADDR');
+    assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
+  });
 });
