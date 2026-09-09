@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-const BASIC_INFO_ENDPOINT = '/ErmctInfoInqireService/getHsptlBassInfoInqire';
+const BASIC_INFO_ENDPOINT = '/HsptlAsembySearchService/getHsptlBassInfoInqire';
 
 const ALLOWED_ENDPOINTS = [
   REALTIME_BEDS_ENDPOINT,
@@ -161,7 +161,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         data = await response.json();
       }
 
-      // Realtime bed status changes often; hospital coordinates/basic metadata do not.
       if (_endpoint === BASIC_INFO_ENDPOINT) {
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
       } else {
