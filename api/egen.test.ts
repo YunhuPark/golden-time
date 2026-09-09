@@ -176,7 +176,7 @@ test('EGen API', async (t) => {
     };
 
     const { req, res } = createMockReqRes('GET', {
-      _endpoint: '/ErmctInfoInqireService/getHsptlBassInfoInqire',
+      _endpoint: '/HsptlAsembySearchService/getHsptlBassInfoInqire',
       numOfRows: '1',
       pageNo: '1',
       _type: 'json',
