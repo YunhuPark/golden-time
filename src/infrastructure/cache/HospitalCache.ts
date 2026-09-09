@@ -1,12 +1,43 @@
-import { Hospital } from '../../domain/entities/Hospital';
+import {
+  Hospital,
+  Specialization,
+  TraumaLevel,
+} from '../../domain/entities/Hospital';
 import { Coordinates } from '../../domain/valueObjects/Coordinates';
 import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
+
+interface SerializedHospital {
+  id: string;
+  name: string;
+  coordinates: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  };
+  address: string;
+  phoneNumber: string;
+  emergencyPhoneNumber: string | null;
+  availableBeds: number;
+  totalBeds: number;
+  specializations: Specialization[];
+  traumaLevel: TraumaLevel;
+  isOperating: boolean;
+  lastUpdated: string;
+  hasCT: boolean;
+  hasMRI: boolean;
+  hasSurgery: boolean;
+  estimatedWaitTime?: number;
+  routeDuration?: number;
+  routeDistance?: number;
+  icuAvailableBeds: number;
+  neuroIcuAvailableBeds: number;
+}
 
 /**
  * 캐싱된 병원 데이터 인터페이스
  */
 interface CachedHospitalData {
-  hospitals: Hospital[];
+  hospitals: SerializedHospital[];
   timestamp: number;
   region: string;
   /**
@@ -56,8 +87,9 @@ export class HospitalCache {
         return;
       }
 
-      // Hospital 객체를 직렬화 가능한 형태로 변환
-      const serializedHospitals = hospitals.map((h) => ({
+      // Hospital 객체를 직렬화 가능한 형태로 변환합니다. 병원 좌표는 공개
+      // 데이터이므로 보존하되 사용자의 현재 좌표는 저장하지 않습니다.
+      const serializedHospitals: SerializedHospital[] = hospitals.map((h) => ({
         id: h.id,
         name: h.name,
         coordinates: {
@@ -80,10 +112,12 @@ export class HospitalCache {
         estimatedWaitTime: h.estimatedWaitTime,
         routeDuration: h.routeDuration,
         routeDistance: h.routeDistance,
+        icuAvailableBeds: h.icuAvailableBeds,
+        neuroIcuAvailableBeds: h.neuroIcuAvailableBeds,
       }));
 
       const cacheData: CachedHospitalData = {
-        hospitals: serializedHospitals as Hospital[],
+        hospitals: serializedHospitals,
         timestamp: Date.now(),
         region,
       };
@@ -146,7 +180,7 @@ export class HospitalCache {
       }
 
       // 역직렬화: 평문 객체 → Hospital 인스턴스
-      const hospitals = (cacheData.hospitals as unknown[]).map((data) =>
+      const hospitals = cacheData.hospitals.map((data) =>
         this.deserializeHospital(data)
       );
 
@@ -205,51 +239,32 @@ export class HospitalCache {
   /**
    * 역직렬화: 평문 객체 → Hospital 인스턴스
    */
-  private static deserializeHospital(data: unknown): Hospital {
-    const value = data as {
-      id: string;
-      name: string;
-      coordinates: { latitude: number; longitude: number; accuracy?: number };
-      address: string;
-      phoneNumber: string;
-      emergencyPhoneNumber: string;
-      availableBeds: number;
-      totalBeds: number;
-      specializations: string[];
-      traumaLevel: string;
-      isOperating: boolean;
-      lastUpdated: string;
-      hasCT: boolean;
-      hasMRI: boolean;
-      hasSurgery: boolean;
-      estimatedWaitTime: number;
-      routeDuration?: number;
-      routeDistance?: number;
-    };
-
+  private static deserializeHospital(data: SerializedHospital): Hospital {
     return new Hospital(
-      value.id,
-      value.name,
+      data.id,
+      data.name,
       new Coordinates(
-        value.coordinates.latitude,
-        value.coordinates.longitude,
-        value.coordinates.accuracy
+        data.coordinates.latitude,
+        data.coordinates.longitude,
+        data.coordinates.accuracy
       ),
-      value.address,
-      value.phoneNumber,
-      value.emergencyPhoneNumber,
-      value.availableBeds,
-      value.totalBeds,
-      value.specializations,
-      value.traumaLevel,
-      value.isOperating,
-      new Date(value.lastUpdated),
-      value.hasCT,
-      value.hasMRI,
-      value.hasSurgery,
-      value.estimatedWaitTime,
-      value.routeDuration,
-      value.routeDistance
+      data.address,
+      data.phoneNumber,
+      data.emergencyPhoneNumber,
+      data.availableBeds,
+      data.totalBeds,
+      data.specializations,
+      data.traumaLevel,
+      data.isOperating,
+      new Date(data.lastUpdated),
+      data.hasCT,
+      data.hasMRI,
+      data.hasSurgery,
+      data.estimatedWaitTime,
+      data.routeDuration,
+      data.routeDistance,
+      data.icuAvailableBeds ?? 0,
+      data.neuroIcuAvailableBeds ?? 0
     );
   }
 }
