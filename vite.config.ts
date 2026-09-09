@@ -20,8 +20,9 @@ export default defineConfig({
     proxy: {},
   },
   build: {
-    // 소스맵 생성 (프로덕션 디버깅용)
-    sourcemap: true,
+    // Do not publish production source maps. Re-enable only with a private
+    // source-map upload pipeline that does not deploy map files publicly.
+    sourcemap: false,
 
     // 번들 사이즈 경고 임계값 (KB)
     chunkSizeWarningLimit: 1000,
