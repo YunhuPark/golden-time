@@ -7,9 +7,56 @@ import { useLocation, useNavigationType, createRoutesFromChildren, matchRoutes }
  *
  * Edge Cases 처리:
  * - Development 환경에서는 Sentry 비활성화 (콘솔만 사용)
- * - 민감한 정보 (전화번호, 주소) 자동 필터링
+ * - 민감한 정보 (정확 위치, 주소, 전화번호) 필터링
  * - 네트워크 에러는 낮은 우선순위로 처리
  */
+
+const SENSITIVE_TELEMETRY_KEYS = new Set([
+  'address',
+  'dutyaddr',
+  'phone',
+  'phonenumber',
+  'emergencyphonenumber',
+  'lat',
+  'lon',
+  'lng',
+  'latitude',
+  'longitude',
+  'location',
+  'coordinates',
+]);
+
+function sanitizeTelemetryValue(value: unknown, key?: string): unknown {
+  if (key && SENSITIVE_TELEMETRY_KEYS.has(key.toLowerCase())) {
+    return '[REDACTED]';
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeTelemetryValue(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) => [
+      childKey,
+      sanitizeTelemetryValue(childValue, childKey),
+    ]);
+    return Object.fromEntries(entries);
+  }
+
+  if (typeof value === 'string') {
+    return value.replace(/\d{2,3}-\d{3,4}-\d{4}/g, '***-****-****');
+  }
+
+  return value;
+}
+
+export function sanitizeTelemetryRecord(
+  data?: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  if (!data) return undefined;
+  return sanitizeTelemetryValue(data) as Record<string, unknown>;
+}
+
 export function initializeSentry() {
   // Development 환경에서는 Sentry 비활성화
   if (import.meta.env.DEV) {
@@ -57,6 +104,9 @@ export function initializeSentry() {
           // Ignore URL parse failures.
         }
       }
+      if (event.extra) {
+        event.extra = sanitizeTelemetryRecord(event.extra) ?? {};
+      }
       if (
         hint.originalException instanceof Error &&
         (hint.originalException.message.includes('fetch') ||
@@ -87,11 +137,11 @@ export function logError(
   context?: {
     area?: 'geolocation' | 'api' | 'auth' | 'cache' | 'ui';
     severity?: 'low' | 'medium' | 'high' | 'critical';
-    extra?: Record<string, any>;
+    extra?: Record<string, unknown>;
   }
 ) {
   if (import.meta.env.DEV) {
-    console.error(`[${context?.area || 'app'}]`, error, context?.extra);
+    console.error(`[${context?.area || 'app'}]`, error, sanitizeTelemetryRecord(context?.extra));
     return;
   }
 
@@ -106,7 +156,8 @@ export function logError(
       } as const;
       scope.setLevel(levelMap[context.severity]);
     }
-    if (context?.extra) scope.setExtras(context.extra);
+    const safeExtra = sanitizeTelemetryRecord(context?.extra);
+    if (safeExtra) scope.setExtras(safeExtra);
     Sentry.captureException(error);
   });
 }
@@ -114,9 +165,11 @@ export function logError(
 /**
  * 사용자 정의 이벤트 로깅 (메트릭 추적용)
  */
-export function logEvent(eventName: string, data?: Record<string, any>) {
+export function logEvent(eventName: string, data?: Record<string, unknown>) {
+  const safeData = sanitizeTelemetryRecord(data);
+
   if (import.meta.env.DEV) {
-    console.log(`📊 Event: ${eventName}`, data);
+    console.log(`📊 Event: ${eventName}`, safeData);
     return;
   }
 
@@ -124,7 +177,7 @@ export function logEvent(eventName: string, data?: Record<string, any>) {
     category: 'user-action',
     message: eventName,
     level: 'info',
-    data,
+    data: safeData,
   });
 }
 
@@ -143,6 +196,7 @@ export function startPerformanceTransaction(name: string) {
 /**
  * 성능 측정 종료
  */
-export function finishPerformanceTransaction(_transaction: any) {
+export function finishPerformanceTransaction(transaction: unknown) {
+  void transaction;
   if (import.meta.env.DEV) return;
 }
