@@ -27,8 +27,9 @@ export default defineConfig({
     // 번들 사이즈 경고 임계값 (KB)
     chunkSizeWarningLimit: 1000,
 
-    // 최적화 옵션
-    minify: 'esbuild',
+    // Vite 8 ships an Oxc-based production transform/minify path, so keep the
+    // build independent from a separately installed esbuild package.
+    minify: 'oxc',
     target: 'es2015',
 
     rollupOptions: {
