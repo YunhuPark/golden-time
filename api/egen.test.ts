@@ -31,14 +31,12 @@ test('EGen API', async (t) => {
 
   t.beforeEach(() => {
     process.env = { ...originalEnv, EGEN_SERVICE_KEY: 'dummy_server_key' };
-    global.fetch = async () => {
-      return {
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({ mock: 'data' })
-      } as Response;
-    };
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ mock: 'data' })
+    } as Response);
   });
 
   t.afterEach(() => {
@@ -73,7 +71,6 @@ test('EGen API', async (t) => {
 
   await t.test('5. 잘못된 numOfRows는 400', async () => {
     const endpoint = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-
     const { req, res } = createMockReqRes('GET', { _endpoint: endpoint, numOfRows: 'abc' });
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
@@ -133,9 +130,7 @@ test('EGen API', async (t) => {
   });
 
   await t.test('9. upstream 일반 오류는 안전한 502', async () => {
-    global.fetch = async () => {
-      throw new Error('Some random network error');
-    };
+    global.fetch = async () => { throw new Error('Some random network error'); };
     const { req, res } = createMockReqRes('GET', {
       _endpoint: '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire'
     });
@@ -143,13 +138,10 @@ test('EGen API', async (t) => {
     assert.strictEqual(res.statusCode, 502);
   });
 
-  await t.test('10. XML 기본정보 응답을 기존 JSON 형태로 정규화', async () => {
+  await t.test('10. XML 위치정보 응답을 기존 JSON 형태로 정규화', async () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
       <response>
-        <header>
-          <resultCode>00</resultCode>
-          <resultMsg>NORMAL SERVICE.</resultMsg>
-        </header>
+        <header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg></header>
         <body>
           <items>
             <item>
@@ -160,23 +152,19 @@ test('EGen API', async (t) => {
               <wgs84Lon>126.921</wgs84Lon>
             </item>
           </items>
-          <numOfRows>1</numOfRows>
-          <pageNo>1</pageNo>
-          <totalCount>1</totalCount>
+          <numOfRows>1</numOfRows><pageNo>1</pageNo><totalCount>1</totalCount>
         </body>
       </response>`;
 
-    global.fetch = async () => {
-      return {
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/xml; charset=utf-8' }),
-        text: async () => xml
-      } as Response;
-    };
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/xml; charset=utf-8' }),
+      text: async () => xml
+    } as Response);
 
     const { req, res } = createMockReqRes('GET', {
-      _endpoint: '/HsptlAsembySearchService/getHsptlBassInfoInqire',
+      _endpoint: '/ErmctInfoInqireService/getEgytLcinfoInqire',
       numOfRows: '1',
       pageNo: '1',
       _type: 'json',
