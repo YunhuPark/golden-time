@@ -7,17 +7,26 @@ import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver
  */
 interface CachedHospitalData {
   hospitals: Hospital[];
-  location: {
+  timestamp: number;
+  region: string;
+  /**
+   * Legacy field from older cache versions. New writes never persist precise
+   * user coordinates. It is kept only so existing localStorage entries can be
+   * migrated in place when they are read.
+   */
+  location?: {
     latitude: number;
     longitude: number;
   };
-  timestamp: number;
-  region: string;
 }
 
 /**
  * HospitalCache
  * 병원 데이터 로컬 스토리지 캐싱 (API 장애 시 Fallback용)
+ *
+ * Privacy rule:
+ * - 정확한 사용자 위치는 localStorage에 저장하지 않습니다.
+ * - 캐시 적합성은 좌표에서 계산한 행정지역(region)만으로 확인합니다.
  *
  * Edge Cases:
  * - API 서버 다운 시 최근 캐시 데이터 제공
@@ -74,11 +83,7 @@ export class HospitalCache {
       }));
 
       const cacheData: CachedHospitalData = {
-        hospitals: serializedHospitals as any,
-        location: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-        },
+        hospitals: serializedHospitals as Hospital[],
         timestamp: Date.now(),
         region,
       };
@@ -113,6 +118,12 @@ export class HospitalCache {
       const age = Date.now() - cacheData.timestamp;
       const ageMinutes = Math.round(age / 60000);
 
+      // 이전 버전 캐시에 저장된 정확한 사용자 위치가 있으면 즉시 제거합니다.
+      if (cacheData.location) {
+        delete cacheData.location;
+        localStorage.setItem(this.CACHE_KEY, JSON.stringify(cacheData));
+      }
+
       // 30분 이상 지난 캐시는 무효
       if (age > this.MAX_CACHE_AGE_MS) {
         console.log(`Cache expired (${ageMinutes} minutes old), removing...`);
@@ -134,19 +145,8 @@ export class HospitalCache {
         return null;
       }
 
-      // 같은 지역이어도 위치가 너무 다르면 캐시 무효 (100km 이상 차이)
-      const cachedLocation = new Coordinates(
-        cacheData.location.latitude,
-        cacheData.location.longitude
-      );
-      const distance = userLocation.distanceTo(cachedLocation);
-      if (distance > 100000) {
-        console.log(`Cache location too far (${(distance / 1000).toFixed(1)}km), ignoring cache`);
-        return null;
-      }
-
       // 역직렬화: 평문 객체 → Hospital 인스턴스
-      const hospitals = (cacheData.hospitals as any[]).map((data) =>
+      const hospitals = (cacheData.hospitals as unknown[]).map((data) =>
         this.deserializeHospital(data)
       );
 
@@ -205,30 +205,51 @@ export class HospitalCache {
   /**
    * 역직렬화: 평문 객체 → Hospital 인스턴스
    */
-  private static deserializeHospital(data: any): Hospital {
+  private static deserializeHospital(data: unknown): Hospital {
+    const value = data as {
+      id: string;
+      name: string;
+      coordinates: { latitude: number; longitude: number; accuracy?: number };
+      address: string;
+      phoneNumber: string;
+      emergencyPhoneNumber: string;
+      availableBeds: number;
+      totalBeds: number;
+      specializations: string[];
+      traumaLevel: string;
+      isOperating: boolean;
+      lastUpdated: string;
+      hasCT: boolean;
+      hasMRI: boolean;
+      hasSurgery: boolean;
+      estimatedWaitTime: number;
+      routeDuration?: number;
+      routeDistance?: number;
+    };
+
     return new Hospital(
-      data.id,
-      data.name,
+      value.id,
+      value.name,
       new Coordinates(
-        data.coordinates.latitude,
-        data.coordinates.longitude,
-        data.coordinates.accuracy
+        value.coordinates.latitude,
+        value.coordinates.longitude,
+        value.coordinates.accuracy
       ),
-      data.address,
-      data.phoneNumber,
-      data.emergencyPhoneNumber,
-      data.availableBeds,
-      data.totalBeds,
-      data.specializations,
-      data.traumaLevel,
-      data.isOperating,
-      new Date(data.lastUpdated),
-      data.hasCT,
-      data.hasMRI,
-      data.hasSurgery,
-      data.estimatedWaitTime,
-      data.routeDuration,
-      data.routeDistance
+      value.address,
+      value.phoneNumber,
+      value.emergencyPhoneNumber,
+      value.availableBeds,
+      value.totalBeds,
+      value.specializations,
+      value.traumaLevel,
+      value.isOperating,
+      new Date(value.lastUpdated),
+      value.hasCT,
+      value.hasMRI,
+      value.hasSurgery,
+      value.estimatedWaitTime,
+      value.routeDuration,
+      value.routeDistance
     );
   }
 }
