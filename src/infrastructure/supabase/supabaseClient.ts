@@ -8,15 +8,34 @@ import { resolveSupabasePublicConfig } from './supabaseConfig';
 
 const configuredUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const configuredAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseConfig = resolveSupabasePublicConfig(configuredUrl, configuredAnonKey);
+const explicitlyEnabled = import.meta.env.VITE_SUPABASE_ENABLED === 'true';
+const supabaseConfig = resolveSupabasePublicConfig(
+  configuredUrl,
+  configuredAnonKey,
+  explicitlyEnabled
+);
 
 /**
- * Optional Supabase-backed features (reviews, favorites, profiles, auth writes)
- * must not issue network calls when the deployment configuration has already
- * fallen back from an invalid/obsolete project. The emergency hospital-search
- * flow does not depend on Supabase and must remain fully available.
+ * Supabase-backed features are opt-in. If disabled, every Supabase fetch is
+ * handled locally by a synthetic 503 response so no request can leave the
+ * browser, even if a component still calls supabase.from(...) or auth methods.
  */
 export const supabaseOptionalFeaturesEnabled = supabaseConfig.source === 'environment';
+export const SUPABASE_UNAVAILABLE_MESSAGE =
+  '계정 기반 선택 기능을 현재 사용할 수 없습니다. 병원 검색과 응급실 정보는 정상 이용 가능합니다.';
+
+const disabledSupabaseFetch: typeof fetch = async () =>
+  new Response(
+    JSON.stringify({
+      message: SUPABASE_UNAVAILABLE_MESSAGE,
+      code: 'SUPABASE_CAPABILITY_DISABLED',
+    }),
+    {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 
 if (!supabaseOptionalFeaturesEnabled) {
   console.info(
@@ -26,10 +45,13 @@ if (!supabaseOptionalFeaturesEnabled) {
 }
 
 export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+  global: {
+    fetch: supabaseOptionalFeaturesEnabled ? fetch : disabledSupabaseFetch,
+  },
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
+    autoRefreshToken: supabaseOptionalFeaturesEnabled,
+    persistSession: supabaseOptionalFeaturesEnabled,
+    detectSessionInUrl: supabaseOptionalFeaturesEnabled,
   },
 });
 
