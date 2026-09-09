@@ -4,14 +4,13 @@ on:
   push:
     branches:
       - security/dev-dependency-refresh
-    paths:
-      - .github/workflows/dependency-refresh.yml
 
 permissions:
   contents: write
 
 jobs:
   refresh:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +24,8 @@ jobs:
         run: npm ci
       - name: Refresh security-sensitive dev dependencies
         run: npm install --save-dev vite@8.2.2 vitest@5.0.0 @vitejs/plugin-react@6.1.1 @vercel/node@12.0.2 vercel@59.12.0
+      - name: Full dependency audit report
+        run: npm audit --json > audit-all.json || true
       - name: Production dependency security gate
         run: npm audit --omit=dev --audit-level=moderate
       - name: Environment validation tests
@@ -46,6 +47,13 @@ jobs:
           KAKAO_REST_API_KEY: test-kakao-rest-key
           VITE_SUPABASE_ENABLED: 'false'
         run: npm run build
+      - name: Print dependency audit summary
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('audit-all.json', 'utf8'));
+          console.log('all dependency vulnerabilities:', JSON.stringify(audit.metadata?.vulnerabilities || {}));
+          NODE
       - name: Commit refreshed dependency lockfile
         run: |
           git config user.name "github-actions[bot]"
