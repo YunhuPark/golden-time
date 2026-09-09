@@ -1,12 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
 const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-const BASIC_INFO_ENDPOINT = '/HsptlAsembySearchService/getHsptlBassInfoInqire';
+const BASIC_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
 
-const ALLOWED_ENDPOINTS = [
-  REALTIME_BEDS_ENDPOINT,
-  BASIC_INFO_ENDPOINT,
-];
+const ALLOWED_ENDPOINTS = [REALTIME_BEDS_ENDPOINT, BASIC_INFO_ENDPOINT];
 
 const decodeXmlEntities = (value: string): string =>
   value
@@ -53,9 +50,7 @@ const parseEGenXml = (xml: string) => {
   const itemPattern = /<item>([\s\S]*?)<\/item>/gi;
   let itemMatch: RegExpExecArray | null;
   while ((itemMatch = itemPattern.exec(itemsXml)) !== null) {
-    if (itemMatch[1] !== undefined) {
-      items.push(parseXmlItem(itemMatch[1]));
-    }
+    if (itemMatch[1] !== undefined) items.push(parseXmlItem(itemMatch[1]));
   }
 
   const body: {
@@ -65,11 +60,8 @@ const parseEGenXml = (xml: string) => {
     totalCount?: number;
   } = {};
 
-  if (items.length === 1) {
-    body.items = { item: items[0]! };
-  } else if (items.length > 1) {
-    body.items = { item: items };
-  }
+  if (items.length === 1) body.items = { item: items[0]! };
+  else if (items.length > 1) body.items = { item: items };
 
   body.numOfRows = parseOptionalNumber(getXmlTag(bodyXml, 'numOfRows'));
   body.pageNo = parseOptionalNumber(getXmlTag(bodyXml, 'pageNo'));
@@ -103,9 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const EGEN_KEY = process.env['EGEN_SERVICE_KEY'];
-    if (!EGEN_KEY) {
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
+    if (!EGEN_KEY) return res.status(500).json({ error: 'Server configuration error' });
 
     if (numOfRows !== undefined) {
       const parsedNumOfRows = Number(numOfRows);
@@ -125,7 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
-
     if (numOfRows) targetUrl.searchParams.set('numOfRows', String(numOfRows));
     if (pageNo) targetUrl.searchParams.set('pageNo', String(pageNo));
     if (_type) targetUrl.searchParams.set('_type', String(_type));
@@ -147,19 +136,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        return res.status(502).json({ error: 'Bad Gateway' });
-      }
+      if (!response.ok) return res.status(502).json({ error: 'Bad Gateway' });
 
       const contentType = response.headers?.get?.('content-type')?.toLowerCase() ?? '';
       let data: unknown;
-
-      if (contentType.includes('xml')) {
-        const xml = await response.text();
-        data = parseEGenXml(xml);
-      } else {
-        data = await response.json();
-      }
+      if (contentType.includes('xml')) data = parseEGenXml(await response.text());
+      else data = await response.json();
 
       if (_endpoint === BASIC_INFO_ENDPOINT) {
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');

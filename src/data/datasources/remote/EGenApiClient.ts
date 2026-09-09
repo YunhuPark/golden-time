@@ -51,20 +51,22 @@ export class EGenApiClient {
   async getHospitalBasicInfo(
     Q0?: string,
     Q1?: string,
-    QZ = 'Y',
+    QZ?: string,
     numOfRows = 300
   ): Promise<HospitalBasicInfoDTO[]> {
-    const endpoint = '/HsptlAsembySearchService/getHsptlBassInfoInqire';
+    const endpoint = '/ErmctInfoInqireService/getEgytLcinfoInqire';
     const params = new URLSearchParams({
       _endpoint: endpoint,
       numOfRows: numOfRows.toString(),
       pageNo: '1',
-      QZ,
       _type: 'json',
     });
     if (Q0) params.append('Q0', Q0);
     if (Q1) params.append('Q1', Q1);
+    if (QZ) params.append('QZ', QZ);
 
+    // Location metadata is an optimization only. Keep a short single-attempt
+    // budget so a public-data outage never blocks the Kakao fallback path.
     const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(
       `/api/egen?${params.toString()}`,
       1,
@@ -81,14 +83,14 @@ export class EGenApiClient {
 
     const fetchStartedAt = performance.now();
     const basicInfoPromise = this.getHospitalBasicInfo(stage1, stage2).catch((error) => {
-      console.warn('⚠️ E-Gen basic hospital info unavailable; using Kakao fallback', error);
+      console.warn('⚠️ E-Gen hospital location info unavailable; using Kakao fallback', error);
       return [] as HospitalBasicInfoDTO[];
     });
     const bedsPromise = this.getEmergencyRoomBeds(stage1, stage2, 100);
 
     const [beds, basicInfo] = await Promise.all([bedsPromise, basicInfoPromise]);
     const eGenFetchMs = performance.now() - fetchStartedAt;
-    console.log(`✅ 병상 정보: ${beds.length}개 수신 / 기본정보: ${basicInfo.length}개 수신`);
+    console.log(`✅ 병상 정보: ${beds.length}개 수신 / 위치정보: ${basicInfo.length}개 수신`);
 
     const basicInfoByHpid = new Map(
       basicInfo
