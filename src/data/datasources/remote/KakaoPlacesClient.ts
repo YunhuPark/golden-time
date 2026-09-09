@@ -36,6 +36,12 @@ const GEOCODE_CACHE_MAX_ENTRIES = 200;
 const geocodeCache = new Map<string, GeocodeCacheEntry>();
 const geocodeRequestsInFlight = new Map<string, Promise<GeocodeResult | null>>();
 
+export function buildGeocodeCacheKey(keyword: string, region?: string): string {
+  const normalizedKeyword = keyword.replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizedRegion = region?.replace(/\s+/g, ' ').trim().toLowerCase() || 'any-region';
+  return `${normalizedRegion}::${normalizedKeyword}`;
+}
+
 export class KakaoPlacesClient {
   private placesService: any;
   private initPromise: Promise<void>;
@@ -92,7 +98,7 @@ export class KakaoPlacesClient {
     }
 
     const cleanKeyword = keyword.replace(/\s+/g, ' ').trim();
-    const cacheKey = cleanKeyword.toLowerCase();
+    const cacheKey = buildGeocodeCacheKey(cleanKeyword, region);
     const cached = geocodeCache.get(cacheKey);
     if (cached) {
       if (cached.expiresAt > Date.now()) return cached.result;
