@@ -26,6 +26,16 @@ type KakaoDocument = {
   category_name?: string;
 };
 
+type GeocodeCacheEntry = {
+  result: GeocodeResult;
+  expiresAt: number;
+};
+
+const GEOCODE_CACHE_TTL_MS = 10 * 60 * 1000;
+const GEOCODE_CACHE_MAX_ENTRIES = 200;
+const geocodeCache = new Map<string, GeocodeCacheEntry>();
+const geocodeRequestsInFlight = new Map<string, Promise<GeocodeResult | null>>();
+
 export class KakaoPlacesClient {
   private placesService: any;
   private initPromise: Promise<void>;
@@ -82,28 +92,58 @@ export class KakaoPlacesClient {
     }
 
     const cleanKeyword = keyword.replace(/\s+/g, ' ').trim();
+    const cacheKey = cleanKeyword.toLowerCase();
+    const cached = geocodeCache.get(cacheKey);
+    if (cached) {
+      if (cached.expiresAt > Date.now()) return cached.result;
+      geocodeCache.delete(cacheKey);
+    }
+
+    const inFlight = geocodeRequestsInFlight.get(cacheKey);
+    if (inFlight) return inFlight;
+
+    const request = this.lookupCoordinates(cleanKeyword, keyword, region, userLocation)
+      .then((result) => {
+        if (result) this.cacheGeocode(cacheKey, result);
+        return result;
+      })
+      .finally(() => {
+        geocodeRequestsInFlight.delete(cacheKey);
+      });
+
+    geocodeRequestsInFlight.set(cacheKey, request);
+    return request;
+  }
+
+  private async lookupCoordinates(
+    cleanKeyword: string,
+    originalKeyword: string,
+    region?: string,
+    userLocation?: { latitude: number; longitude: number }
+  ): Promise<GeocodeResult | null> {
+    // Hospital names are usually unique. Try the direct name first so mixed
+    // regional feeds (e.g. Gwangju/Jeonnam) do not waste a request on an
+    // incorrect region-qualified query. Region remains a fallback for ambiguous names.
     const searchQueries = Array.from(
       new Set([
-        region ? `${cleanKeyword} ${region}` : cleanKeyword,
         cleanKeyword,
+        region ? `${cleanKeyword} ${region}` : cleanKeyword,
       ])
     );
 
-    // Production 우선 경로: REST key는 서버에만 두고 Vercel proxy를 호출합니다.
     for (const query of searchQueries) {
-      const proxyResult = await this.performProxySearch(query, keyword, userLocation);
+      const proxyResult = await this.performProxySearch(query, originalKeyword, userLocation);
       if (proxyResult) return proxyResult;
     }
 
-    // Proxy 장애 시에만 JavaScript SDK fallback을 사용합니다.
     await this.initPromise;
     if (!this.placesService) {
-      console.warn(`Geocoding unavailable for "${keyword}": proxy and JS SDK both failed`);
+      console.warn(`Geocoding unavailable for "${originalKeyword}": proxy and JS SDK both failed`);
       return null;
     }
 
     for (const query of searchQueries) {
-      const sdkResult = await this.performSdkSearch(query, keyword, userLocation);
+      const sdkResult = await this.performSdkSearch(query, originalKeyword, userLocation);
       if (sdkResult) return sdkResult;
     }
 
@@ -119,7 +159,7 @@ export class KakaoPlacesClient {
       const params = new URLSearchParams({
         type: 'keyword',
         query: searchQuery,
-        size: '15',
+        size: '5',
       });
       const response = await fetch(`/api/kakao/geocoding?${params.toString()}`, {
         headers: { Accept: 'application/json' },
@@ -149,8 +189,25 @@ export class KakaoPlacesClient {
           }
           resolve(this.pickResult(result, searchQuery, originalKeyword, userLocation));
         },
-        { size: 15 }
+        { size: 5 }
       );
+    });
+  }
+
+  private cacheGeocode(cacheKey: string, result: GeocodeResult): void {
+    const now = Date.now();
+    for (const [key, entry] of geocodeCache) {
+      if (entry.expiresAt <= now) geocodeCache.delete(key);
+    }
+
+    if (geocodeCache.size >= GEOCODE_CACHE_MAX_ENTRIES) {
+      const oldestKey = geocodeCache.keys().next().value as string | undefined;
+      if (oldestKey) geocodeCache.delete(oldestKey);
+    }
+
+    geocodeCache.set(cacheKey, {
+      result,
+      expiresAt: now + GEOCODE_CACHE_TTL_MS,
     });
   }
 

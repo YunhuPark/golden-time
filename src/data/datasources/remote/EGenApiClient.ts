@@ -31,10 +31,6 @@ export class EGenApiClient {
       _type: 'json',
     });
 
-    // The real-time bed endpoint currently returns zero rows for the full
-    // administrative label "광주광역시" while the upstream E-Gen service
-    // returns the live Gwangju/Jeonnam feed for "광주". Keep the app's full
-    // region label for geocoding/UI and normalize only this E-Gen request.
     const emergencyBedStage1 = this.normalizeEmergencyBedStage1(stage1);
     if (emergencyBedStage1) params.append('STAGE1', emergencyBedStage1);
     if (stage2) params.append('STAGE2', stage2);
@@ -74,8 +70,6 @@ export class EGenApiClient {
   ): Promise<CombinedHospitalDTO[]> {
     console.log('🏥 병원 정보 조회 시작:', { stage1, stage2 });
 
-    // 발표/실사용 화면에는 한 지역의 전체 300건을 한 번에 받을 필요가 없습니다.
-    // 100건으로 제한해 upstream 응답 부담과 timeout 가능성을 낮춥니다.
     const beds = await this.getEmergencyRoomBeds(stage1, stage2, 100);
     console.log(`✅ 병상 정보: ${beds.length}개 수신`);
 
@@ -109,11 +103,10 @@ export class EGenApiClient {
 
     if (hospitalsNeedingGeocoding.length === 0) return;
 
-    // E-Gen's realtime bed feed does not consistently include coordinates.
-    // Geocoding every hospital sequentially made the Gwangju feed (61 rows)
-    // take many seconds before any results could be ranked. Use a small worker
-    // pool to improve latency while keeping Kakao request concurrency bounded.
-    const concurrency = Math.min(4, hospitalsNeedingGeocoding.length);
+    // Keep Kakao traffic bounded, but use six workers so a 61-hospital feed
+    // finishes in fewer waves. KakaoPlacesClient also deduplicates and caches
+    // same-session lookups, so repeated searches avoid most network work.
+    const concurrency = Math.min(6, hospitalsNeedingGeocoding.length);
     let nextIndex = 0;
     let successCount = 0;
 
@@ -133,9 +126,9 @@ export class EGenApiClient {
             item.basicInfo.dutyAddr = result.address;
             successCount++;
           }
-          // Keep a small spacing between requests from each worker to avoid
-          // turning the latency optimization into an upstream request burst.
-          await this.sleep(50);
+          // Small per-worker spacing avoids turning the faster pool into an
+          // unbounded burst while adding little latency across the whole batch.
+          await this.sleep(25);
         } catch (error) {
           console.error(`❌ Failed to geocode "${item.basicInfo.dutyName}":`, error);
         }
