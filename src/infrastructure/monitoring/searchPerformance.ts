@@ -28,6 +28,7 @@ type SearchPerformanceState = HospitalSearchPerformanceSnapshot & {
 
 const MAX_TRACKED_SEARCHES = 20;
 let nextSearchId = 1;
+let activeSearchId: number | null = null;
 const searches = new Map<number, SearchPerformanceState>();
 
 const nowMs = (): number => {
@@ -61,7 +62,6 @@ const publishSnapshot = (label: string, state: SearchPerformanceState): void => 
   console.info(`[PERF] ${label}`, snapshot);
 
   if (typeof window === 'undefined') return;
-
   const perfWindow = window as Window & {
     __GOLDEN_TIME_PERF__?: HospitalSearchPerformanceSnapshot[];
   };
@@ -85,6 +85,7 @@ const pruneSearches = (): void => {
 
 export const startHospitalSearchPerformance = (): number => {
   const searchId = nextSearchId++;
+  activeSearchId = searchId;
   searches.set(searchId, {
     searchId,
     status: 'running',
@@ -93,6 +94,8 @@ export const startHospitalSearchPerformance = (): number => {
   pruneSearches();
   return searchId;
 };
+
+export const getActiveHospitalSearchPerformanceId = (): number | null => activeSearchId;
 
 export const recordEGenPerformance = (
   searchId: number,
@@ -105,24 +108,20 @@ export const recordEGenPerformance = (
 ): void => {
   const state = getState(searchId);
   if (!state) return;
-
   state.eGenFetchMs = roundMs(data.eGenFetchMs);
   state.geocodingMs = roundMs(data.geocodingMs);
   state.geocodingRequested = data.geocodingRequested;
   state.geocodingSucceeded = data.geocodingSucceeded;
 };
 
-export const recordRankingPerformance = (
-  searchId: number,
-  rankingMs: number
-): void => {
+export const recordRankingPerformance = (searchId: number, rankingMs: number): void => {
   const state = getState(searchId);
   if (!state) return;
   state.rankingMs = roundMs(rankingMs);
 };
 
 export const recordFirstHospitalResults = (
-  searchId: number,
+  searchId: number | null,
   hospitalCount: number
 ): void => {
   const state = getState(searchId);
@@ -130,9 +129,7 @@ export const recordFirstHospitalResults = (
 
   state.hospitalCount = hospitalCount;
   state.firstResultsStateMs = roundMs(nowMs() - state.startedAtMs);
-  if (state.status !== 'complete') {
-    state.status = 'initial-results';
-  }
+  if (state.status !== 'complete') state.status = 'initial-results';
 
   const recordPaint = () => {
     const latest = getState(searchId);
@@ -183,6 +180,5 @@ export const recordHospitalSearchFailure = (
   publishSnapshot('hospital_search_failed', state);
 };
 
-export const getRecentHospitalSearchPerformance = (): HospitalSearchPerformanceSnapshot[] => {
-  return Array.from(searches.values()).map(toSnapshot);
-};
+export const getRecentHospitalSearchPerformance = (): HospitalSearchPerformanceSnapshot[] =>
+  Array.from(searches.values()).map(toSnapshot);
