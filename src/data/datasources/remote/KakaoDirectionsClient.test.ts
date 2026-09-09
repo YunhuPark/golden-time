@@ -88,6 +88,57 @@ describe('KakaoDirectionsClient', () => {
     });
   });
 
+  describe('transient retry policy', () => {
+    it('retries one 504 response and then succeeds', async () => {
+      const retryClient = new KakaoDirectionsClient(3500, 2);
+      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response('{}', { status: 504, statusText: 'Gateway Timeout' }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await (retryClient as any).fetchWithRetry('https://example.test');
+
+      expect(result).toEqual({ ok: true });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect((retryClient as any).sleep).toHaveBeenCalledTimes(1);
+      vi.unstubAllGlobals();
+    });
+
+    it('does not retry 429 rate limit responses', async () => {
+      const retryClient = new KakaoDirectionsClient(3500, 2);
+      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response('{}', { status: 429, statusText: 'Too Many Requests' })
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect((retryClient as any).fetchWithRetry('https://example.test')).rejects.toMatchObject({
+        statusCode: 429,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect((retryClient as any).sleep).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('does not retry client-side 4xx responses', async () => {
+      const retryClient = new KakaoDirectionsClient(3500, 2);
+      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response('{}', { status: 400, statusText: 'Bad Request' })
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect((retryClient as any).fetchWithRetry('https://example.test')).rejects.toMatchObject({
+        statusCode: 400,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect((retryClient as any).sleep).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+  });
+
   describe('getBatchRouteInfoConcurrent', () => {
     it('A. 동시성 제한: 최대 3개까지만 동시 실행되는지 검증', async () => {
       let concurrentCount = 0;
@@ -115,7 +166,7 @@ describe('KakaoDirectionsClient', () => {
     });
 
     it('B. 부분 실패 격리: 일부 요청 실패가 나머지 성공 결과에 영향을 주지 않음', async () => {
-      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_, dest) => {
+      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_: unknown, dest: { id: string }) => {
         if (dest.id === 'fail1' || dest.id === 'fail2') {
           throw new Error('Network error');
         }
@@ -142,7 +193,7 @@ describe('KakaoDirectionsClient', () => {
     });
 
     it('C. ID 기반 병합: 응답 완료 순서와 관계없이 정확한 병원에 매핑됨', async () => {
-      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_, dest) => {
+      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_: unknown, dest: { id: string; latitude: number; longitude: number }) => {
         let delay = 10;
         if (dest.id === 'slow') delay = 50;
         if (dest.id === 'fast') delay = 1;
