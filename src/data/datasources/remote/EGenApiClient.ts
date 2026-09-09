@@ -5,17 +5,24 @@ import {
   CombinedHospitalDTO,
 } from '../../models/HospitalDTO';
 import { NetworkError, RateLimitError } from '../../../infrastructure/errors/AppError';
+import { recordEGenPerformance } from '../../../infrastructure/monitoring/searchPerformance';
 import { KakaoPlacesClient } from './KakaoPlacesClient';
 
 export class EGenApiClient {
   private readonly timeout: number;
   private readonly maxRetries: number;
+  private performanceSearchId?: number;
   private readonly geocodingClient: KakaoPlacesClient;
 
-  constructor(timeout = 16000, maxRetries = 2) {
+  constructor(timeout = 16000, maxRetries = 2, performanceSearchId?: number) {
     this.timeout = timeout;
     this.maxRetries = maxRetries;
+    this.performanceSearchId = performanceSearchId;
     this.geocodingClient = new KakaoPlacesClient();
+  }
+
+  setPerformanceSearchId(searchId: number | null): void {
+    this.performanceSearchId = searchId ?? undefined;
   }
 
   async getEmergencyRoomBeds(
@@ -70,7 +77,9 @@ export class EGenApiClient {
   ): Promise<CombinedHospitalDTO[]> {
     console.log('🏥 병원 정보 조회 시작:', { stage1, stage2 });
 
+    const fetchStartedAt = performance.now();
     const beds = await this.getEmergencyRoomBeds(stage1, stage2, 100);
+    const eGenFetchMs = performance.now() - fetchStartedAt;
     console.log(`✅ 병상 정보: ${beds.length}개 수신`);
 
     const combinedList: CombinedHospitalDTO[] = beds.map((bed) => ({
@@ -78,14 +87,26 @@ export class EGenApiClient {
       bedInfo: bed,
     }));
 
-    await this.enrichCoordinatesWithGeocoding(combinedList, stage1);
+    const geocodingStartedAt = performance.now();
+    const geocodingStats = await this.enrichCoordinatesWithGeocoding(combinedList, stage1);
+    const geocodingMs = performance.now() - geocodingStartedAt;
+
+    if (this.performanceSearchId !== undefined) {
+      recordEGenPerformance(this.performanceSearchId, {
+        eGenFetchMs,
+        geocodingMs,
+        geocodingRequested: geocodingStats.requested,
+        geocodingSucceeded: geocodingStats.succeeded,
+      });
+    }
+
     return combinedList;
   }
 
   private async enrichCoordinatesWithGeocoding(
     combinedList: CombinedHospitalDTO[],
     region?: string
-  ): Promise<void> {
+  ): Promise<{ requested: number; succeeded: number }> {
     const hospitalsNeedingGeocoding = combinedList.filter((item) => {
       const { wgs84Lat, wgs84Lon, dutyName } = item.basicInfo;
       const lat = parseFloat(wgs84Lat || '0');
@@ -101,11 +122,10 @@ export class EGenApiClient {
       return hasNoCoords && hasValidName;
     });
 
-    if (hospitalsNeedingGeocoding.length === 0) return;
+    if (hospitalsNeedingGeocoding.length === 0) {
+      return { requested: 0, succeeded: 0 };
+    }
 
-    // Keep Kakao traffic bounded, but use six workers so a 61-hospital feed
-    // finishes in fewer waves. KakaoPlacesClient also deduplicates and caches
-    // same-session lookups, so repeated searches avoid most network work.
     const concurrency = Math.min(6, hospitalsNeedingGeocoding.length);
     let nextIndex = 0;
     let successCount = 0;
@@ -126,8 +146,6 @@ export class EGenApiClient {
             item.basicInfo.dutyAddr = result.address;
             successCount++;
           }
-          // Small per-worker spacing avoids turning the faster pool into an
-          // unbounded burst while adding little latency across the whole batch.
           await this.sleep(25);
         } catch (error) {
           console.error(`❌ Failed to geocode "${item.basicInfo.dutyName}":`, error);
@@ -137,6 +155,10 @@ export class EGenApiClient {
 
     await Promise.all(Array.from({ length: concurrency }, () => worker()));
     console.log(`✅ Geocoding complete: ${successCount}/${hospitalsNeedingGeocoding.length}`);
+    return {
+      requested: hospitalsNeedingGeocoding.length,
+      succeeded: successCount,
+    };
   }
 
   private createBasicInfoFromBedInfo(bed: EmergencyRoomBedDTO): HospitalBasicInfoDTO {
