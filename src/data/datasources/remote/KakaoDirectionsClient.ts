@@ -55,9 +55,6 @@ type RouteCacheEntry = {
   expiresAt: number;
 };
 
-// Traffic-sensitive route data is kept briefly and only in memory. Nothing is
-// persisted to localStorage/sessionStorage, so precise user location does not
-// survive a full page reload or tab close.
 const ROUTE_CACHE_TTL_MS = 60_000;
 const ROUTE_CACHE_MAX_ENTRIES = 100;
 const routeCache = new Map<string, RouteCacheEntry>();
@@ -68,8 +65,6 @@ const buildRouteCacheKey = (
   destination: { latitude: number; longitude: number },
   priority: RoutePriority
 ): string => {
-  // Normal GPS jitter should not force a second route lookup. About 4 decimal
-  // places is roughly 10 m, while hospital coordinates remain more precise.
   const originKey = `${origin.latitude.toFixed(4)},${origin.longitude.toFixed(4)}`;
   const destinationKey = `${destination.latitude.toFixed(5)},${destination.longitude.toFixed(5)}`;
   return `${priority}:${originKey}>${destinationKey}`;
@@ -79,7 +74,7 @@ export class KakaoDirectionsClient {
   private readonly timeout: number;
   private readonly maxRetries: number;
 
-  constructor(timeout = 3000, maxRetries = 1) {
+  constructor(timeout = 3500, maxRetries = 2) {
     this.timeout = timeout;
     this.maxRetries = maxRetries;
   }
@@ -110,8 +105,6 @@ export class KakaoDirectionsClient {
       routeCache.delete(cacheKey);
     }
 
-    // Different repository/client instances can request the same route at the
-    // same time. Share the in-flight promise instead of hitting Kakao twice.
     const inFlight = routeRequestsInFlight.get(cacheKey);
     if (inFlight) {
       return inFlight;
@@ -237,6 +230,10 @@ export class KakaoDirectionsClient {
     return true;
   }
 
+  private isRetryableStatus(statusCode?: number): boolean {
+    return statusCode === 502 || statusCode === 503 || statusCode === 504;
+  }
+
   private async fetchWithRetry<T>(url: string, retries = this.maxRetries): Promise<T> {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
@@ -269,6 +266,14 @@ export class KakaoDirectionsClient {
           );
         }
 
+        if (response.status >= 400 && response.status < 500) {
+          throw new NetworkError(
+            `Kakao Mobility API 요청 오류: ${response.status}`,
+            undefined,
+            response.status
+          );
+        }
+
         if (!response.ok) {
           throw new NetworkError(
             `Kakao Mobility API Error: ${response.status} ${response.statusText}`,
@@ -279,20 +284,30 @@ export class KakaoDirectionsClient {
 
         return (await response.json()) as T;
       } catch (error) {
+        const hasRetryLeft = attempt < retries - 1;
+
         if (error instanceof Error && error.name === 'AbortError') {
-          if (attempt < retries - 1) {
-            await this.sleep(Math.pow(2, attempt) * 500);
+          if (hasRetryLeft) {
+            await this.sleep(250);
             continue;
           }
-          throw new NetworkError('Kakao Mobility API 요청 시간 초과', error);
+          throw new NetworkError('Kakao Mobility API 요청 시간 초과', error, 504);
         }
 
         if (error instanceof NetworkError) {
-          if (attempt < retries - 1) {
-            await this.sleep(Math.pow(2, attempt) * 500);
+          if (hasRetryLeft && this.isRetryableStatus(error.statusCode)) {
+            await this.sleep(250);
             continue;
           }
           throw error;
+        }
+
+        if (error instanceof TypeError) {
+          if (hasRetryLeft) {
+            await this.sleep(250);
+            continue;
+          }
+          throw new NetworkError('Kakao Mobility API 네트워크 오류', error);
         }
 
         if (error instanceof Error) {
