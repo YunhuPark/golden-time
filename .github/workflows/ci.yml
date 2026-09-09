@@ -71,6 +71,9 @@ jobs:
     - name: Environment validation tests
       run: node --test scripts/validate-env.test.cjs
 
+    - name: Unit Tests
+      run: npm run test:unit
+
     - name: Type Check (Frontend)
       run: npm run type-check
 
