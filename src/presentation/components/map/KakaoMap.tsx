@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Hospital } from '../../../domain/entities/Hospital';
 import { Coordinates } from '../../../domain/valueObjects/Coordinates';
-import { logError } from '../../../infrastructure/monitoring/sentry';
+import { logError } from '../../../infrastructure/monitoring/telemetry';
 import { cn } from '../../../lib/utils';
 import { useAppStore } from '../../../infrastructure/state/store';
 
