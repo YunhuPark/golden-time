@@ -161,7 +161,7 @@ export function KakaoMap({
     };
 
     initMap();
-  }, []); // 최초 1회만 실행
+  }, [userLocation?.latitude, userLocation?.longitude]);
 
   /**
    * 사용자 위치 마커 업데이트

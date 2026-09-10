@@ -39,6 +39,7 @@ export function useGeolocation(
     maximumAge: 30000, // 30초간 캐시 허용
   }
 ): GeolocationState {
+  const { enableHighAccuracy, timeout, maximumAge } = options;
   const [state, setState] = useState<GeolocationState>({
     location: null,
     error: null,
@@ -200,7 +201,7 @@ export function useGeolocation(
           clearTimeout(fallbackTimeout);
           handleError(error);
         },
-        { ...options, timeout: timeoutDuration } // 모바일/데스크톱 동적 조정
+        { enableHighAccuracy, maximumAge, timeout: timeoutDuration } // 모바일/데스크톱 동적 조정
       );
 
     } catch (e) {
@@ -220,7 +221,7 @@ export function useGeolocation(
     return () => {
       // watchPosition을 사용하지 않으므로 cleanup 불필요
     };
-  }, [options.enableHighAccuracy, options.timeout, options.maximumAge]);
+  }, [enableHighAccuracy, timeout, maximumAge]);
 
   return state;
 }

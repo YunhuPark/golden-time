@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ReviewService, Review } from '../../../domain/services/ReviewService';
 import { ReviewForm } from './ReviewForm';
 import { useAppStore } from '../../../infrastructure/state/store';
@@ -37,7 +37,7 @@ export const ReviewList: React.FC<ReviewListProps> = ({
   const [myReview, setMyReview] = useState<Review | null>(null);
 
   // 리뷰 데이터 로드
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -68,11 +68,11 @@ export const ReviewList: React.FC<ReviewListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalId, user]);
 
   useEffect(() => {
-    loadReviews();
-  }, [hospitalId, user]);
+    void loadReviews();
+  }, [loadReviews]);
 
   // 리뷰 작성 버튼 클릭
   const handleWriteReview = () => {
