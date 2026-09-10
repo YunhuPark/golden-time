@@ -29,7 +29,7 @@ export interface AuthSessionState {
 export interface UseAuthSessionReturn extends AuthSessionState {
   refreshSession: () => Promise<boolean>;
   forceLogout: () => Promise<void>;
-  handleSessionError: (error: any) => boolean; // Returns true if session expired
+  handleSessionError: (error: unknown) => boolean; // Returns true if session expired
 }
 
 export function useAuthSession(): UseAuthSessionReturn {
@@ -211,10 +211,17 @@ export function useAuthSession(): UseAuthSessionReturn {
    * @returns true if session expired, false otherwise
    */
   const handleSessionError = useCallback(
-    (error: any): boolean => {
+    (error: unknown): boolean => {
       if (!error) return false;
 
-      const errorMessage = error.message || String(error);
+      const candidate =
+        typeof error === 'object' && error !== null
+          ? (error as { message?: unknown; status?: unknown; code?: unknown })
+          : {};
+      const errorMessage =
+        typeof candidate.message === 'string' ? candidate.message : String(error);
+      const errorStatus = typeof candidate.status === 'number' ? candidate.status : undefined;
+      const errorCode = typeof candidate.code === 'string' ? candidate.code : undefined;
       const isJWTError =
         errorMessage.includes('JWT') ||
         errorMessage.includes('jwt') ||
@@ -222,8 +229,8 @@ export function useAuthSession(): UseAuthSessionReturn {
         errorMessage.includes('expired') ||
         errorMessage.includes('unauthorized') ||
         errorMessage.includes('not authenticated') ||
-        error.status === 401 ||
-        error.code === 'PGRST301'; // PostgREST JWT expired
+        errorStatus === 401 ||
+        errorCode === 'PGRST301'; // PostgREST JWT expired
 
       if (isJWTError) {
         console.warn('🚨 Session expiry detected in error:', errorMessage);
@@ -235,8 +242,8 @@ export function useAuthSession(): UseAuthSessionReturn {
 
         logEvent('session_error_detected', {
           error_message: errorMessage,
-          error_code: error.code,
-          error_status: error.status,
+          error_code: errorCode,
+          error_status: errorStatus,
         });
 
         return true;

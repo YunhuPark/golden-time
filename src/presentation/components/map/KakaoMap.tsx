@@ -42,8 +42,10 @@ export function KakaoMap({
   style = {},
 }: KakaoMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  type KakaoMapInstance = InstanceType<typeof window.kakao.maps.Map>;
+  type KakaoOverlayInstance = InstanceType<typeof window.kakao.maps.CustomOverlay>;
+  const mapRef = useRef<KakaoMapInstance | null>(null);
+  const markersRef = useRef<Array<{ overlay: KakaoOverlayInstance; hospitalId: string }>>([]);
   const initialBoundsSetRef = useRef<boolean>(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +54,11 @@ export function KakaoMap({
   // 전역 토글 핸들러 함수 (window 객체에 등록)
   useEffect(() => {
     let currentOpenInfoId: string | null = null;
+    const markerInfoWindow = window as typeof window & {
+      toggleMarkerInfo?: (hospitalId: string) => void;
+    };
 
-    (window as any).toggleMarkerInfo = (hospitalId: string) => {
+    markerInfoWindow.toggleMarkerInfo = (hospitalId: string) => {
       console.log('🔵 Marker clicked:', hospitalId);
 
       // 모든 정보창 숨기기
@@ -87,7 +92,7 @@ export function KakaoMap({
     };
 
     return () => {
-      delete (window as any).toggleMarkerInfo;
+      delete markerInfoWindow.toggleMarkerInfo;
     };
   }, [hospitals, onHospitalClick]);
 
