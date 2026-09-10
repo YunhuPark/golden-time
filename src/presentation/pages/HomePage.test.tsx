@@ -161,7 +161,9 @@ describe('HomePage Async Route & Unmount Handling', () => {
     mockFindNearby
       .mockImplementationOnce(() => new Promise<Hospital[]>((resolve) => { resolveFirst = resolve; }))
       .mockImplementationOnce(() => new Promise<Hospital[]>((resolve) => { resolveSecond = resolve; }));
-    mockLoadMoreRouteInfo.mockResolvedValue([]);
+    mockLoadMoreRouteInfo.mockImplementation(
+      async (_location, hospitals) => hospitals
+    );
 
     const firstHospital = makeHospital('old', 'Old Hospital');
     const secondHospital = makeHospital('new', 'New Hospital');
