@@ -20,6 +20,21 @@ export interface GeolocationState {
   accuracy: number | null;
 }
 
+type LastKnownLocation = {
+  coords: Coordinates;
+  timestamp: number;
+};
+
+let lastKnownLocation: LastKnownLocation | null = null;
+
+function clearLegacyPersistedLocation(): void {
+  try {
+    localStorage.removeItem('lastKnownLocation');
+  } catch {
+    // Storage may be unavailable in privacy modes; there is nothing else to do.
+  }
+}
+
 /**
  * useGeolocation Hook
  *
@@ -27,8 +42,8 @@ export interface GeolocationState {
  *
  * Edge Cases 처리:
  * 1. 권한 거부 → Manual input fallback + Seoul City Hall default
- * 2. 타임아웃 → Last known location 또는 기본 위치 fallback
- * 3. 위치 불가 → Last known location from localStorage
+ * 2. 타임아웃 → 현재 페이지 세션의 last known location 또는 기본 위치 fallback
+ * 3. 위치 불가 → 메모리에만 유지한 last known location 사용
  * 4. 낮은 정확도 (>100m) → Warning banner
  * 5. 브라우저 미지원 → Error message
  */
@@ -55,6 +70,8 @@ export function useGeolocation(
 
     console.log(`🌍 Device: ${isMobile ? 'Mobile' : 'Desktop'}, Timeout: ${timeoutDuration/1000}s, Fallback: ${fallbackDuration/1000}s`);
 
+    clearLegacyPersistedLocation();
+
     // Edge Case 1: Geolocation API 미지원
     if (!navigator.geolocation) {
       setState({
@@ -76,17 +93,13 @@ export function useGeolocation(
         position.coords.accuracy
       );
 
-      // 위치를 localStorage에 저장 (다음 번 fallback용)
-      try {
-        localStorage.setItem('lastKnownLocation', JSON.stringify({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: coords.accuracy,
-          timestamp: Date.now(),
-        }));
-      } catch (e) {
-        console.warn('Failed to save location to localStorage:', e);
-      }
+      // Keep the precise fallback only for this page session. Never persist
+      // exact user coordinates to browser storage.
+      lastKnownLocation = {
+        coords,
+        timestamp: Date.now(),
+      };
+      clearLegacyPersistedLocation();
 
       // Edge Case 4: 낮은 정확도 경고
       const lowAccuracyWarning = coords.accuracy && coords.accuracy > 100
@@ -105,9 +118,6 @@ export function useGeolocation(
     };
 
     const handleError = (error: GeolocationPositionError) => {
-      // Browser geolocation timeouts/permission states are recoverable user/device
-      // conditions, not application failures. The UI already communicates the
-      // fallback state, so avoid reporting them as console errors.
       const lastKnown = getLastKnownLocation();
       if (lastKnown) {
         console.info('ℹ️ Geolocation unavailable; using last known location', {
@@ -128,7 +138,6 @@ export function useGeolocation(
         return;
       }
 
-      // Fallback to Seoul City Hall
       const errorMessages: Record<number, GeolocationError> = {
         [error.PERMISSION_DENIED]: {
           type: 'PERMISSION_DENIED',
@@ -163,49 +172,48 @@ export function useGeolocation(
       });
     };
 
-    // Geolocation 요청 (getCurrentPosition을 먼저 시도하고, 성공하면 watchPosition 시작)
     try {
-      // 1차 시도: getCurrentPosition (빠른 응답)
       let timedOut = false;
 
-      // 타임아웃 안전장치 (디바이스에 따라 동적 조정)
       const fallbackTimeout = setTimeout(() => {
         timedOut = true;
+        const lastKnown = getLastKnownLocation();
         console.info(`ℹ️ Geolocation timeout (>${fallbackDuration/1000}s), using fallback location`);
         setState({
-          location: getSeoulCityHall(),
+          location: lastKnown?.coords ?? getSeoulCityHall(),
           error: {
-            type: 'TIMEOUT',
-            message: '위치 확인이 지연되어 기본 위치(서울시청)를 사용합니다.',
+            type: lastKnown ? 'STALE_DATA' : 'TIMEOUT',
+            message: lastKnown
+              ? `위치 확인이 지연되어 현재 페이지 세션의 마지막 위치를 사용합니다 (${lastKnown.ageMinutes}분 전).`
+              : '위치 확인이 지연되어 기본 위치(서울시청)를 사용합니다.',
           },
           isLoading: false,
-          accuracy: null,
+          accuracy: lastKnown?.coords.accuracy ?? null,
         });
       }, fallbackDuration);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          if (timedOut) return; // 이미 타임아웃된 경우 무시
+          if (timedOut) return;
           clearTimeout(fallbackTimeout);
           console.log('✅ Geolocation success:', {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
           });
           handleSuccess(position);
-          // watchPosition 제거: 자동 새로고침 방지
-          // 사용자가 원할 때만 수동으로 새로고침하도록 변경
         },
         (error) => {
-          if (timedOut) return; // 이미 타임아웃된 경우 무시
+          if (timedOut) return;
           clearTimeout(fallbackTimeout);
           handleError(error);
         },
-        { enableHighAccuracy, maximumAge, timeout: timeoutDuration } // 모바일/데스크톱 동적 조정
+        { enableHighAccuracy, maximumAge, timeout: timeoutDuration }
       );
 
+      return () => {
+        clearTimeout(fallbackTimeout);
+      };
     } catch (e) {
-      console.error('Failed to start geolocation watch:', e);
+      console.error('Failed to start geolocation:', e);
       setState({
         location: getSeoulCityHall(),
         error: {
@@ -216,11 +224,6 @@ export function useGeolocation(
         accuracy: null,
       });
     }
-
-    // Cleanup (watchId는 더 이상 사용하지 않음)
-    return () => {
-      // watchPosition을 사용하지 않으므로 cleanup 불필요
-    };
   }, [enableHighAccuracy, timeout, maximumAge]);
 
   return state;
@@ -231,39 +234,26 @@ export function useGeolocation(
  * GPS 실패 시에만 사용되는 fallback 위치
  */
 function getSeoulCityHall(): Coordinates {
-  return new Coordinates(37.5663, 126.9779); // Seoul City Hall (서울시청)
+  return new Coordinates(37.5663, 126.9779);
 }
 
 /**
- * localStorage에서 마지막 알려진 위치 가져오기
+ * 현재 페이지 세션 메모리에서 마지막 알려진 위치 가져오기.
+ * 기존 버전이 저장했을 수 있는 정확 좌표 localStorage 키는 제거합니다.
  */
 function getLastKnownLocation(): {
   coords: Coordinates;
   ageMinutes: number;
 } | null {
-  try {
-    const stored = localStorage.getItem('lastKnownLocation');
-    if (!stored) return null;
+  clearLegacyPersistedLocation();
+  if (!lastKnownLocation) return null;
 
-    const data = JSON.parse(stored);
-    const age = Date.now() - data.timestamp;
-    const ageMinutes = Math.round(age / 60000);
-
-    // 30분 이상 지난 위치는 무시
-    if (ageMinutes > 30) {
-      localStorage.removeItem('lastKnownLocation');
-      return null;
-    }
-
-    const coords = new Coordinates(
-      data.latitude,
-      data.longitude,
-      data.accuracy
-    );
-
-    return { coords, ageMinutes };
-  } catch (e) {
-    console.warn('Failed to parse last known location:', e);
+  const age = Date.now() - lastKnownLocation.timestamp;
+  const ageMinutes = Math.round(age / 60000);
+  if (ageMinutes > 30) {
+    lastKnownLocation = null;
     return null;
   }
+
+  return { coords: lastKnownLocation.coords, ageMinutes };
 }
