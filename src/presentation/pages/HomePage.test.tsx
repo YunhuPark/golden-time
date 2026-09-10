@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hospital } from '../../domain/entities/Hospital';
 import { Coordinates } from '../../domain/valueObjects/Coordinates';
@@ -83,9 +83,15 @@ function resetStore(): void {
   });
 }
 
+afterEach(() => {
+  cleanup();
+});
+
 describe('HomePage URL Context Parsing', () => {
   beforeEach(() => {
     resetStore();
+    mockFindNearby.mockReset();
+    mockLoadMoreRouteInfo.mockReset();
     mockGeolocationState.current = { location: null, error: null, isLoading: false };
     window.history.replaceState({}, '', '/');
   });
@@ -180,7 +186,7 @@ describe('HomePage Async Route & Unmount Handling', () => {
       resolveFirst([firstHospital]);
     });
 
-    await waitFor(() => expect(useAppStore.getState().hospitals[0]?.id).toBe('new'));
+    expect(useAppStore.getState().hospitals[0]?.id).toBe('new');
   });
 
   it('does not apply background route results after unmount', async () => {
