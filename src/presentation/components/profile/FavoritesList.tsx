@@ -70,7 +70,8 @@ export const FavoritesList: React.FC = () => {
       } catch (err) {
         console.error('Failed to load favorites:', err);
         setError('즐겨찾기를 불러오는 중 오류가 발생했습니다.');
-        logError(err as Error, {
+        const normalizedError = err instanceof Error ? err : new Error(String(err));
+        logError(normalizedError, {
           area: 'api',
           severity: 'medium',
           extra: { operation: 'loadFavorites' },
@@ -104,21 +105,22 @@ export const FavoritesList: React.FC = () => {
       // 로컬 상태 업데이트
       setFavorites(favorites.filter((fav) => fav.id !== favoriteId));
       alert('☆ 즐겨찾기에서 제거되었습니다.');
-    } catch (err: any) {
-      console.error('Failed to remove favorite:', err);
+    } catch (err: unknown) {
+      const normalizedError = err instanceof Error ? err : new Error(String(err));
+      console.error('Failed to remove favorite:', normalizedError);
 
       // 세션 만료 감지
       if (handleSessionError(err)) {
         setPendingAction('즐겨찾기 제거');
         setShowSessionModal(true);
-        logError(err, {
+        logError(normalizedError, {
           area: 'auth',
           severity: 'medium',
           extra: { operation: 'removeFavorite', context: 'session_expired', hospital: hospitalName },
         });
       } else {
         alert('즐겨찾기 제거 중 오류가 발생했습니다.');
-        logError(err, {
+        logError(normalizedError, {
           area: 'api',
           severity: 'low',
           extra: { operation: 'removeFavorite', hospital: hospitalName },
