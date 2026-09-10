@@ -1,0 +1,18 @@
+{
+  "name": "Golden Time - 실시간 응급실 내비게이션",
+  "short_name": "Golden Time",
+  "description": "실시간 응급실 병상 현황과 경로를 확인하는 응급의료 내비게이션",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0E14",
+  "theme_color": "#FF3B30",
+  "icons": [
+    {
+      "src": "/golden-time.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
