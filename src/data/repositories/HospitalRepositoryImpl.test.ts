@@ -32,7 +32,9 @@ describe('HospitalRepositoryImpl.findById', () => {
     expect(apiClient.getEmergencyRoomBeds).toHaveBeenCalledWith('광주광역시', undefined, 100);
     expect(hospital?.id).toBe('A1500002');
     expect(hospital?.name).toBe('전남대학교병원');
-    expect(hospital?.emergencyAvailableBeds).toBe(7);
+    expect(hospital?.availableBeds).toBe(7);
+    expect(hospital?.icuAvailableBeds).toBe(3);
+    expect(hospital?.neuroIcuAvailableBeds).toBe(1);
   });
 
   it('returns null when HPID basic info is not found', async () => {
