@@ -167,6 +167,10 @@ GitHub Actions는 Node 24.x에서 `npm ci` 기반으로 재현 가능한 설치�
 ```text
 npm audit --omit=dev --audit-level=moderate
 Environment validation tests
+Security header regression tests
+Brand metadata regression tests
+Storage scope regression tests
+Unit Tests
 Frontend Type Check
 API Type Check
 ESLint
@@ -182,7 +186,7 @@ Production dependency에서 moderate 이상 취약점이 발견되면 CI가 실�
 
 | 영역 | 기술 |
 | --- | --- |
-| Frontend | React 18, TypeScript 5.6, Vite 6 |
+| Frontend | React 18, TypeScript 5.6, Vite 8 |
 | State | Zustand |
 | Styling | Tailwind CSS |
 | Public data | National Emergency Medical Center E-Gen |
@@ -263,16 +267,19 @@ VITE_SENTRY_DSN=
 ### 실행
 
 ```bash
-# Vercel serverless proxy까지 포함한 로컬 개발
+# Vite UI 개발 서버만 실행
 npm run dev
 
-# UI만 빠르게 실행
+# 동일한 UI 개발 서버 명령의 명시적 별칭
 npm run dev:ui
 ```
+
+> 현재 저장소는 Vercel CLI를 개발 의존성으로 포함하지 않습니다. Serverless API 프록시는 `npm run test:api`와 Vercel Preview/Production 배포에서 검증합니다.
 
 ### 품질 검증
 
 ```bash
+npm run test:unit
 npm run type-check
 npm run type-check:api
 npm run lint
