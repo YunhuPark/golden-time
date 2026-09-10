@@ -18,15 +18,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
-
-/**
- * Kakao Maps SDK Type Definitions
- * - SDK는 global window 객체에 로드됨
- * - 런타임에 동적으로 로드되므로 any 타입 사용
- */
-declare global {
-  interface Window {
-    kakao: any;
-    kakaoSDKReady?: Promise<boolean>;
-  }
-}
