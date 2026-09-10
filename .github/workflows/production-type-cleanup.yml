@@ -1,0 +1,228 @@
+name: Production Type Cleanup
+
+on:
+  push:
+    branches:
+      - chore/production-type-safety
+    paths:
+      - .github/workflows/production-type-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/production-type-safety
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - name: Tighten production runtime types
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function patch(path, before, after, expectedCount = 1) {
+            let text = fs.readFileSync(path, 'utf8');
+            const count = text.split(before).length - 1;
+            if (count !== expectedCount) {
+              throw new Error(`${path}: expected ${expectedCount} occurrence(s), found ${count}`);
+            }
+            text = text.split(before).join(after);
+            fs.writeFileSync(path, text);
+          }
+
+          patch(
+            'src/presentation/components/hospital/HospitalCard.tsx',
+            "(window as any).cancelIdleCallback(idleCallback);",
+            'window.cancelIdleCallback(idleCallback);',
+            2
+          );
+          patch(
+            'src/presentation/components/hospital/HospitalCard.tsx',
+            `    } catch (error: any) {
+      if (isSessionExpiredError(error)) {
+        setShowSessionModal(true);
+        logError(error, { area: 'auth', severity: 'medium', extra: { operation: 'toggleFavorite', hospital: hospital.name } });`,
+            `    } catch (error: unknown) {
+      if (isSessionExpiredError(error)) {
+        setShowSessionModal(true);
+        const normalizedError = error instanceof Error ? error : new Error(String(error));
+        logError(normalizedError, { area: 'auth', severity: 'medium', extra: { operation: 'toggleFavorite', hospital: hospital.name } });`
+          );
+
+          patch(
+            'src/presentation/components/map/KakaoMap.tsx',
+            `  const mapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);`,
+            `  const mapRef = useRef<kakao.maps.Map | null>(null);
+  const markersRef = useRef<Array<{ overlay: kakao.maps.CustomOverlay; hospitalId: string }>>([]);`
+          );
+          patch(
+            'src/presentation/components/map/KakaoMap.tsx',
+            `    let currentOpenInfoId: string | null = null;
+
+    (window as any).toggleMarkerInfo = (hospitalId: string) => {`,
+            `    let currentOpenInfoId: string | null = null;
+    const markerInfoWindow = window as Window & {
+      toggleMarkerInfo?: (hospitalId: string) => void;
+    };
+
+    markerInfoWindow.toggleMarkerInfo = (hospitalId: string) => {`
+          );
+          patch(
+            'src/presentation/components/map/KakaoMap.tsx',
+            '      delete (window as any).toggleMarkerInfo;',
+            '      delete markerInfoWindow.toggleMarkerInfo;'
+          );
+
+          patch(
+            'src/data/datasources/remote/KakaoPlacesClient.ts',
+            '  private placesService: any;',
+            '  private placesService: kakao.maps.services.Places | null = null;'
+          );
+          patch(
+            'src/data/datasources/remote/KakaoPlacesClient.ts',
+            '(result: KakaoDocument[], status: any) => {',
+            '(result: kakao.maps.services.PlacesSearchResult[], status: string) => {'
+          );
+
+          patch(
+            'src/presentation/components/auth/LoginModal.tsx',
+            `    } catch (err) {
+      setError('로그인 중 오류가 발생했습니다.');`,
+            `    } catch {
+      setError('로그인 중 오류가 발생했습니다.');`
+          );
+          patch(
+            'src/presentation/components/auth/LoginModal.tsx',
+            `    } catch (err: any) {
+      // 예외 발생 시 안전한 에러 메시지 표시
+      const errorMessage = err?.message?.trim() || 'Google 로그인 중 오류가 발생했습니다.';`,
+            `    } catch (err: unknown) {
+      // 예외 발생 시 안전한 에러 메시지 표시
+      const errorMessage =
+        err instanceof Error && err.message.trim()
+          ? err.message.trim()
+          : 'Google 로그인 중 오류가 발생했습니다.';`
+          );
+
+          patch(
+            'src/presentation/components/profile/FavoritesList.tsx',
+            `    } catch (err: any) {
+      console.error('Failed to remove favorite:', err);
+
+      // 세션 만료 감지
+      if (handleSessionError(err)) {`,
+            `    } catch (err: unknown) {
+      const normalizedError = err instanceof Error ? err : new Error(String(err));
+      console.error('Failed to remove favorite:', normalizedError);
+
+      // 세션 만료 감지
+      if (handleSessionError(err)) {`
+          );
+          patch(
+            'src/presentation/components/profile/FavoritesList.tsx',
+            '        logError(err, {',
+            '        logError(normalizedError, {',
+            2
+          );
+
+          patch(
+            'src/presentation/hooks/useAuthSession.ts',
+            '  handleSessionError: (error: any) => boolean; // Returns true if session expired',
+            '  handleSessionError: (error: unknown) => boolean; // Returns true if session expired'
+          );
+          patch(
+            'src/presentation/hooks/useAuthSession.ts',
+            `    (error: any): boolean => {
+      if (!error) return false;
+
+      const errorMessage = error.message || String(error);
+      const isJWTError =
+        errorMessage.includes('JWT') ||
+        errorMessage.includes('jwt') ||
+        errorMessage.includes('token') ||
+        errorMessage.includes('expired') ||
+        errorMessage.includes('unauthorized') ||
+        errorMessage.includes('not authenticated') ||
+        error.status === 401 ||
+        error.code === 'PGRST301'; // PostgREST JWT expired`,
+            `    (error: unknown): boolean => {
+      if (!error) return false;
+
+      const candidate =
+        typeof error === 'object' && error !== null
+          ? (error as { message?: unknown; status?: unknown; code?: unknown })
+          : {};
+      const errorMessage =
+        typeof candidate.message === 'string' ? candidate.message : String(error);
+      const errorStatus = typeof candidate.status === 'number' ? candidate.status : undefined;
+      const errorCode = typeof candidate.code === 'string' ? candidate.code : undefined;
+      const isJWTError =
+        errorMessage.includes('JWT') ||
+        errorMessage.includes('jwt') ||
+        errorMessage.includes('token') ||
+        errorMessage.includes('expired') ||
+        errorMessage.includes('unauthorized') ||
+        errorMessage.includes('not authenticated') ||
+        errorStatus === 401 ||
+        errorCode === 'PGRST301'; // PostgREST JWT expired`
+          );
+          patch(
+            'src/presentation/hooks/useAuthSession.ts',
+            `          error_code: error.code,
+          error_status: error.status,`,
+            `          error_code: errorCode,
+          error_status: errorStatus,`
+          );
+
+          patch(
+            'src/presentation/pages/HomePage.tsx',
+            '      } catch (e) {',
+            '      } catch {'
+          );
+
+          patch(
+            'src/infrastructure/cache/HospitalCache.ts',
+            `   * region 인자는 과거 호출부 호환을 위해 남겨두지만 실제 저장 지역은
+   * 반드시 현재 좌표에서 계산합니다. 호출자가 잘못된 지역 문자열을 넘겨도
+   * 캐시가 오염되지 않도록 하기 위함입니다.
+   */
+  static save(
+    hospitals: Hospital[],
+    location: Coordinates,
+    _legacyRegion?: string
+  ): void {`,
+            `   * 저장 지역은 반드시 현재 좌표에서 계산해 잘못된 호출자 입력으로
+   * 캐시가 오염되지 않도록 합니다.
+   */
+  static save(hospitals: Hospital[], location: Coordinates): void {`
+          );
+          NODE
+      - name: Verify runtime type cleanup
+        env:
+          VITE_KAKAO_MAP_APP_KEY: dummy_kakao_key
+          VITE_SUPABASE_ENABLED: 'false'
+          VITE_ENCRYPTION_KEY: dummy_encryption_key_that_is_long_enough_for_aes_256_gcm
+          EGEN_SERVICE_KEY: dummy_egen_key
+          KAKAO_REST_API_KEY: dummy_kakao_rest_key
+        run: |
+          npm ci
+          npm run test:unit
+          npm run type-check
+          npm run type-check:api
+          npm run lint
+          npm run test:api
+          npm run build
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/datasources/remote/KakaoPlacesClient.ts src/infrastructure/cache/HospitalCache.ts src/presentation/components/auth/LoginModal.tsx src/presentation/components/hospital/HospitalCard.tsx src/presentation/components/map/KakaoMap.tsx src/presentation/components/profile/FavoritesList.tsx src/presentation/hooks/useAuthSession.ts src/presentation/pages/HomePage.tsx
+          git commit -m "Tighten production runtime types"
+          git push origin HEAD:chore/production-type-safety
