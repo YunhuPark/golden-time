@@ -1,0 +1,44 @@
+name: Production Type Safety 2
+
+on:
+  push:
+    branches:
+      - chore/production-type-safety-2
+    paths:
+      - scripts/production-type-safety-2.cjs
+      - .github/workflows/production-type-safety-2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/production-type-safety-2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: node scripts/production-type-safety-2.cjs
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run type-check
+      - run: npm run type-check:api
+      - run: npm run lint
+      - run: npm run test:api
+      - run: npm run build
+        env:
+          VITE_KAKAO_MAP_APP_KEY: dummy_kakao_key
+          VITE_SUPABASE_ENABLED: 'false'
+          VITE_ENCRYPTION_KEY: dummy_encryption_key_that_is_long_enough_for_aes_256_gcm
+          EGEN_SERVICE_KEY: dummy_egen_key
+          KAKAO_REST_API_KEY: dummy_kakao_rest_key
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/presentation/components/hospital/HospitalCard.tsx src/presentation/components/map/KakaoMap.tsx src/presentation/hooks/useAuthSession.ts src/presentation/pages/HomePage.tsx
+          git commit -m "Remove remaining production runtime any types"
+          git push origin HEAD:chore/production-type-safety-2
