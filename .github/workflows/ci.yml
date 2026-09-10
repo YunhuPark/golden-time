@@ -71,6 +71,9 @@ jobs:
     - name: Environment validation tests
       run: node --test scripts/validate-env.test.cjs
 
+    - name: Security header regression tests
+      run: node --test scripts/security-headers.test.cjs
+
     - name: Unit Tests
       run: npm run test:unit
 
