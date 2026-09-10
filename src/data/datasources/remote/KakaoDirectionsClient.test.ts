@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { KakaoDirectionsClient } from './KakaoDirectionsClient';
 
+type DirectionsClientTestAccess = {
+  sleep: (ms: number) => Promise<void>;
+  fetchWithRetry: (url: string, retries?: number) => Promise<unknown>;
+};
+
+const getTestAccess = (instance: KakaoDirectionsClient): DirectionsClientTestAccess =>
+  instance as unknown as DirectionsClientTestAccess;
+
 describe('KakaoDirectionsClient', () => {
   let client: KakaoDirectionsClient;
 
   beforeEach(() => {
     client = new KakaoDirectionsClient();
-    (client as any).sleep = vi.fn().mockResolvedValue(undefined);
+    getTestAccess(client).sleep = vi.fn().mockResolvedValue(undefined);
   });
 
   describe('route memory cache', () => {
@@ -31,8 +39,8 @@ describe('KakaoDirectionsClient', () => {
       const secondClient = new KakaoDirectionsClient();
       const firstFetch = vi.fn().mockResolvedValue(response);
       const secondFetch = vi.fn().mockResolvedValue(response);
-      (firstClient as any).fetchWithRetry = firstFetch;
-      (secondClient as any).fetchWithRetry = secondFetch;
+      getTestAccess(firstClient).fetchWithRetry = async () => firstFetch();
+      getTestAccess(secondClient).fetchWithRetry = async () => secondFetch();
 
       const first = await firstClient.getRouteInfo(origin, destination);
       const second = await secondClient.getRouteInfo(origin, destination);
@@ -53,8 +61,8 @@ describe('KakaoDirectionsClient', () => {
       });
       const firstFetch = vi.fn().mockReturnValue(pendingResponse);
       const secondFetch = vi.fn().mockResolvedValue(response);
-      (firstClient as any).fetchWithRetry = firstFetch;
-      (secondClient as any).fetchWithRetry = secondFetch;
+      getTestAccess(firstClient).fetchWithRetry = async () => firstFetch();
+      getTestAccess(secondClient).fetchWithRetry = async () => secondFetch();
 
       const firstPromise = firstClient.getRouteInfo(origin, destination);
       const secondPromise = secondClient.getRouteInfo(origin, destination);
@@ -74,8 +82,8 @@ describe('KakaoDirectionsClient', () => {
       const secondClient = new KakaoDirectionsClient();
       const firstFetch = vi.fn().mockResolvedValue(response);
       const secondFetch = vi.fn().mockResolvedValue(response);
-      (firstClient as any).fetchWithRetry = firstFetch;
-      (secondClient as any).fetchWithRetry = secondFetch;
+      getTestAccess(firstClient).fetchWithRetry = async () => firstFetch();
+      getTestAccess(secondClient).fetchWithRetry = async () => secondFetch();
 
       nowSpy.mockReturnValue(1_000);
       await firstClient.getRouteInfo(origin, destination);
@@ -91,50 +99,56 @@ describe('KakaoDirectionsClient', () => {
   describe('transient retry policy', () => {
     it('retries one 504 response and then succeeds', async () => {
       const retryClient = new KakaoDirectionsClient(3500, 2);
-      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const access = getTestAccess(retryClient);
+      const sleepMock = vi.fn().mockResolvedValue(undefined);
+      access.sleep = sleepMock;
       const fetchMock = vi
         .fn()
         .mockResolvedValueOnce(new Response('{}', { status: 504, statusText: 'Gateway Timeout' }))
         .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
       vi.stubGlobal('fetch', fetchMock);
 
-      const result = await (retryClient as any).fetchWithRetry('https://example.test');
+      const result = await access.fetchWithRetry('https://example.test');
 
       expect(result).toEqual({ ok: true });
       expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect((retryClient as any).sleep).toHaveBeenCalledTimes(1);
+      expect(sleepMock).toHaveBeenCalledTimes(1);
       vi.unstubAllGlobals();
     });
 
     it('does not retry 429 rate limit responses', async () => {
       const retryClient = new KakaoDirectionsClient(3500, 2);
-      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const access = getTestAccess(retryClient);
+      const sleepMock = vi.fn().mockResolvedValue(undefined);
+      access.sleep = sleepMock;
       const fetchMock = vi.fn().mockResolvedValue(
         new Response('{}', { status: 429, statusText: 'Too Many Requests' })
       );
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect((retryClient as any).fetchWithRetry('https://example.test')).rejects.toMatchObject({
+      await expect(access.fetchWithRetry('https://example.test')).rejects.toMatchObject({
         statusCode: 429,
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect((retryClient as any).sleep).not.toHaveBeenCalled();
+      expect(sleepMock).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
 
     it('does not retry client-side 4xx responses', async () => {
       const retryClient = new KakaoDirectionsClient(3500, 2);
-      (retryClient as any).sleep = vi.fn().mockResolvedValue(undefined);
+      const access = getTestAccess(retryClient);
+      const sleepMock = vi.fn().mockResolvedValue(undefined);
+      access.sleep = sleepMock;
       const fetchMock = vi.fn().mockResolvedValue(
         new Response('{}', { status: 400, statusText: 'Bad Request' })
       );
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect((retryClient as any).fetchWithRetry('https://example.test')).rejects.toMatchObject({
+      await expect(access.fetchWithRetry('https://example.test')).rejects.toMatchObject({
         statusCode: 400,
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect((retryClient as any).sleep).not.toHaveBeenCalled();
+      expect(sleepMock).not.toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
   });
@@ -143,11 +157,10 @@ describe('KakaoDirectionsClient', () => {
     it('A. 동시성 제한: 최대 3개까지만 동시 실행되는지 검증', async () => {
       let concurrentCount = 0;
       let maxConcurrent = 0;
-
-      (client as any).getRouteInfo = vi.fn().mockImplementation(async () => {
+      const routeInfoSpy = vi.spyOn(client, 'getRouteInfo').mockImplementation(async () => {
         concurrentCount++;
         if (concurrentCount > maxConcurrent) maxConcurrent = concurrentCount;
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         concurrentCount--;
         return { distance: 1000, duration: 600, taxiFare: 0, tollFare: 0 };
       });
@@ -162,12 +175,12 @@ describe('KakaoDirectionsClient', () => {
       await client.getBatchRouteInfoConcurrent(origin, destinations, 3);
 
       expect(maxConcurrent).toBeLessThanOrEqual(3);
-      expect((client as any).getRouteInfo).toHaveBeenCalledTimes(10);
+      expect(routeInfoSpy).toHaveBeenCalledTimes(10);
     });
 
     it('B. 부분 실패 격리: 일부 요청 실패가 나머지 성공 결과에 영향을 주지 않음', async () => {
-      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_: unknown, dest: { id: string }) => {
-        if (dest.id === 'fail1' || dest.id === 'fail2') {
+      vi.spyOn(client, 'getRouteInfo').mockImplementation(async (_origin, destination) => {
+        if (destination.latitude === 37.2 || destination.latitude === 37.4) {
           throw new Error('Network error');
         }
         return { distance: 1000, duration: 600, taxiFare: 0, tollFare: 0 };
@@ -193,12 +206,17 @@ describe('KakaoDirectionsClient', () => {
     });
 
     it('C. ID 기반 병합: 응답 완료 순서와 관계없이 정확한 병원에 매핑됨', async () => {
-      (client as any).getRouteInfo = vi.fn().mockImplementation(async (_: unknown, dest: { id: string; latitude: number; longitude: number }) => {
+      vi.spyOn(client, 'getRouteInfo').mockImplementation(async (_origin, destination) => {
         let delay = 10;
-        if (dest.id === 'slow') delay = 50;
-        if (dest.id === 'fast') delay = 1;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return { distance: dest.latitude * 10, duration: dest.longitude * 10, taxiFare: 0, tollFare: 0 };
+        if (destination.latitude === 100) delay = 50;
+        if (destination.latitude === 120) delay = 1;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return {
+          distance: destination.latitude * 10,
+          duration: destination.longitude * 10,
+          taxiFare: 0,
+          tollFare: 0,
+        };
       });
 
       const origin = { latitude: 37.0, longitude: 127.0 };
