@@ -26,6 +26,14 @@ type KakaoDocument = {
   category_name?: string;
 };
 
+type KakaoPlacesService = {
+  keywordSearch: (
+    keyword: string,
+    callback: (result: KakaoDocument[], status: string) => void,
+    options?: { size?: number }
+  ) => void;
+};
+
 type GeocodeCacheEntry = {
   result: GeocodeResult;
   expiresAt: number;
@@ -43,7 +51,7 @@ export function buildGeocodeCacheKey(keyword: string, region?: string): string {
 }
 
 export class KakaoPlacesClient {
-  private placesService: any;
+  private placesService: KakaoPlacesService | null = null;
   private initPromise: Promise<void>;
 
   constructor() {
@@ -194,10 +202,13 @@ export class KakaoPlacesClient {
     originalKeyword: string,
     userLocation?: { latitude: number; longitude: number }
   ): Promise<GeocodeResult | null> {
+    const placesService = this.placesService;
+    if (!placesService) return Promise.resolve(null);
+
     return new Promise((resolve) => {
-      this.placesService.keywordSearch(
+      placesService.keywordSearch(
         searchQuery,
-        (result: KakaoDocument[], status: any) => {
+        (result: KakaoDocument[], status: string) => {
           if (status !== window.kakao.maps.services.Status.OK || !result) {
             resolve(null);
             return;

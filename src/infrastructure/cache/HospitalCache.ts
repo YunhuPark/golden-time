@@ -71,15 +71,10 @@ export class HospitalCache {
   /**
    * 병원 데이터 캐시에 저장
    *
-   * region 인자는 과거 호출부 호환을 위해 남겨두지만 실제 저장 지역은
-   * 반드시 현재 좌표에서 계산합니다. 호출자가 잘못된 지역 문자열을 넘겨도
-   * 캐시가 오염되지 않도록 하기 위함입니다.
+   * 저장 지역은 반드시 현재 좌표에서 계산해 잘못된 호출자 입력으로
+   * 캐시가 오염되지 않도록 합니다.
    */
-  static save(
-    hospitals: Hospital[],
-    location: Coordinates,
-    _legacyRegion?: string
-  ): void {
+  static save(hospitals: Hospital[], location: Coordinates): void {
     try {
       const region = inferRegionFromCoordinates(location);
       if (!region) {
