@@ -66,7 +66,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => checkFavorite(), 100);
     return () => {
       if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {
-        (window as any).cancelIdleCallback(idleCallback);
+        window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }
@@ -92,7 +92,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       : setTimeout(() => loadRating(), 100);
     return () => {
       if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {
-        (window as any).cancelIdleCallback(idleCallback);
+        window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }
@@ -188,10 +188,11 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
         if (error) throw error;
         setIsFavorite(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (isSessionExpiredError(error)) {
         setShowSessionModal(true);
-        logError(error, { area: 'auth', severity: 'medium', extra: { operation: 'toggleFavorite', hospital: hospital.name } });
+        const normalizedError = error instanceof Error ? error : new Error(String(error));
+        logError(normalizedError, { area: 'auth', severity: 'medium', extra: { operation: 'toggleFavorite', hospital: hospital.name } });
       } else {
         alert('즐겨찾기 처리 중 오류가 발생했습니다.');
       }

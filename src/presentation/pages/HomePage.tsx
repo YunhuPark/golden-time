@@ -77,7 +77,7 @@ export const HomePage: React.FC = () => {
       if (!val) return [];
       try {
         return decodeURIComponent(val).split(',').map(s => s.trim()).filter(Boolean);
-      } catch (e) {
+      } catch {
         return val.split(',').map(s => s.trim()).filter(Boolean);
       }
     };
