@@ -1,0 +1,104 @@
+name: Lazy Optional Vendors Patch
+
+on:
+  push:
+    branches:
+      - performance/lazy-optional-vendors
+    paths:
+      - .github/workflows/lazy-optional-vendors.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: performance/lazy-optional-vendors
+      - name: Patch optional vendor imports
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          // main.tsx: only load the monitoring module when a DSN exists.
+          {
+            const path = 'src/main.tsx';
+            let s = fs.readFileSync(path, 'utf8');
+            s = s.replace("import { initializeSentry } from './infrastructure/monitoring/sentry';\n", '');
+            s = s.replace(
+              '/**\n * Initialize Sentry Error Monitoring\n */\ninitializeSentry();',
+              `/**\n * Initialize optional Sentry monitoring only when configured.\n * The SDK is kept off the default hospital-search bundle.\n */\nif (import.meta.env.VITE_SENTRY_DSN) {\n  void import('./infrastructure/monitoring/sentry').then(({ initializeSentry }) => initializeSentry());\n} else {\n  console.info('ℹ️ Sentry monitoring disabled (no DSN configured)');\n}`
+            );
+            fs.writeFileSync(path, s);
+          }
+
+          // useAuth.ts: keep Supabase SDK out of the default path when the capability is disabled.
+          {
+            const path = 'src/presentation/hooks/useAuth.ts';
+            let s = fs.readFileSync(path, 'utf8');
+            s = s.replace("import { User, Session, AuthError } from '@supabase/supabase-js';\nimport { supabase } from '../../infrastructure/supabase/supabaseClient';\n", "import type { User, Session, AuthError } from '@supabase/supabase-js';\n");
+            s = s.replace('export const useAuth = () => {', `const SUPABASE_ENABLED = import.meta.env.VITE_SUPABASE_ENABLED === 'true';\n\nasync function getSupabase() {\n  if (!SUPABASE_ENABLED) return null;\n  const { supabase } = await import('../../infrastructure/supabase/supabaseClient');\n  return supabase;\n}\n\nexport const useAuth = () => {`);
+            s = s.replace(
+              "    // 초기 세션 확인 (비동기, 논블로킹)\n    // requestIdleCallback을 사용하여 메인 스레드가 여유로울 때 실행\n    const idleCallback = window.requestIdleCallback\n      ? window.requestIdleCallback(() => {\n          supabase.auth.getSession().then(({ data: { session } }) => {\n            setSession(session);\n            setUser(session?.user ?? null);\n          });\n        })\n      : setTimeout(() => {\n          supabase.auth.getSession().then(({ data: { session } }) => {\n            setSession(session);\n            setUser(session?.user ?? null);\n          });\n        }, 0);\n\n    // 인증 상태 변경 감지\n    const {\n      data: { subscription },\n    } = supabase.auth.onAuthStateChange((_event, session) => {\n      setSession(session);\n      setUser(session?.user ?? null);\n    });\n\n    return () => {\n      subscription.unsubscribe();\n      if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {\n        (window as any).cancelIdleCallback(idleCallback);\n      } else if (typeof idleCallback === 'number') {\n        clearTimeout(idleCallback);\n      }\n    };",
+              `    if (!SUPABASE_ENABLED) return;\n\n    let disposed = false;\n    let unsubscribe: (() => void) | undefined;\n    const loadSession = async () => {\n      const supabase = await getSupabase();\n      if (!supabase || disposed) return;\n      const { data: { session } } = await supabase.auth.getSession();\n      if (!disposed) {\n        setSession(session);\n        setUser(session?.user ?? null);\n      }\n      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {\n        if (disposed) return;\n        setSession(nextSession);\n        setUser(nextSession?.user ?? null);\n      });\n      unsubscribe = () => subscription.unsubscribe();\n    };\n\n    const idleCallback = window.requestIdleCallback\n      ? window.requestIdleCallback(() => { void loadSession(); })\n      : setTimeout(() => { void loadSession(); }, 0);\n\n    return () => {\n      disposed = true;\n      unsubscribe?.();\n      if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {\n        (window as any).cancelIdleCallback(idleCallback);\n      } else if (typeof idleCallback === 'number') {\n        clearTimeout(idleCallback);\n      }\n    };`
+            );
+            for (const [before, after] of [
+              ["    const { error } = await supabase.auth.signInWithPassword({", "    const supabase = await getSupabase();\n    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };\n    const { error } = await supabase.auth.signInWithPassword({"],
+              ["    const { error } = await supabase.auth.signUp({", "    const supabase = await getSupabase();\n    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };\n    const { error } = await supabase.auth.signUp({"],
+              ["    const { error } = await supabase.auth.signInWithOAuth({", "    const supabase = await getSupabase();\n    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };\n    const { error } = await supabase.auth.signInWithOAuth({"],
+              ["    const { error } = await supabase.auth.signOut();", "    const supabase = await getSupabase();\n    if (!supabase) return { error: null };\n    const { error } = await supabase.auth.signOut();"],
+              ["    const { error } = await supabase.auth.resetPasswordForEmail(email, {", "    const supabase = await getSupabase();\n    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };\n    const { error } = await supabase.auth.resetPasswordForEmail(email, {"]
+            ]) {
+              if (!s.includes(before)) throw new Error(`useAuth anchor missing: ${before}`);
+              s = s.replace(before, after);
+            }
+            fs.writeFileSync(path, s);
+          }
+
+          // HomePage.tsx: defer optional/account UI and direct favorites DB access.
+          {
+            const path = 'src/presentation/pages/HomePage.tsx';
+            let s = fs.readFileSync(path, 'utf8');
+            s = s.replace("import React, { useEffect, useState, useMemo } from 'react';", "import React, { lazy, Suspense, useEffect, useState, useMemo } from 'react';");
+            s = s.replace("import { HospitalDetailModal } from '../components/hospital/HospitalDetailModal';\n", '');
+            s = s.replace("import { LoginModal } from '../components/auth/LoginModal';\n", '');
+            s = s.replace("import { ProfilePage } from './ProfilePage';\n", '');
+            s = s.replace("import { supabase } from '../../infrastructure/supabase/supabaseClient';\n", '');
+            const marker = "/**\n * HomePage Component";
+            const lazyDecl = `const HospitalDetailModal = lazy(() => import('../components/hospital/HospitalDetailModal').then((m) => ({ default: m.HospitalDetailModal })));\nconst LoginModal = lazy(() => import('../components/auth/LoginModal').then((m) => ({ default: m.LoginModal })));\nconst ProfilePage = lazy(() => import('./ProfilePage').then((m) => ({ default: m.ProfilePage })));\n\n`;
+            if (!s.includes(marker)) throw new Error('HomePage marker missing');
+            s = s.replace(marker, lazyDecl + marker);
+            const before = `        const { data, error: fetchError } = await supabase\n          .from('favorites')`;
+            const after = `        if (import.meta.env.VITE_SUPABASE_ENABLED !== 'true') return;\n        const { supabase } = await import('../../infrastructure/supabase/supabaseClient');\n        const { data, error: fetchError } = await supabase\n          .from('favorites')`;
+            if (!s.includes(before)) throw new Error('HomePage favorites anchor missing');
+            s = s.replace(before, after);
+            // Existing conditional renders can safely sit under local Suspense boundaries.
+            s = s.replace('<HospitalDetailModal', '<Suspense fallback={null}><HospitalDetailModal');
+            s = s.replace('/>\n          )}', '/></Suspense>\n          )}');
+            fs.writeFileSync(path, s);
+          }
+          NODE
+      - name: Verify build and default preload graph
+        env:
+          VITE_KAKAO_MAP_APP_KEY: test-kakao-map-key
+          VITE_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          EGEN_SERVICE_KEY: test-egen-service-key
+          KAKAO_REST_API_KEY: test-kakao-rest-key
+          VITE_SUPABASE_ENABLED: 'false'
+          VITE_SENTRY_DSN: ''
+        run: |
+          npm ci
+          npm run type-check
+          npm run test:unit
+          npm run build
+          if grep -q 'vendor-supabase' dist/index.html; then echo 'Supabase still preloaded' && exit 1; fi
+          if grep -q 'vendor-sentry' dist/index.html; then echo 'Sentry still preloaded' && exit 1; fi
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/main.tsx src/presentation/hooks/useAuth.ts src/presentation/pages/HomePage.tsx
+          git commit -m "Lazy load optional Supabase and Sentry code"
+          git push origin HEAD:performance/lazy-optional-vendors
