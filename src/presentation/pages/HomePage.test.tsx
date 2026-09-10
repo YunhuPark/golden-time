@@ -1,28 +1,35 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-import { render } from '@testing-library/react';
-import { HomePage } from './HomePage';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Hospital } from '../../domain/entities/Hospital';
+import { Coordinates } from '../../domain/valueObjects/Coordinates';
 import { useAppStore } from '../../infrastructure/state/store';
+import { HomePage } from './HomePage';
 
-const { mockGeolocationState, mockExecute, mockLoadMoreRouteInfo } = vi.hoisted(() => ({
+const {
+  mockGeolocationState,
+  mockFindNearby,
+  mockLoadMoreRouteInfo,
+} = vi.hoisted(() => ({
   mockGeolocationState: {
-    current: { location: null as { latitude: number; longitude: number } | null, error: null, isLoading: false }
+    current: {
+      location: null as Coordinates | null,
+      error: null as Error | null,
+      isLoading: false,
+    },
   },
-  mockExecute: vi.fn(),
+  mockFindNearby: vi.fn(),
   mockLoadMoreRouteInfo: vi.fn(),
 }));
 
-// Mock dependencies
 vi.mock('../hooks/useGeolocation', () => ({
-  useGeolocation: () => mockGeolocationState.current
+  useGeolocation: () => mockGeolocationState.current,
 }));
 vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({ user: null, signOut: vi.fn() })
+  useAuth: () => ({ user: null, signOut: vi.fn() }),
 }));
 vi.mock('../hooks/useNetworkStatus', () => ({
-  useNetworkStatus: () => ({ isOffline: false, justReconnected: false })
+  useNetworkStatus: () => ({ isOffline: false, justReconnected: false }),
 }));
-// Map is hard to mock, just mock the components
 vi.mock('../components/map/KakaoMap', () => ({ KakaoMap: () => null }));
 vi.mock('../components/hospital/HospitalList', () => ({ HospitalList: () => null }));
 vi.mock('../components/hospital/HospitalDetailModal', () => ({ HospitalDetailModal: () => null }));
@@ -31,42 +38,75 @@ vi.mock('../components/hospital/HospitalFilterPanel', () => ({ HospitalFilterPan
 vi.mock('../components/hospital/FavoritesBottomSheet', () => ({ FavoritesBottomSheet: () => null }));
 vi.mock('../components/hospital/EmptyHospitalList', () => ({ EmptyHospitalList: () => null }));
 
-vi.mock('../../domain/usecases/hospital/GetNearbyHospitals', () => {
-  return {
-    GetNearbyHospitals: vi.fn().mockImplementation(function MockGetNearbyHospitals() {
-      return { execute: mockExecute };
-    })
-  };
-});
+vi.mock('../../data/repositories/HospitalRepositoryImpl', () => ({
+  HospitalRepositoryImpl: vi.fn().mockImplementation(function MockHospitalRepositoryImpl() {
+    return {
+      findNearby: mockFindNearby,
+      loadMoreRouteInfo: mockLoadMoreRouteInfo,
+    };
+  }),
+}));
 
-vi.mock('../../data/repositories/HospitalRepositoryImpl', () => {
-  return {
-    HospitalRepositoryImpl: vi.fn().mockImplementation(function MockHospitalRepositoryImpl() {
-      return { loadMoreRouteInfo: mockLoadMoreRouteInfo };
-    })
-  };
+function makeHospital(id: string, name: string, routeDuration?: number): Hospital {
+  return new Hospital(
+    id,
+    name,
+    new Coordinates(37.5, 127),
+    '서울특별시 테스트 주소',
+    '02-0000-0000',
+    null,
+    5,
+    10,
+    ['응급의학과'],
+    3,
+    true,
+    new Date(),
+    true,
+    true,
+    true,
+    undefined,
+    routeDuration,
+    routeDuration ? 1000 : undefined
+  );
+}
+
+function resetStore(): void {
+  useAppStore.setState({
+    userLocation: null,
+    locationError: null,
+    hospitals: [],
+    searchWarning: null,
+    isLoadingHospitals: false,
+    selectedHospital: null,
+    aiContext: null,
+    user: null,
+  });
+}
+
+afterEach(() => {
+  cleanup();
 });
 
 describe('HomePage URL Context Parsing', () => {
   beforeEach(() => {
-    useAppStore.setState({ aiContext: null });
+    resetStore();
+    mockFindNearby.mockReset();
+    mockLoadMoreRouteInfo.mockReset();
     mockGeolocationState.current = { location: null, error: null, isLoading: false };
+    window.history.replaceState({}, '', '/');
   });
 
   it('should not set aiContext for normal access', () => {
-    // No URL params
-    delete (window as any).location;
-    window.location = { search: '' } as any;
-
     render(<HomePage />);
     expect(useAppStore.getState().aiContext).toBeNull();
   });
 
   it('should parse sepsis_demo and synthetic_demo correctly', () => {
-    delete (window as any).location;
-    window.location = {
-      search: '?primaryCondition=sepsis_demo&triage=RED&analysisMode=synthetic_demo&capabilities=응급실%20운영,CT'
-    } as any;
+    window.history.replaceState(
+      {},
+      '',
+      '/?primaryCondition=sepsis_demo&triage=RED&analysisMode=synthetic_demo&capabilities=응급실%20운영,CT'
+    );
 
     render(<HomePage />);
     const context = useAppStore.getState().aiContext;
@@ -78,18 +118,18 @@ describe('HomePage URL Context Parsing', () => {
   });
 
   it('should prioritize primaryCondition over condition over disease', () => {
-    delete (window as any).location;
-    window.location = {
-      search: '?disease=A&condition=B&primaryCondition=brain_lesion_demo'
-    } as any;
+    window.history.replaceState(
+      {},
+      '',
+      '/?disease=A&condition=B&primaryCondition=brain_lesion_demo'
+    );
 
     render(<HomePage />);
     expect(useAppStore.getState().aiContext?.primaryCondition).toBe('brain_lesion_demo');
   });
 
   it('should set aiContext even if only condition is provided (fallback)', () => {
-    delete (window as any).location;
-    window.location = { search: '?condition=unknown_demo' } as any;
+    window.history.replaceState({}, '', '/?condition=unknown_demo');
 
     render(<HomePage />);
     expect(useAppStore.getState().aiContext?.primaryCondition).toBe('unknown_demo');
@@ -98,21 +138,15 @@ describe('HomePage URL Context Parsing', () => {
 
 describe('HomePage Async Route & Unmount Handling', () => {
   beforeEach(() => {
+    resetStore();
+    window.history.replaceState({}, '', '/');
     mockGeolocationState.current = {
-      location: { latitude: 37, longitude: 127 },
+      location: new Coordinates(37, 127),
       error: null,
       isLoading: false,
     };
-
-    mockExecute.mockResolvedValue({
-      hospitals: [
-        { id: '1', name: 'H1', coordinates: { latitude: 37, longitude: 127 }, withRouteInfo: vi.fn() },
-        { id: '2', name: 'H2', coordinates: { latitude: 37, longitude: 127 }, withRouteInfo: vi.fn() }
-      ],
-      warning: undefined
-    });
-
-    mockLoadMoreRouteInfo.mockResolvedValue([]);
+    mockFindNearby.mockReset();
+    mockLoadMoreRouteInfo.mockReset();
   });
 
   afterEach(() => {
@@ -120,29 +154,62 @@ describe('HomePage Async Route & Unmount Handling', () => {
     vi.clearAllMocks();
   });
 
-  it('D. Race Condition: 이전 검색의 늦은 결과가 새 검색을 덮어쓰지 않음', async () => {
-    // This requires manipulating the time of promises.
-    // Instead of a full E2E, we can verify that searchRequestIdRef prevents it if we simulate two rapid location changes.
-    // Given the component structure, it is easier to verify the behavior conceptually or by simulating two calls.
-    expect(true).toBe(true); // Placeholder for actual implementation if needed, but since it's hard to test refs directly without full E2E setup, we acknowledge it here.
+  it('keeps the newest hospital search when an older request resolves late', async () => {
+    let resolveFirst!: (value: Hospital[]) => void;
+    let resolveSecond!: (value: Hospital[]) => void;
+
+    mockFindNearby
+      .mockImplementationOnce(() => new Promise<Hospital[]>((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise<Hospital[]>((resolve) => { resolveSecond = resolve; }));
+    mockLoadMoreRouteInfo.mockResolvedValue([]);
+
+    const firstHospital = makeHospital('old', 'Old Hospital');
+    const secondHospital = makeHospital('new', 'New Hospital');
+
+    const { rerender } = render(<HomePage />);
+    await waitFor(() => expect(mockFindNearby).toHaveBeenCalledTimes(1));
+
+    mockGeolocationState.current = {
+      location: new Coordinates(37.1, 127.1),
+      error: null,
+      isLoading: false,
+    };
+    rerender(<HomePage />);
+    await waitFor(() => expect(mockFindNearby).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveSecond([secondHospital]);
+    });
+    await waitFor(() => expect(useAppStore.getState().hospitals[0]?.id).toBe('new'));
+
+    await act(async () => {
+      resolveFirst([firstHospital]);
+    });
+
+    expect(useAppStore.getState().hospitals[0]?.id).toBe('new');
   });
 
-  it('E. Unmount: 컴포넌트 unmount 시 비동기 업데이트가 발생하지 않음', async () => {
-    // We can render and then immediately unmount.
-    let resolveLoadMore: any;
-    mockLoadMoreRouteInfo.mockImplementation(() => new Promise(res => { resolveLoadMore = res; }));
+  it('does not apply background route results after unmount', async () => {
+    let resolveRoutes!: (value: Hospital[]) => void;
+    const initialHospital = makeHospital('1', 'Initial Hospital');
+    const routedHospital = makeHospital('1', 'Initial Hospital', 300);
+
+    mockFindNearby.mockResolvedValue([initialHospital]);
+    mockLoadMoreRouteInfo.mockImplementation(
+      () => new Promise<Hospital[]>((resolve) => { resolveRoutes = resolve; })
+    );
 
     const { unmount } = render(<HomePage />);
 
-    // wait a tick for executeMock to finish
-    await new Promise(r => setTimeout(r, 50));
+    await waitFor(() => expect(useAppStore.getState().hospitals[0]?.id).toBe('1'));
+    expect(useAppStore.getState().hospitals[0]?.routeDuration).toBeUndefined();
 
-    unmount(); // Unmount before loadMoreRouteInfo completes
+    unmount();
 
-    // resolve loadMoreRouteInfo
-    if (resolveLoadMore) resolveLoadMore([]);
+    await act(async () => {
+      resolveRoutes([routedHospital]);
+    });
 
-    // We expect no state updates to happen. If they do, React would normally log a warning, but since we added `isCancelled`, it should be safe.
-    expect(true).toBe(true);
+    expect(useAppStore.getState().hospitals[0]?.routeDuration).toBeUndefined();
   });
 });
