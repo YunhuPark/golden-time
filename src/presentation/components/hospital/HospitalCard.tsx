@@ -71,7 +71,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
         clearTimeout(idleCallback);
       }
     };
-  }, [user, hospital.id]);
+  }, [user, hospital.id, supabaseEnabled]);
 
   useEffect(() => {
     const loadRating = async () => {
@@ -97,7 +97,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
         clearTimeout(idleCallback);
       }
     };
-  }, [hospital.id]);
+  }, [hospital.id, supabaseEnabled]);
 
   const status = hospital.getAvailabilityStatus();
   const distance = userLocation ? (hospital.distanceFrom(userLocation) / 1000).toFixed(1) : null;
