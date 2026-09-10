@@ -1,0 +1,100 @@
+name: Hospital ID Lookup Patch
+
+on:
+  push:
+    branches:
+      - fix/hospital-id-lookup
+    paths:
+      - .github/workflows/hospital-id-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/hospital-id-lookup
+      - name: Patch HPID lookup flow
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          // api/egen.ts
+          {
+            const path = 'api/egen.ts';
+            let s = fs.readFileSync(path, 'utf8');
+            s = s.replace(
+              "const HOSPITAL_LIST_ENDPOINT = '/ErmctInfoInqireService/getEgytListInfoInqire';\n",
+              "const HOSPITAL_LIST_ENDPOINT = '/ErmctInfoInqireService/getEgytListInfoInqire';\nconst HOSPITAL_BASIC_ENDPOINT = '/ErmctInfoInqireService/getEgytBassInfoInqire';\n"
+            );
+            s = s.replace(
+              "  HOSPITAL_LIST_ENDPOINT,\n];",
+              "  HOSPITAL_LIST_ENDPOINT,\n  HOSPITAL_BASIC_ENDPOINT,\n];"
+            );
+            s = s.replace(
+              "const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD } = req.query;",
+              "const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD, HPID } = req.query;"
+            );
+            s = s.replace(
+              "    if (ORD && (typeof ORD !== 'string' || !['ADDR', 'NAME'].includes(ORD))) {\n      return res.status(400).json({ error: 'Bad Request: Invalid ORD' });\n    }\n",
+              "    if (ORD && (typeof ORD !== 'string' || !['ADDR', 'NAME'].includes(ORD))) {\n      return res.status(400).json({ error: 'Bad Request: Invalid ORD' });\n    }\n    if (HPID !== undefined && (typeof HPID !== 'string' || !/^[A-Za-z0-9_-]{1,30}$/.test(HPID))) {\n      return res.status(400).json({ error: 'Bad Request: Invalid HPID' });\n    }\n"
+            );
+            s = s.replace(
+              "    if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);\n",
+              "    if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);\n    if (HPID && typeof HPID === 'string') targetUrl.searchParams.set('HPID', HPID);\n"
+            );
+            s = s.replace(
+              "if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT) {",
+              "if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT || _endpoint === HOSPITAL_BASIC_ENDPOINT) {"
+            );
+            fs.writeFileSync(path, s);
+          }
+
+          // EGenApiClient.ts
+          {
+            const path = 'src/data/datasources/remote/EGenApiClient.ts';
+            let s = fs.readFileSync(path, 'utf8');
+            const anchor = "  async getHospitalBasicInfo(\n    Q0?: string,\n    Q1?: string\n  ): Promise<HospitalBasicInfoDTO[]> {";
+            const insert = `  async getHospitalBasicInfoById(hpid: string): Promise<HospitalBasicInfoDTO | null> {\n    const endpoint = '/ErmctInfoInqireService/getEgytBassInfoInqire';\n    const params = new URLSearchParams({\n      _endpoint: endpoint,\n      HPID: hpid,\n      numOfRows: '1',\n      pageNo: '1',\n      _type: 'json',\n    });\n\n    const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(\n      \`/api/egen?\${params.toString()}\`,\n      1,\n      3500\n    );\n    return this.extractItems(response)[0] ?? null;\n  }\n\n`;
+            if (!s.includes(anchor)) throw new Error('EGenApiClient anchor not found');
+            s = s.replace(anchor, insert + anchor);
+            fs.writeFileSync(path, s);
+          }
+
+          // HospitalRepositoryImpl.ts
+          {
+            const path = 'src/data/repositories/HospitalRepositoryImpl.ts';
+            let s = fs.readFileSync(path, 'utf8');
+            const before = `  async findById(id: string): Promise<Hospital | null> {\n    try {\n      const allRegions = ['서울특별시', '경기도', '인천광역시'];\n      for (const region of allRegions) {\n        const combinedData = await this.apiClient.getCombinedHospitalData(region);\n        const hospitals = HospitalMapper.toDomainList(combinedData);\n        const found = hospitals.find((h) => h.id === id);\n        if (found) return found;\n      }\n      return null;\n    } catch (error) {\n      console.error(\`Failed to find hospital by ID: \${id}\`, error);\n      return null;\n    }\n  }`;
+            const after = `  async findById(id: string): Promise<Hospital | null> {\n    try {\n      const basicInfo = await this.apiClient.getHospitalBasicInfoById(id);\n      if (!basicInfo || basicInfo.hpid !== id) return null;\n\n      let bedInfo;\n      const latitude = Number(basicInfo.wgs84Lat);\n      const longitude = Number(basicInfo.wgs84Lon);\n\n      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {\n        try {\n          const region = inferRegionFromCoordinates(new Coordinates(latitude, longitude));\n          if (region) {\n            const beds = await this.apiClient.getEmergencyRoomBeds(region, undefined, 100);\n            bedInfo = beds.find((bed) => bed.hpid === id);\n          }\n        } catch (error) {\n          console.warn(\`Could not enrich hospital \${id} with realtime beds\`, error);\n        }\n      }\n\n      return HospitalMapper.toDomain({ basicInfo, bedInfo });\n    } catch (error) {\n      console.error(\`Failed to find hospital by ID: \${id}\`, error);\n      return null;\n    }\n  }`;
+            if (!s.includes(before)) throw new Error('HospitalRepositoryImpl findById anchor not found');
+            s = s.replace(before, after);
+            fs.writeFileSync(path, s);
+          }
+
+          // API regression test
+          {
+            const path = 'api/egen.test.ts';
+            let s = fs.readFileSync(path, 'utf8');
+            const anchor = "  await t.test('11. 지역 병원목록 endpoint는 Q0/QZ/ORD를 안전하게 upstream으로 전달', async () => {";
+            if (!s.includes(anchor)) throw new Error('egen.test anchor not found');
+            const test = `  await t.test('11. HPID 기본정보 endpoint는 허용하고 검증된 HPID만 upstream으로 전달', async () => {\n    let requestedUrl = '';\n    global.fetch = async (url: any) => {\n      requestedUrl = url.toString();\n      return {\n        ok: true,\n        status: 200,\n        headers: new Headers({ 'content-type': 'application/json' }),\n        json: async () => ({ response: { header: { resultCode: '00', resultMsg: 'OK' }, body: { totalCount: 1 } } })\n      } as Response;\n    };\n\n    const endpoint = '/ErmctInfoInqireService/getEgytBassInfoInqire';\n    const { req, res } = createMockReqRes('GET', {\n      _endpoint: endpoint, HPID: 'A1500002', numOfRows: '1', pageNo: '1', _type: 'json'\n    });\n    await handler(req, res);\n    assert.strictEqual(res.statusCode, 200);\n    const urlObj = new URL(requestedUrl);\n    assert.strictEqual(urlObj.searchParams.get('HPID'), 'A1500002');\n    assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');\n\n    const invalid = createMockReqRes('GET', { _endpoint: endpoint, HPID: '../secret' });\n    await handler(invalid.req, invalid.res);\n    assert.strictEqual(invalid.res.statusCode, 400);\n  });\n\n`;
+            s = s.replace(anchor, test + anchor.replace("'11.", "'12."));
+            fs.writeFileSync(path, s);
+          }
+
+          // Repository regression test
+          fs.writeFileSync('src/data/repositories/HospitalRepositoryImpl.test.ts', `import { describe, expect, it, vi } from 'vitest';\nimport { HospitalRepositoryImpl } from './HospitalRepositoryImpl';\n\ndescribe('HospitalRepositoryImpl.findById', () => {\n  it('looks up a Gwangju hospital directly by HPID and enriches realtime beds from its inferred region', async () => {\n    const apiClient = {\n      getHospitalBasicInfoById: vi.fn().mockResolvedValue({\n        hpid: 'A1500002',\n        dutyName: '전남대학교병원',\n        dutyAddr: '광주광역시 동구 제봉로 42',\n        dutyTel1: '0622205114',\n        dutyTel3: '0622206801',\n        wgs84Lat: '35.142',\n        wgs84Lon: '126.921',\n        dutyEryn: '1',\n        dutyEmcls: 'A',\n      }),\n      getEmergencyRoomBeds: vi.fn().mockResolvedValue([{\n        hpid: 'A1500002',\n        dutyName: '전남대학교병원',\n        hvec: '7',\n        hvicc: '3',\n        hvcc: '1',\n      }]),\n    };\n    const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };\n    const repository = new HospitalRepositoryImpl(apiClient as any, directionsClient as any);\n\n    const hospital = await repository.findById('A1500002');\n\n    expect(apiClient.getHospitalBasicInfoById).toHaveBeenCalledWith('A1500002');\n    expect(apiClient.getEmergencyRoomBeds).toHaveBeenCalledWith('광주광역시', undefined, 100);\n    expect(hospital?.id).toBe('A1500002');\n    expect(hospital?.name).toBe('전남대학교병원');\n    expect(hospital?.emergencyAvailableBeds).toBe(7);\n  });\n\n  it('returns null when HPID basic info is not found', async () => {\n    const apiClient = {\n      getHospitalBasicInfoById: vi.fn().mockResolvedValue(null),\n      getEmergencyRoomBeds: vi.fn(),\n    };\n    const repository = new HospitalRepositoryImpl(apiClient as any, { getBatchRouteInfoConcurrent: vi.fn() } as any);\n\n    await expect(repository.findById('UNKNOWN')).resolves.toBeNull();\n    expect(apiClient.getEmergencyRoomBeds).not.toHaveBeenCalled();\n  });\n});\n`);
+          NODE
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/egen.ts api/egen.test.ts src/data/datasources/remote/EGenApiClient.ts src/data/repositories/HospitalRepositoryImpl.ts src/data/repositories/HospitalRepositoryImpl.test.ts
+          git commit -m "Fix hospital lookup by HPID across regions"
+          git push origin HEAD:fix/hospital-id-lookup
