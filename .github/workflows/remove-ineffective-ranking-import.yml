@@ -25,16 +25,29 @@ jobs:
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const path = 'src/presentation/pages/HomePage.tsx';
-          let text = fs.readFileSync(path, 'utf8');
-          const importAnchor = "import { applyFilters } from '../../domain/types/HospitalFilter';\n";
-          const staticImport = "import { HospitalRankingService } from '../../domain/services/HospitalRankingService';\n";
-          if (!text.includes(importAnchor)) throw new Error('HomePage import anchor missing');
-          if (!text.includes(staticImport)) text = text.replace(importAnchor, importAnchor + staticImport);
-          const dynamicImport = "            const { HospitalRankingService } = await import('../../domain/services/HospitalRankingService');\n";
-          if (!text.includes(dynamicImport)) throw new Error('Dynamic ranking import missing');
-          text = text.replace(dynamicImport, '');
-          fs.writeFileSync(path, text);
+
+          {
+            const path = 'src/presentation/pages/HomePage.tsx';
+            let text = fs.readFileSync(path, 'utf8');
+            const importAnchor = "import { applyFilters } from '../../domain/types/HospitalFilter';\n";
+            const staticImport = "import { HospitalRankingService } from '../../domain/services/HospitalRankingService';\n";
+            if (!text.includes(importAnchor)) throw new Error('HomePage import anchor missing');
+            if (!text.includes(staticImport)) text = text.replace(importAnchor, importAnchor + staticImport);
+            const dynamicImport = "            const { HospitalRankingService } = await import('../../domain/services/HospitalRankingService');\n";
+            if (!text.includes(dynamicImport)) throw new Error('Dynamic ranking import missing');
+            text = text.replace(dynamicImport, '');
+            fs.writeFileSync(path, text);
+          }
+
+          {
+            const path = 'src/presentation/pages/HomePage.test.tsx';
+            let text = fs.readFileSync(path, 'utf8');
+            const before = '    mockLoadMoreRouteInfo.mockResolvedValue([]);';
+            const after = `    mockLoadMoreRouteInfo.mockImplementation(\n      async (_location, hospitals) => hospitals\n    );`;
+            if (!text.includes(before)) throw new Error('Race test route mock anchor missing');
+            text = text.replace(before, after);
+            fs.writeFileSync(path, text);
+          }
           NODE
       - name: Verify
         env:
@@ -59,6 +72,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/presentation/pages/HomePage.tsx
+          git add src/presentation/pages/HomePage.tsx src/presentation/pages/HomePage.test.tsx
           git commit -m "Remove ineffective ranking dynamic import"
           git push origin HEAD:chore/remove-ineffective-ranking-import
