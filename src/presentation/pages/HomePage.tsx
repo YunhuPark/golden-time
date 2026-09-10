@@ -24,6 +24,7 @@ import { HospitalCache } from '../../infrastructure/cache/HospitalCache';
 import { logError, logEvent } from '../../infrastructure/monitoring/telemetry';
 import { Hospital } from '../../domain/entities/Hospital';
 import { applyFilters } from '../../domain/types/HospitalFilter';
+import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
 
 /**
  * HomePage Component
@@ -301,7 +302,6 @@ export const HomePage: React.FC = () => {
             // 전체 병원 목록 합치기
             const newAllHospitals = [...fetchedHospitals, ...result.hospitals.slice(10)];
             // 최종 재정렬 (경로 시간 반영)
-            const { HospitalRankingService } = await import('../../domain/services/HospitalRankingService');
             const finalRanked = HospitalRankingService.rankHospitals(newAllHospitals, aiContext);
             
             // 상태 갱신
