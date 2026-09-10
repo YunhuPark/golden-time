@@ -59,7 +59,7 @@ export const LoginModal: React.FC = () => {
           setMode('signin');
         }
       }
-    } catch (err) {
+    } catch {
       setError('로그인 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -88,9 +88,12 @@ export const LoginModal: React.FC = () => {
         setError(errorMsg);
         console.error('Google OAuth error:', authError);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // 예외 발생 시 안전한 에러 메시지 표시
-      const errorMessage = err?.message?.trim() || 'Google 로그인 중 오류가 발생했습니다.';
+      const errorMessage =
+        err instanceof Error && err.message.trim()
+          ? err.message.trim()
+          : 'Google 로그인 중 오류가 발생했습니다.';
       setError(errorMessage);
       console.error('Google sign-in exception:', err);
     } finally {
