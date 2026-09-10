@@ -181,7 +181,34 @@ test('EGen API', async (t) => {
     assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
   });
 
-  await t.test('11. 지역 병원목록 endpoint는 Q0/QZ/ORD를 안전하게 upstream으로 전달', async () => {
+  await t.test('11. HPID 기본정보 endpoint는 허용하고 검증된 HPID만 upstream으로 전달', async () => {
+    let requestedUrl = '';
+    global.fetch = async (url: any) => {
+      requestedUrl = url.toString();
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ response: { header: { resultCode: '00', resultMsg: 'OK' }, body: { totalCount: 1 } } })
+      } as Response;
+    };
+
+    const endpoint = '/ErmctInfoInqireService/getEgytBassInfoInqire';
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: endpoint, HPID: 'A1500002', numOfRows: '1', pageNo: '1', _type: 'json'
+    });
+    await handler(req, res);
+    assert.strictEqual(res.statusCode, 200);
+    const urlObj = new URL(requestedUrl);
+    assert.strictEqual(urlObj.searchParams.get('HPID'), 'A1500002');
+    assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
+
+    const invalid = createMockReqRes('GET', { _endpoint: endpoint, HPID: '../secret' });
+    await handler(invalid.req, invalid.res);
+    assert.strictEqual(invalid.res.statusCode, 400);
+  });
+
+  await t.test('12. 지역 병원목록 endpoint는 Q0/QZ/ORD를 안전하게 upstream으로 전달', async () => {
     let requestedUrl = '';
     global.fetch = async (url: any) => {
       requestedUrl = url.toString();
