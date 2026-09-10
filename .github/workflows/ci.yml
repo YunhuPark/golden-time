@@ -74,6 +74,9 @@ jobs:
     - name: Security header regression tests
       run: node --test scripts/security-headers.test.cjs
 
+    - name: Brand metadata regression tests
+      run: node --test scripts/brand-metadata.test.cjs
+
     - name: Unit Tests
       run: npm run test:unit
 
