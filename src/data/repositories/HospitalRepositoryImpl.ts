@@ -85,14 +85,26 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
   async findById(id: string): Promise<Hospital | null> {
     try {
-      const allRegions = ['서울특별시', '경기도', '인천광역시'];
-      for (const region of allRegions) {
-        const combinedData = await this.apiClient.getCombinedHospitalData(region);
-        const hospitals = HospitalMapper.toDomainList(combinedData);
-        const found = hospitals.find((h) => h.id === id);
-        if (found) return found;
+      const basicInfo = await this.apiClient.getHospitalBasicInfoById(id);
+      if (!basicInfo || basicInfo.hpid !== id) return null;
+
+      let bedInfo;
+      const latitude = Number(basicInfo.wgs84Lat);
+      const longitude = Number(basicInfo.wgs84Lon);
+
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        try {
+          const region = inferRegionFromCoordinates(new Coordinates(latitude, longitude));
+          if (region) {
+            const beds = await this.apiClient.getEmergencyRoomBeds(region, undefined, 100);
+            bedInfo = beds.find((bed) => bed.hpid === id);
+          }
+        } catch (error) {
+          console.warn(`Could not enrich hospital ${id} with realtime beds`, error);
+        }
       }
-      return null;
+
+      return HospitalMapper.toDomain({ basicInfo, bedInfo });
     } catch (error) {
       console.error(`Failed to find hospital by ID: ${id}`, error);
       return null;

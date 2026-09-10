@@ -3,11 +3,13 @@ import type { ApiRequest, ApiResponse } from './httpTypes';
 const REALTIME_BEDS_ENDPOINT = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
 const LOCATION_INFO_ENDPOINT = '/ErmctInfoInqireService/getEgytLcinfoInqire';
 const HOSPITAL_LIST_ENDPOINT = '/ErmctInfoInqireService/getEgytListInfoInqire';
+const HOSPITAL_BASIC_ENDPOINT = '/ErmctInfoInqireService/getEgytBassInfoInqire';
 
 const ALLOWED_ENDPOINTS = [
   REALTIME_BEDS_ENDPOINT,
   LOCATION_INFO_ENDPOINT,
   HOSPITAL_LIST_ENDPOINT,
+  HOSPITAL_BASIC_ENDPOINT,
 ];
 
 const decodeXmlEntities = (value: string): string =>
@@ -90,7 +92,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD } = req.query;
+    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD, HPID } = req.query;
 
     if (!_endpoint || typeof _endpoint !== 'string') {
       return res.status(400).json({ error: 'Bad Request: Missing _endpoint' });
@@ -120,6 +122,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (ORD && (typeof ORD !== 'string' || !['ADDR', 'NAME'].includes(ORD))) {
       return res.status(400).json({ error: 'Bad Request: Invalid ORD' });
     }
+    if (HPID !== undefined && (typeof HPID !== 'string' || !/^[A-Za-z0-9_-]{1,30}$/.test(HPID))) {
+      return res.status(400).json({ error: 'Bad Request: Invalid HPID' });
+    }
 
     const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
@@ -134,6 +139,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       targetUrl.searchParams.set('QZ', QZ);
     }
     if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);
+    if (HPID && typeof HPID === 'string') targetUrl.searchParams.set('HPID', HPID);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -152,7 +158,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (contentType.includes('xml')) data = parseEGenXml(await response.text());
       else data = await response.json();
 
-      if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT) {
+      if (_endpoint === LOCATION_INFO_ENDPOINT || _endpoint === HOSPITAL_LIST_ENDPOINT || _endpoint === HOSPITAL_BASIC_ENDPOINT) {
         res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
       } else {
         res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=120');
