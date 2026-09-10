@@ -4,14 +4,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useAppStore } from '../../infrastructure/state/store';
 import { HospitalList } from '../components/hospital/HospitalList';
-import { HospitalDetailModal } from '../components/hospital/HospitalDetailModal';
+const HospitalDetailModal = React.lazy(() => import('../components/hospital/HospitalDetailModal').then((m) => ({ default: m.HospitalDetailModal })));
 import { HospitalBottomSheet } from '../components/hospital/HospitalBottomSheet';
 import { HospitalFilterPanel } from '../components/hospital/HospitalFilterPanel';
 import { FavoritesBottomSheet } from '../components/hospital/FavoritesBottomSheet';
 import { EmptyHospitalList } from '../components/hospital/EmptyHospitalList';
 import { KakaoMap } from '../components/map/KakaoMap';
 import { LoginModal } from '../components/auth/LoginModal';
-import { ProfilePage } from './ProfilePage';
+const ProfilePage = React.lazy(() => import('./ProfilePage').then((m) => ({ default: m.ProfilePage })));
 import { EcgLoader } from '../components/common/EcgLoader';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { LocationPermissionPrompt } from '../components/common/LocationPermissionPrompt';
@@ -21,8 +21,7 @@ import { GetNearbyHospitals } from '../../domain/usecases/GetNearbyHospitals';
 import { HospitalRepositoryImpl } from '../../data/repositories/HospitalRepositoryImpl';
 import { EGenApiClient } from '../../data/datasources/remote/EGenApiClient';
 import { HospitalCache } from '../../infrastructure/cache/HospitalCache';
-import { logError, logEvent } from '../../infrastructure/monitoring/sentry';
-import { supabase } from '../../infrastructure/supabase/supabaseClient';
+import { logError, logEvent } from '../../infrastructure/monitoring/telemetry';
 import { Hospital } from '../../domain/entities/Hospital';
 import { applyFilters } from '../../domain/types/HospitalFilter';
 
@@ -190,6 +189,8 @@ export const HomePage: React.FC = () => {
     const loadFavorites = async () => {
       setLoadingFavorites(true);
       try {
+        if (import.meta.env.VITE_SUPABASE_ENABLED !== 'true') return;
+        const { supabase } = await import('../../infrastructure/supabase/supabaseClient');
         const { data, error: fetchError } = await supabase
           .from('favorites')
           .select('hospital_id')
