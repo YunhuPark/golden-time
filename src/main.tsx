@@ -48,25 +48,27 @@ function loadKakaoMapsSDK(): Promise<boolean> {
 window.kakaoSDKReady = loadKakaoMapsSDK();
 
 /**
- * Clear old localStorage data that might have serialized Hospital objects
- * This ensures fresh start after theme system implementation
+ * Migrate only Golden-Time-owned localStorage keys.
+ * Never clear the whole origin because other same-origin state may coexist.
  */
 const STORAGE_VERSION = '2.1';
 const VERSION_KEY = 'golden-time-version';
+const APP_STORAGE_KEY = 'golden-time-storage';
 
 if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
-  console.log('🔄 Clearing old storage data...');
-  
-  // 강제로 다크모드로 초기화 (시연 영상을 위해 라이트모드 캐시 완전 무효화)
-  localStorage.clear();
+  console.log('🔄 Migrating Golden-Time storage data...');
 
-  localStorage.setItem('golden-time-storage', JSON.stringify({
+  // Reset only this app's persisted UI state while preserving unrelated origin storage.
+  localStorage.removeItem(APP_STORAGE_KEY);
+  localStorage.removeItem(VERSION_KEY);
+
+  localStorage.setItem(APP_STORAGE_KEY, JSON.stringify({
     state: { themeMode: 'dark' },
     version: 0
   }));
 
   localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-  console.log('✅ Storage cleaned and updated to Dark Mode default');
+  console.log('✅ Golden-Time storage migrated to Dark Mode default');
 }
 
 /**
