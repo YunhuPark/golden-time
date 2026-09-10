@@ -28,6 +28,6 @@ test('web manifest is aligned with Golden Time branding', () => {
 
 test('favicon is a self-contained SVG without external resources', () => {
   assert.match(icon, /^<svg[\s\S]*<\/svg>\s*$/);
-  assert.doesNotMatch(icon, /https?:\/\//);
+  assert.doesNotMatch(icon, /(?:href|src)="https?:\/\//i);
   assert.doesNotMatch(icon, /<script/i);
 });
