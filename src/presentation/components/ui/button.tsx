@@ -75,4 +75,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = 'Button';
 
+// This shared CVA export is intentional and mirrors the shadcn/ui pattern.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants };

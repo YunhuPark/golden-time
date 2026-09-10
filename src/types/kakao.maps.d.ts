@@ -10,40 +10,25 @@ declare global {
   interface Window {
     kakao: {
       maps: {
-        // 지도 생성
         Map: new (container: HTMLElement, options: kakao.maps.MapOptions) => kakao.maps.Map;
-
-        // 좌표
         LatLng: new (lat: number, lng: number) => kakao.maps.LatLng;
-
-        // 마커
         Marker: new (options: kakao.maps.MarkerOptions) => kakao.maps.Marker;
-
-        // 인포윈도우 (말풍선)
         InfoWindow: new (options: kakao.maps.InfoWindowOptions) => kakao.maps.InfoWindow;
-
-        // 지도 컨트롤
         ZoomControl: new () => kakao.maps.ZoomControl;
         MapTypeControl: new () => kakao.maps.MapTypeControl;
-
-        // 로드 완료 이벤트
         load: (callback: () => void) => void;
-
-        // 이벤트
         event: {
           addListener: (
-            target: any,
+            target: object,
             type: string,
-            handler: (...args: any[]) => void
+            handler: (...args: unknown[]) => void
           ) => void;
           removeListener: (
-            target: any,
+            target: object,
             type: string,
-            handler: (...args: any[]) => void
+            handler: (...args: unknown[]) => void
           ) => void;
         };
-
-        // 지도 타입
         ControlPosition: {
           TOP: number;
           TOPLEFT: number;
@@ -54,14 +39,8 @@ declare global {
           BOTTOM: number;
           BOTTOMRIGHT: number;
         };
-
-        // CustomOverlay
         CustomOverlay: new (options: kakao.maps.CustomOverlayOptions) => kakao.maps.CustomOverlay;
-
-        // LatLngBounds
         LatLngBounds: new () => kakao.maps.LatLngBounds;
-
-        // Services (Geocoding 등)
         services: {
           Geocoder: new () => kakao.maps.services.Geocoder;
           Places: new () => kakao.maps.services.Places;
@@ -73,14 +52,14 @@ declare global {
         };
       };
     };
+    kakaoSDKReady?: Promise<boolean>;
   }
 }
 
 declare namespace kakao.maps {
-  // 지도 옵션
   interface MapOptions {
     center: LatLng;
-    level?: number; // 확대/축소 레벨 (1~14, 작을수록 확대)
+    level?: number;
     mapTypeId?: string;
     draggable?: boolean;
     scrollwheel?: boolean;
@@ -89,7 +68,6 @@ declare namespace kakao.maps {
     projectionId?: string;
   }
 
-  // 지도 객체
   interface Map {
     setCenter(latlng: LatLng): void;
     getCenter(): LatLng;
@@ -98,21 +76,19 @@ declare namespace kakao.maps {
     panTo(latlng: LatLng): void;
     setBounds(bounds: LatLngBounds): void;
     getBounds(): LatLngBounds;
-    addControl(control: any, position: number): void;
-    removeControl(control: any): void;
+    addControl(control: ZoomControl | MapTypeControl, position: number): void;
+    removeControl(control: ZoomControl | MapTypeControl): void;
     addOverlayMapTypeId(mapTypeId: string): void;
     removeOverlayMapTypeId(mapTypeId: string): void;
     setMapTypeId(mapTypeId: string): void;
     relayout(): void;
   }
 
-  // 좌표
   interface LatLng {
     getLat(): number;
     getLng(): number;
   }
 
-  // 마커 옵션
   interface MarkerOptions {
     position: LatLng;
     map?: Map;
@@ -126,7 +102,6 @@ declare namespace kakao.maps {
     range?: number;
   }
 
-  // 마커 객체
   interface Marker {
     setMap(map: Map | null): void;
     getMap(): Map | null;
@@ -143,12 +118,8 @@ declare namespace kakao.maps {
     setOpacity(opacity: number): void;
   }
 
-  // 마커 이미지
-  interface MarkerImage {
-    // 구현은 생략
-  }
+  interface MarkerImage {}
 
-  // 인포윈도우 옵션
   interface InfoWindowOptions {
     content: string | HTMLElement;
     position?: LatLng;
@@ -157,7 +128,6 @@ declare namespace kakao.maps {
     zIndex?: number;
   }
 
-  // 인포윈도우 객체
   interface InfoWindow {
     open(map: Map, marker: Marker): void;
     close(): void;
@@ -168,7 +138,6 @@ declare namespace kakao.maps {
     setZIndex(zIndex: number): void;
   }
 
-  // 커스텀 오버레이 옵션
   interface CustomOverlayOptions {
     clickable?: boolean;
     content?: string | HTMLElement;
@@ -179,7 +148,6 @@ declare namespace kakao.maps {
     zIndex?: number;
   }
 
-  // 커스텀 오버레이 객체
   interface CustomOverlay {
     setMap(map: Map | null): void;
     getMap(): Map | null;
@@ -192,7 +160,6 @@ declare namespace kakao.maps {
     setRange(range: number): void;
   }
 
-  // 지도 경계
   interface LatLngBounds {
     extend(latlng: LatLng): void;
     contain(latlng: LatLng): boolean;
@@ -201,13 +168,9 @@ declare namespace kakao.maps {
     getNorthEast(): LatLng;
   }
 
-  // 줌 컨트롤
   interface ZoomControl {}
-
-  // 지도 타입 컨트롤
   interface MapTypeControl {}
 
-  // Services
   namespace services {
     interface Geocoder {
       addressSearch(

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { EGenApiClient } from '../datasources/remote/EGenApiClient';
+import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRepositoryImpl } from './HospitalRepositoryImpl';
 
 describe('HospitalRepositoryImpl.findById', () => {
@@ -24,7 +26,10 @@ describe('HospitalRepositoryImpl.findById', () => {
       }]),
     };
     const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
-    const repository = new HospitalRepositoryImpl(apiClient as any, directionsClient as any);
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      directionsClient as unknown as KakaoDirectionsClient
+    );
 
     const hospital = await repository.findById('A1500002');
 
@@ -42,7 +47,11 @@ describe('HospitalRepositoryImpl.findById', () => {
       getHospitalBasicInfoById: vi.fn().mockResolvedValue(null),
       getEmergencyRoomBeds: vi.fn(),
     };
-    const repository = new HospitalRepositoryImpl(apiClient as any, { getBatchRouteInfoConcurrent: vi.fn() } as any);
+    const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      directionsClient as unknown as KakaoDirectionsClient
+    );
 
     await expect(repository.findById('UNKNOWN')).resolves.toBeNull();
     expect(apiClient.getEmergencyRoomBeds).not.toHaveBeenCalled();
