@@ -77,6 +77,9 @@ jobs:
     - name: Brand metadata regression tests
       run: node --test scripts/brand-metadata.test.cjs
 
+    - name: Storage scope regression tests
+      run: node --test scripts/storage-scope.test.cjs
+
     - name: Unit Tests
       run: npm run test:unit
 
