@@ -5,6 +5,18 @@
   "devCommand": "npm run dev:ui",
   "installCommand": "npm install",
   "framework": "vite",
+  "git": {
+    "deploymentEnabled": {
+      "privacy/*": false,
+      "security/*": false,
+      "chore/*": false,
+      "fix/*": false,
+      "performance/*": false,
+      "perf/*": false,
+      "hardening/*": false,
+      "agent/*": false
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
