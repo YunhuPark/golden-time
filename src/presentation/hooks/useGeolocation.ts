@@ -50,8 +50,8 @@ function clearLegacyPersistedLocation(): void {
 export function useGeolocation(
   options: PositionOptions = {
     enableHighAccuracy: true,
-    timeout: 10000, // 10초 (응급상황 고려)
-    maximumAge: 30000, // 30초간 캐시 허용
+    timeout: 10000,
+    maximumAge: 30000,
   }
 ): GeolocationState {
   const { enableHighAccuracy, timeout, maximumAge } = options;
@@ -63,19 +63,17 @@ export function useGeolocation(
   });
 
   useEffect(() => {
-    // 모바일 vs 데스크톱 감지 (터치스크린 지원 여부로 판단)
     const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const timeoutDuration = isMobile ? 10000 : 30000; // 모바일: 10초, 데스크톱: 30초
-    const fallbackDuration = isMobile ? 12000 : 35000; // 모바일: 12초, 데스크톱: 35초
+    const timeoutDuration = isMobile ? 10000 : 30000;
+    const fallbackDuration = isMobile ? 12000 : 35000;
 
     console.log(`🌍 Device: ${isMobile ? 'Mobile' : 'Desktop'}, Timeout: ${timeoutDuration/1000}s, Fallback: ${fallbackDuration/1000}s`);
 
     clearLegacyPersistedLocation();
 
-    // Edge Case 1: Geolocation API 미지원
     if (!navigator.geolocation) {
       setState({
-        location: getSeoulCityHall(), // Fallback to default location
+        location: getSeoulCityHall(),
         error: {
           type: 'NOT_SUPPORTED',
           message: '브라우저가 위치 서비스를 지원하지 않습니다. 서울시청을 기본 위치로 설정합니다.',
@@ -83,7 +81,7 @@ export function useGeolocation(
         isLoading: false,
         accuracy: null,
       });
-      return;
+      return undefined;
     }
 
     const handleSuccess = (position: GeolocationPosition) => {
@@ -93,15 +91,12 @@ export function useGeolocation(
         position.coords.accuracy
       );
 
-      // Keep the precise fallback only for this page session. Never persist
-      // exact user coordinates to browser storage.
       lastKnownLocation = {
         coords,
         timestamp: Date.now(),
       };
       clearLegacyPersistedLocation();
 
-      // Edge Case 4: 낮은 정확도 경고
       const lowAccuracyWarning = coords.accuracy && coords.accuracy > 100
         ? {
             type: 'STALE_DATA' as const,
@@ -223,24 +218,17 @@ export function useGeolocation(
         isLoading: false,
         accuracy: null,
       });
+      return undefined;
     }
   }, [enableHighAccuracy, timeout, maximumAge]);
 
   return state;
 }
 
-/**
- * 서울시청 좌표 (기본 위치 - 전국 사용자 기준)
- * GPS 실패 시에만 사용되는 fallback 위치
- */
 function getSeoulCityHall(): Coordinates {
   return new Coordinates(37.5663, 126.9779);
 }
 
-/**
- * 현재 페이지 세션 메모리에서 마지막 알려진 위치 가져오기.
- * 기존 버전이 저장했을 수 있는 정확 좌표 localStorage 키는 제거합니다.
- */
 function getLastKnownLocation(): {
   coords: Coordinates;
   ageMinutes: number;
