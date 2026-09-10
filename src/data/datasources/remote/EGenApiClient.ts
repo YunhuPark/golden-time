@@ -74,6 +74,24 @@ export class EGenApiClient {
     return this.extractItems(response);
   }
 
+  async getHospitalBasicInfoById(hpid: string): Promise<HospitalBasicInfoDTO | null> {
+    const endpoint = '/ErmctInfoInqireService/getEgytBassInfoInqire';
+    const params = new URLSearchParams({
+      _endpoint: endpoint,
+      HPID: hpid,
+      numOfRows: '1',
+      pageNo: '1',
+      _type: 'json',
+    });
+
+    const response = await this.fetchWithRetry<EGenApiResponse<HospitalBasicInfoDTO>>(
+      `/api/egen?${params.toString()}`,
+      1,
+      3500
+    );
+    return this.extractItems(response)[0] ?? null;
+  }
+
   async getHospitalBasicInfo(
     Q0?: string,
     Q1?: string
