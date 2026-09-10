@@ -2,17 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Hospital, AvailabilityStatus } from '../../../domain/entities/Hospital';
 import { Coordinates } from '../../../domain/valueObjects/Coordinates';
 import { useAppStore } from '../../../infrastructure/state/store';
-import { supabase } from '../../../infrastructure/supabase/supabaseClient';
-import { VisitHistoryService } from '../../../domain/services/VisitHistoryService';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
-import { ReviewService } from '../../../domain/services/ReviewService';
 import { HospitalAICardService } from '../../../domain/services/HospitalAICardService';
 import { AIAnalysisContext } from '../../../domain/types/AIContext';
 import { cn } from '../../../lib/utils';
 import { Button } from '../ui/button';
-import { useAuthSession } from '../../hooks/useAuthSession';
 import { SessionExpiredModal } from '../common/SessionExpiredModal';
-import { logError } from '../../../infrastructure/monitoring/sentry';
+import { logError } from '../../../infrastructure/monitoring/telemetry';
 
 interface HospitalCardProps {
   hospital: Hospital;
@@ -30,7 +26,6 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
-  const { handleSessionError } = useAuthSession();
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
@@ -38,14 +33,23 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   const [showSessionModal, setShowSessionModal] = useState(false);
   const isDark = themeMode === 'dark';
   const geofenceActivatedRef = React.useRef(false);
+  const supabaseEnabled = import.meta.env.VITE_SUPABASE_ENABLED === 'true';
+
+  const isSessionExpiredError = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object') return false;
+    const candidate = error as { message?: string; status?: number; code?: string };
+    const message = candidate.message ?? String(error);
+    return /jwt|token|expired|unauthorized|not authenticated/i.test(message) || candidate.status === 401 || candidate.code === 'PGRST301';
+  };
 
   useEffect(() => {
     const checkFavorite = async () => {
-      if (!user) {
+      if (!user || !supabaseEnabled) {
         setIsFavorite(false);
         return;
       }
       try {
+        const { supabase } = await import('../../../infrastructure/supabase/supabaseClient');
         const { data, error } = await supabase
           .from('favorites')
           .select('*')
@@ -71,7 +75,9 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
 
   useEffect(() => {
     const loadRating = async () => {
+      if (!supabaseEnabled) return;
       try {
+        const { ReviewService } = await import('../../../domain/services/ReviewService');
         const result = await ReviewService.getHospitalRatingStats(hospital.id);
         if (result.success) {
           setAverageRating(result.stats.averageRating);
@@ -132,8 +138,9 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   );
 
   const recordVisit = async () => {
-    if (!user) return;
+    if (!user || !supabaseEnabled) return;
     try {
+      const { VisitHistoryService } = await import('../../../domain/services/VisitHistoryService');
       const { success, error } = await VisitHistoryService.addVisit({
         userId: user.id,
         hospitalId: hospital.id,
@@ -160,8 +167,13 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       openLoginModal('즐겨찾기');
       return;
     }
+    if (!supabaseEnabled) {
+      openLoginModal('즐겨찾기');
+      return;
+    }
     setFavoriteLoading(true);
     try {
+      const { supabase } = await import('../../../infrastructure/supabase/supabaseClient');
       if (isFavorite) {
         const { error } = await supabase.from('favorites').delete().eq('user_id', user.id).eq('hospital_id', hospital.id);
         if (error) throw error;
@@ -177,7 +189,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
         setIsFavorite(true);
       }
     } catch (error: any) {
-      if (handleSessionError(error)) {
+      if (isSessionExpiredError(error)) {
         setShowSessionModal(true);
         logError(error, { area: 'auth', severity: 'medium', extra: { operation: 'toggleFavorite', hospital: hospital.name } });
       } else {

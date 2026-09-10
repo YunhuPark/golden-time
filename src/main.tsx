@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './presentation/styles/global.css';
-import { initializeSentry } from './infrastructure/monitoring/sentry';
 
 /**
  * Load Kakao Maps SDK dynamically with API key from environment
@@ -71,9 +70,13 @@ if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
 }
 
 /**
- * Initialize Sentry Error Monitoring
+ * Load optional monitoring only when configured.
  */
-initializeSentry();
+if (import.meta.env.VITE_SENTRY_DSN) {
+  void import('./infrastructure/monitoring/sentry').then(({ initializeSentry }) => initializeSentry());
+} else {
+  console.info('ℹ️ Sentry monitoring disabled (no DSN configured)');
+}
 
 /**
  * Application Entry Point
