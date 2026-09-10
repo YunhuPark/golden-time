@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../../infrastructure/supabase/supabaseClient';
+import type { User, Session, AuthError } from '@supabase/supabase-js';
 
 /**
  * useAuth Hook
  * Supabase 인증 상태 관리
  */
+const SUPABASE_ENABLED = import.meta.env.VITE_SUPABASE_ENABLED === 'true';
+
+async function getSupabase() {
+  if (!SUPABASE_ENABLED) return null;
+  const { supabase } = await import('../../infrastructure/supabase/supabaseClient');
+  return supabase;
+}
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -16,34 +23,35 @@ export const useAuth = () => {
     // (긴급 상황 대응을 위한 LCP 최적화)
     setLoading(false);
 
-    // 초기 세션 확인 (비동기, 논블로킹)
-    // requestIdleCallback을 사용하여 메인 스레드가 여유로울 때 실행
-    const idleCallback = window.requestIdleCallback
-      ? window.requestIdleCallback(() => {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-          });
-        })
-      : setTimeout(() => {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-          });
-        }, 0);
+    if (!SUPABASE_ENABLED) return;
 
-    // 인증 상태 변경 감지
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    const loadSession = async () => {
+      const supabase = await getSupabase();
+      if (!supabase || disposed) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!disposed) {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        if (disposed) return;
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    };
+
+    const idleCallback = window.requestIdleCallback
+      ? window.requestIdleCallback(() => { void loadSession(); })
+      : setTimeout(() => { void loadSession(); }, 0);
 
     return () => {
-      subscription.unsubscribe();
+      disposed = true;
+      unsubscribe?.();
       if ('cancelIdleCallback' in window && typeof idleCallback === 'number') {
-        (window as any).cancelIdleCallback(idleCallback);
+        window.cancelIdleCallback(idleCallback);
       } else if (typeof idleCallback === 'number') {
         clearTimeout(idleCallback);
       }
@@ -57,6 +65,8 @@ export const useAuth = () => {
     email: string,
     password: string
   ): Promise<{ error: AuthError | null }> => {
+    const supabase = await getSupabase();
+    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -71,6 +81,8 @@ export const useAuth = () => {
     email: string,
     password: string
   ): Promise<{ error: AuthError | null }> => {
+    const supabase = await getSupabase();
+    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -82,6 +94,8 @@ export const useAuth = () => {
    * Google 소셜 로그인
    */
   const signInWithGoogle = async (): Promise<{ error: AuthError | null }> => {
+    const supabase = await getSupabase();
+    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -95,6 +109,8 @@ export const useAuth = () => {
    * 로그아웃
    */
   const signOut = async (): Promise<{ error: AuthError | null }> => {
+    const supabase = await getSupabase();
+    if (!supabase) return { error: null };
     const { error } = await supabase.auth.signOut();
     return { error };
   };
@@ -105,6 +121,8 @@ export const useAuth = () => {
   const resetPassword = async (
     email: string
   ): Promise<{ error: AuthError | null }> => {
+    const supabase = await getSupabase();
+    if (!supabase) return { error: new Error('Supabase disabled') as AuthError };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
