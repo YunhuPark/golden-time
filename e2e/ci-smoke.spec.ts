@@ -76,23 +76,21 @@ test('GPS search discovers nearby E-Gen hospitals and renders realtime beds dete
     }
 
     if (endpoint?.endsWith('/getEgytListInfoInqire')) {
-      const qz = url.searchParams.get('QZ');
+      expect(url.searchParams.has('QZ')).toBe(false);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(qz === 'A'
-          ? egenResponse({
-              hpid: 'A1500022',
-              dutyName: '상무병원',
-              dutyAddr: '광주광역시 서구 상무자유로 181-7',
-              dutyTel1: '0626007000',
-              dutyTel3: '0626007119',
-              wgs84Lat: '35.1524229',
-              wgs84Lon: '126.8539184',
-              dutyEmcls: 'A',
-              dutyEryn: '1',
-            })
-          : EMPTY_EGEN_RESPONSE),
+        body: JSON.stringify(egenResponse({
+          hpid: 'A1500022',
+          dutyName: '상무병원',
+          dutyAddr: '광주광역시 서구 상무자유로 181-7',
+          dutyTel1: '0626007000',
+          dutyTel3: '0626007119',
+          wgs84Lat: '35.1524229',
+          wgs84Lon: '126.8539184',
+          dutyEmcls: 'A',
+          dutyEryn: '1',
+        })),
       });
       return;
     }
