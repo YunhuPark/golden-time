@@ -38,18 +38,6 @@ function App() {
         window.location.href = window.location.href.replace('http:', 'https:');
       }, 0);
     }
-
-    // 페이지 이탈 방지 (응급 검색 중일 때)
-    const handleBeforeUnload = () => {
-      // 실제로는 검색 중인지 상태 체크 필요
-      // if (isSearching) {
-      //   e.preventDefault();
-      //   e.returnValue = '응급 검색을 종료하시겠습니까?';
-      // }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
   return (
