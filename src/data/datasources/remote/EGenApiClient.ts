@@ -2,6 +2,7 @@ import {
   EGenApiResponse,
   HospitalBasicInfoDTO,
   EmergencyRoomBedDTO,
+  EmergencyLocationDTO,
   CombinedHospitalDTO,
 } from '../../models/HospitalDTO';
 import { NetworkError, RateLimitError } from '../../../infrastructure/errors/AppError';
@@ -23,6 +24,29 @@ export class EGenApiClient {
 
   setPerformanceSearchId(searchId: number | null): void {
     this.performanceSearchId = searchId ?? undefined;
+  }
+
+  async getNearbyEmergencyLocations(
+    latitude: number,
+    longitude: number,
+    numOfRows = 100
+  ): Promise<EmergencyLocationDTO[]> {
+    const endpoint = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+    const params = new URLSearchParams({
+      _endpoint: endpoint,
+      WGS84_LAT: latitude.toString(),
+      WGS84_LON: longitude.toString(),
+      numOfRows: numOfRows.toString(),
+      pageNo: '1',
+      _type: 'json',
+    });
+
+    const response = await this.fetchWithRetry<EGenApiResponse<EmergencyLocationDTO>>(
+      `/api/egen?${params.toString()}`,
+      1,
+      5000
+    );
+    return this.extractItems(response);
   }
 
   async getEmergencyRoomBeds(

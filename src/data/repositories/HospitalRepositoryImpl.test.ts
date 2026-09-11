@@ -36,9 +36,25 @@ function combinedHospital({
 }
 
 describe('HospitalRepositoryImpl.findNearby', () => {
-  it('queries current and neighboring E-Gen regions and includes the closer cross-border hospital', async () => {
+  it('uses coordinate discovery to query only regions represented near the user', async () => {
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'CN-LOC',
+          dutyName: '충남 병원',
+          dutyAddr: '충청남도 천안시',
+          latitude: 36.81,
+          longitude: 127.11,
+        },
+        {
+          hpid: 'CB-LOC',
+          dutyName: '충북 경계 병원',
+          dutyAddr: '충청북도 청주시',
+          latitude: 36.82,
+          longitude: 127.31,
+        },
+      ]),
       getCombinedHospitalData: vi.fn(async (region: string) => {
         if (region === '충청남도') {
           return [combinedHospital({
@@ -53,7 +69,7 @@ describe('HospitalRepositoryImpl.findNearby', () => {
             hpid: 'CB-CLOSE',
             name: '충북 경계 병원',
             lat: 36.82,
-            lon: 127.14,
+            lon: 127.31,
           })];
         }
         return [];
@@ -67,10 +83,77 @@ describe('HospitalRepositoryImpl.findNearby', () => {
 
     const hospitals = await repository.findNearby(new Coordinates(36.8151, 127.1139));
 
+    expect(apiClient.getNearbyEmergencyLocations).toHaveBeenCalledWith(36.8151, 127.1139, 100);
     const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);
     expect(queriedRegions).toContain('충청남도');
     expect(queriedRegions).toContain('충청북도');
+    expect(queriedRegions).not.toContain('경기도');
     expect(hospitals.map((hospital) => hospital.id)).toContain('CB-CLOSE');
+  });
+
+  it('falls back to the current region only when coordinate discovery fails', async () => {
+    const apiClient = {
+      setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockRejectedValue(new Error('temporary location failure')),
+      getCombinedHospitalData: vi.fn(async (region: string) => {
+        if (region === '서울특별시') {
+          return [combinedHospital({
+            hpid: 'SEOUL-1',
+            name: '서울 병원',
+            lat: 37.56,
+            lon: 126.98,
+          })];
+        }
+        return [];
+      }),
+    };
+    const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      directionsClient as unknown as KakaoDirectionsClient
+    );
+
+    const hospitals = await repository.findNearby(new Coordinates(37.5665, 126.9780));
+
+    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledTimes(1);
+    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledWith('서울특별시');
+    expect(hospitals.map((hospital) => hospital.id)).toContain('SEOUL-1');
+  });
+
+  it('ignores discovered institutions outside the 100km search radius', async () => {
+    const apiClient = {
+      setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'FAR-LOC',
+          dutyName: '먼 병원',
+          dutyAddr: '강원특별자치도 강릉시',
+          latitude: 37.75,
+          longitude: 128.88,
+        },
+      ]),
+      getCombinedHospitalData: vi.fn(async (region: string) => {
+        if (region === '서울특별시') {
+          return [combinedHospital({
+            hpid: 'SEOUL-1',
+            name: '서울 병원',
+            lat: 37.56,
+            lon: 126.98,
+          })];
+        }
+        return [];
+      }),
+    };
+    const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      directionsClient as unknown as KakaoDirectionsClient
+    );
+
+    await repository.findNearby(new Coordinates(37.5665, 126.9780));
+
+    const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);
+    expect(queriedRegions).toEqual(['서울특별시']);
   });
 
   it('deduplicates the same HPID returned by overlapping regional searches', async () => {
@@ -83,6 +166,15 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     });
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'GG-LOC',
+          dutyName: '경기 병원',
+          dutyAddr: '경기도 성남시',
+          latitude: 37.45,
+          longitude: 127.15,
+        },
+      ]),
       getCombinedHospitalData: vi.fn(async () => [duplicated]),
     };
     const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
@@ -96,9 +188,18 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     expect(hospitals.filter((hospital) => hospital.id === 'DUP-1')).toHaveLength(1);
   });
 
-  it('keeps searching when one neighboring regional E-Gen request fails', async () => {
+  it('keeps searching when one discovered regional E-Gen request fails', async () => {
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'GG-LOC',
+          dutyName: '경기 병원',
+          dutyAddr: '경기도 성남시',
+          latitude: 37.45,
+          longitude: 127.15,
+        },
+      ]),
       getCombinedHospitalData: vi.fn(async (region: string) => {
         if (region === '서울특별시') throw new Error('temporary failure');
         if (region === '경기도') {
@@ -125,6 +226,7 @@ describe('HospitalRepositoryImpl.findNearby', () => {
   it('does not silently fall back to Seoul for unsupported coordinates', async () => {
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn(),
       getCombinedHospitalData: vi.fn(),
     };
     const directionsClient = { getBatchRouteInfoConcurrent: vi.fn() };
@@ -136,6 +238,7 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     await expect(
       repository.findNearby(new Coordinates(25.0, 121.5))
     ).rejects.toThrow('Unsupported GPS coordinates');
+    expect(apiClient.getNearbyEmergencyLocations).not.toHaveBeenCalled();
     expect(apiClient.getCombinedHospitalData).not.toHaveBeenCalled();
   });
 });
