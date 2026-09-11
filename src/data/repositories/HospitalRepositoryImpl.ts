@@ -5,10 +5,7 @@ import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
-import {
-  getRegionsWithinRadius,
-  inferRegionFromCoordinates,
-} from '../../domain/services/RegionResolver';
+import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
 import { AIAnalysisContext } from '../../domain/types/AIContext';
 import {
   getActiveHospitalSearchPerformanceId,
@@ -34,14 +31,61 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       this.apiClient.setPerformanceSearchId(this.performanceSearchId);
 
       const MAX_DISTANCE_KM = 100;
-      const regions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);
-      if (regions.length === 0) {
+      const currentRegion = inferRegionFromCoordinates(coords);
+      if (!currentRegion) {
         throw new Error(
           `Unsupported GPS coordinates for nationwide emergency search: ${coords.latitude}, ${coords.longitude}`
         );
       }
 
-      console.log(`🏥 GPS nationwide search regions (${regions.length}): ${regions.join(', ')}`);
+      // Use the official coordinate-based location endpoint once to discover the
+      // actual nearby ER candidates. This avoids fanning out across every region
+      // whose coarse bounding box happens to intersect the 100km circle.
+      const nearbyLocations = await this.apiClient.getNearbyEmergencyLocations(
+        coords.latitude,
+        coords.longitude,
+        100
+      );
+
+      const candidateHpids = new Set<string>();
+      const candidateRegions = new Set<string>();
+
+      for (const location of nearbyLocations) {
+        if (!location.hpid) continue;
+
+        const latitude = Number(location.latitude ?? location.wgs84Lat);
+        const longitude = Number(location.longitude ?? location.wgs84Lon);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+
+        let locationCoordinates: Coordinates;
+        try {
+          locationCoordinates = new Coordinates(latitude, longitude);
+        } catch {
+          continue;
+        }
+
+        const distanceKm = locationCoordinates.distanceTo(coords) / 1000;
+        if (distanceKm > MAX_DISTANCE_KM) continue;
+
+        candidateHpids.add(location.hpid);
+        const region = inferRegionFromCoordinates(locationCoordinates);
+        if (region) candidateRegions.add(region);
+      }
+
+      if (candidateHpids.size === 0) {
+        console.log('✅ Coordinate-based E-Gen lookup returned no hospitals within 100km');
+        return [];
+      }
+
+      // A candidate can occasionally sit on imperfect administrative bounds.
+      // Always include the user's current region as a safe, bounded fallback,
+      // while still limiting regional realtime calls to regions evidenced by
+      // the coordinate result instead of a nationwide bounding-box fan-out.
+      candidateRegions.add(currentRegion);
+      const regions = Array.from(candidateRegions);
+      console.log(
+        `🏥 Coordinate candidates: ${candidateHpids.size}; realtime regions (${regions.length}): ${regions.join(', ')}`
+      );
 
       const regionResults = await Promise.allSettled(
         regions.map((region) => this.apiClient.getCombinedHospitalData(region))
@@ -51,31 +95,40 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       if (successfulRegionCount === 0) {
         const firstFailure = regionResults.find((result) => result.status === 'rejected');
         if (firstFailure?.status === 'rejected') throw firstFailure.reason;
-        throw new Error('All regional E-Gen requests failed');
+        throw new Error('All candidate regional E-Gen requests failed');
       }
 
-      const combinedByHpid = new Map<string, Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>[number]>();
+      const combinedByHpid = new Map<
+        string,
+        Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>[number]
+      >();
+
       regionResults.forEach((result, index) => {
         const region = regions[index];
         if (result.status === 'rejected') {
-          console.warn(`⚠️ Regional E-Gen search failed for ${region}; continuing with remaining regions`, result.reason);
+          console.warn(
+            `⚠️ Regional E-Gen search failed for ${region}; continuing with remaining candidate regions`,
+            result.reason
+          );
           return;
         }
 
         for (const item of result.value) {
           const hpid = item.basicInfo.hpid || item.bedInfo?.hpid;
-          if (!hpid) continue;
+          if (!hpid || !candidateHpids.has(hpid)) continue;
+
           const existing = combinedByHpid.get(hpid);
           if (!existing) {
             combinedByHpid.set(hpid, item);
             continue;
           }
 
-          // Prefer the duplicate that carries more useful realtime/resource data.
           const existingBeds = Number(existing.bedInfo?.hvec ?? 0);
           const incomingBeds = Number(item.bedInfo?.hvec ?? 0);
-          const existingHasCoords = Number(existing.basicInfo.wgs84Lat) !== 0 && Number(existing.basicInfo.wgs84Lon) !== 0;
-          const incomingHasCoords = Number(item.basicInfo.wgs84Lat) !== 0 && Number(item.basicInfo.wgs84Lon) !== 0;
+          const existingHasCoords =
+            Number(existing.basicInfo.wgs84Lat) !== 0 && Number(existing.basicInfo.wgs84Lon) !== 0;
+          const incomingHasCoords =
+            Number(item.basicInfo.wgs84Lat) !== 0 && Number(item.basicInfo.wgs84Lon) !== 0;
           if ((!existingHasCoords && incomingHasCoords) || incomingBeds > existingBeds) {
             combinedByHpid.set(hpid, item);
           }
@@ -84,18 +137,13 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       const hospitals = HospitalMapper.toDomainList(Array.from(combinedByHpid.values()));
       const validHospitals = hospitals.filter((hospital) => {
-        if (!hospital.coordinates) return false;
-
         const distanceKm = hospital.distanceFrom(coords) / 1000;
-        if (distanceKm > MAX_DISTANCE_KM) {
-          return false;
-        }
-        return true;
+        return distanceKm <= MAX_DISTANCE_KM;
       });
 
       validHospitals.sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
       console.log(
-        `✅ Nationwide GPS candidate pool: ${validHospitals.length} hospitals within ${MAX_DISTANCE_KM}km from ${successfulRegionCount}/${regions.length} regional E-Gen searches`
+        `✅ Coordinate-first candidate pool: ${validHospitals.length} hospitals within ${MAX_DISTANCE_KM}km from ${successfulRegionCount}/${regions.length} realtime region searches`
       );
 
       const rankingStartedAt = performance.now();
