@@ -30,12 +30,23 @@ export class GetNearbyHospitals {
 
   async execute(
     userLocation: Coordinates,
-    aiContext?: AIAnalysisContext | null
+    aiContext?: AIAnalysisContext | null,
+    onInitialHospitals?: (hospitals: Hospital[]) => void
   ): Promise<HospitalSearchResult> {
     const performanceSearchId = startHospitalSearchPerformance();
 
     try {
-      const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext);
+      const allHospitals = await this.hospitalRepository.findNearby(
+        userLocation,
+        aiContext,
+        (initialHospitals) => {
+          const operating = initialHospitals.filter((hospital) => hospital.isOperating);
+          if (operating.length > 0) {
+            recordFirstHospitalResults(performanceSearchId, operating.length);
+            onInitialHospitals?.(operating);
+          }
+        }
+      );
 
       const availableHospitals = allHospitals.filter(
         (h) => h.isOperating
