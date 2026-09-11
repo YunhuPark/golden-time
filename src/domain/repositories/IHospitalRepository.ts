@@ -12,12 +12,14 @@ export interface IHospitalRepository {
    * @param coords 중심 좌표
    * @param aiContext 검색할 AI 컨텍스트 (선택사항)
    * @param onInitialResults 현재 지역의 초기 병원 결과 콜백 (선택사항)
+   * @param onCoverageWarning 일부 지역 또는 인접지역 탐색 실패 알림 콜백 (선택사항)
    * @returns 병원 목록
    */
   findNearby(
     coords: Coordinates,
     aiContext?: AIAnalysisContext | null,
-    onInitialResults?: (hospitals: Hospital[]) => void
+    onInitialResults?: (hospitals: Hospital[]) => void,
+    onCoverageWarning?: (failedRegions: string[], discoveryFailed: boolean) => void
   ): Promise<Hospital[]>;
 
   /**
