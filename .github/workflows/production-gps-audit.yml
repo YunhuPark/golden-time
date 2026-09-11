@@ -22,6 +22,83 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+      - name: Probe live E-Gen region semantics
+        env:
+          BASE_URL: https://golden-time.vercel.app
+        run: |
+          node <<'NODE'
+          const endpoint = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
+          const locationEndpoint = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+
+          function itemsOf(json) {
+            const item = json?.response?.body?.items?.item;
+            if (!item) return [];
+            return Array.isArray(item) ? item : [item];
+          }
+
+          async function bedProbe(stage1) {
+            const qs = new URLSearchParams({
+              _endpoint: endpoint,
+              STAGE1: stage1,
+              numOfRows: '300',
+              pageNo: '1',
+              _type: 'json',
+            });
+            const res = await fetch(`${process.env.BASE_URL}/api/egen?${qs}`);
+            const json = await res.json();
+            const items = itemsOf(json);
+            return {
+              stage1,
+              status: res.status,
+              totalCount: json?.response?.body?.totalCount,
+              count: items.length,
+              cheonanNames: items.filter(x => /천안|단국|순천향/.test(`${x.dutyName || ''} ${x.dutyAddr || ''}`)).slice(0, 20).map(x => ({ hpid: x.hpid, name: x.dutyName, addr: x.dutyAddr })),
+              sample: items.slice(0, 5).map(x => ({ hpid: x.hpid, name: x.dutyName, addr: x.dutyAddr })),
+            };
+          }
+
+          async function locationProbe(name, lat, lon, rows) {
+            const qs = new URLSearchParams({
+              _endpoint: locationEndpoint,
+              WGS84_LAT: String(lat),
+              WGS84_LON: String(lon),
+              numOfRows: String(rows),
+              pageNo: '1',
+              _type: 'json',
+            });
+            const res = await fetch(`${process.env.BASE_URL}/api/egen?${qs}`);
+            const json = await res.json();
+            const items = itemsOf(json);
+            const regions = {};
+            for (const item of items) {
+              const first = String(item.dutyAddr || '').trim().split(/\s+/)[0] || '(none)';
+              regions[first] = (regions[first] || 0) + 1;
+            }
+            return { name, rows, status: res.status, totalCount: json?.response?.body?.totalCount, count: items.length, regions };
+          }
+
+          (async () => {
+            const stageValues = ['충청남도', '충남', '충청북도', '충북', '경기도', '경기', '광주', '광주광역시', '전라남도', '전남'];
+            const bedResults = [];
+            for (const stage of stageValues) {
+              try { bedResults.push(await bedProbe(stage)); }
+              catch (error) { bedResults.push({ stage1: stage, error: String(error) }); }
+            }
+            console.log('EGEN_BED_PROBE=' + JSON.stringify(bedResults));
+
+            const locationResults = [];
+            for (const c of [
+              ['cheonan', 36.8151, 127.1139],
+              ['gwangju', 35.1595, 126.8526],
+            ]) {
+              for (const rows of [100, 300, 500]) {
+                try { locationResults.push(await locationProbe(c[0], c[1], c[2], rows)); }
+                catch (error) { locationResults.push({ name: c[0], rows, error: String(error) }); }
+              }
+            }
+            console.log('EGEN_LOCATION_PROBE=' + JSON.stringify(locationResults));
+          })().catch(err => { console.error(err); process.exit(1); });
+          NODE
       - name: Audit live production at representative GPS coordinates
         env:
           BASE_URL: https://golden-time.vercel.app
@@ -100,6 +177,7 @@ jobs:
             }
 
             fs.writeFileSync('gps-audit/summary.json', JSON.stringify(summary, null, 2));
+            console.log('GPS_AUDIT_SUMMARY=' + JSON.stringify(summary));
             await browser.close();
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
