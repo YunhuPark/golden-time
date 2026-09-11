@@ -72,10 +72,9 @@ export class EGenApiClient {
     return this.extractItems(response);
   }
 
-  private async getHospitalListByType(
+  private async getHospitalList(
     Q0: string | undefined,
     Q1: string | undefined,
-    QZ: string,
     numOfRows = 300
   ): Promise<HospitalBasicInfoDTO[]> {
     const endpoint = '/ErmctInfoInqireService/getEgytListInfoInqire';
@@ -84,7 +83,6 @@ export class EGenApiClient {
       numOfRows: numOfRows.toString(),
       pageNo: '1',
       _type: 'json',
-      QZ,
       ORD: 'ADDR',
     });
     if (Q0) params.append('Q0', Q0);
@@ -122,16 +120,12 @@ export class EGenApiClient {
   ): Promise<HospitalBasicInfoDTO[]> {
     const normalizedQ0 = this.normalizeHospitalListRegion(Q0);
 
-    // A/B/C cover the main emergency institution classes used by the public
-    // regional list API. Missing institutions still fall back to Kakao below.
-    const typeResults = await Promise.all(
-      ['A', 'B', 'C'].map((QZ) =>
-        this.getHospitalListByType(normalizedQ0, Q1, QZ).catch(() => [] as HospitalBasicInfoDTO[])
-      )
-    );
-
+    // QZ is optional. Omitting it returns the full regional emergency-institution
+    // list in one request instead of issuing separate A/B/C queries. This keeps
+    // additional valid classes such as emergency-declared specialty hospitals.
+    const items = await this.getHospitalList(normalizedQ0, Q1);
     const deduplicated = new Map<string, HospitalBasicInfoDTO>();
-    for (const item of typeResults.flat()) {
+    for (const item of items) {
       if (item.hpid && !deduplicated.has(item.hpid)) {
         deduplicated.set(item.hpid, item);
       }
