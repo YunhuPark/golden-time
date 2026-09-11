@@ -50,25 +50,31 @@ window.kakaoSDKReady = loadKakaoMapsSDK();
 /**
  * Migrate only Golden-Time-owned localStorage keys.
  * Never clear the whole origin because other same-origin state may coexist.
+ * Storage can be unavailable in privacy-restricted browser contexts, so a
+ * migration failure must not prevent the emergency search UI from starting.
  */
 const STORAGE_VERSION = '2.1';
 const VERSION_KEY = 'golden-time-version';
 const APP_STORAGE_KEY = 'golden-time-storage';
 
-if (localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
-  console.log('🔄 Migrating Golden-Time storage data...');
+try {
+  if (window.localStorage.getItem(VERSION_KEY) !== STORAGE_VERSION) {
+    console.log('🔄 Migrating Golden-Time storage data...');
 
-  // Reset only this app's persisted UI state while preserving unrelated origin storage.
-  localStorage.removeItem(APP_STORAGE_KEY);
-  localStorage.removeItem(VERSION_KEY);
+    // Reset only this app's persisted UI state while preserving unrelated origin storage.
+    window.localStorage.removeItem(APP_STORAGE_KEY);
+    window.localStorage.removeItem(VERSION_KEY);
 
-  localStorage.setItem(APP_STORAGE_KEY, JSON.stringify({
-    state: { themeMode: 'dark' },
-    version: 0
-  }));
+    window.localStorage.setItem(APP_STORAGE_KEY, JSON.stringify({
+      state: { themeMode: 'dark' },
+      version: 0
+    }));
 
-  localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-  console.log('✅ Golden-Time storage migrated to Dark Mode default');
+    window.localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+    console.log('✅ Golden-Time storage migrated to Dark Mode default');
+  }
+} catch {
+  console.warn('⚠️ Browser storage is unavailable; continuing without storage migration.');
 }
 
 /**
