@@ -18,9 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.x
-      - name: Install Playwright
+      - name: Install dependencies and Playwright browser
         run: |
-          npm install --no-save playwright@1.55.0
+          npm ci
           npx playwright install --with-deps chromium
       - name: Audit live production at representative GPS coordinates
         env:
