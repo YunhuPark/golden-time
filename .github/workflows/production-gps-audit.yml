@@ -10,7 +10,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,172 +18,39 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.x
-      - name: Install dependencies and Playwright browser
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-      - name: Probe live E-Gen region semantics
+      - name: Probe live E-Gen first-level region aliases
         env:
           BASE_URL: https://golden-time.vercel.app
         run: |
           node <<'NODE'
           const endpoint = '/ErmctInfoInqireService/getEmrrmRltmUsefulSckbdInfoInqire';
-          const locationEndpoint = '/ErmctInfoInqireService/getEgytLcinfoInqire';
-
+          const groups = [
+            ['서울특별시','서울'], ['인천광역시','인천'], ['부산광역시','부산'], ['대구광역시','대구'],
+            ['광주광역시','광주'], ['대전광역시','대전'], ['울산광역시','울산'], ['세종특별자치시','세종'],
+            ['경기도','경기'], ['경상남도','경남'], ['경상북도','경북'], ['전라남도','전남'],
+            ['전북특별자치도','전라북도','전북'], ['충청남도','충남'], ['충청북도','충북'],
+            ['강원특별자치도','강원도','강원'], ['제주특별자치도','제주']
+          ];
           function itemsOf(json) {
             const item = json?.response?.body?.items?.item;
-            if (!item) return [];
-            return Array.isArray(item) ? item : [item];
+            return !item ? [] : Array.isArray(item) ? item : [item];
           }
-
-          async function bedProbe(stage1) {
-            const qs = new URLSearchParams({
-              _endpoint: endpoint,
-              STAGE1: stage1,
-              numOfRows: '300',
-              pageNo: '1',
-              _type: 'json',
-            });
+          async function probe(stage1) {
+            const qs = new URLSearchParams({_endpoint:endpoint,STAGE1:stage1,numOfRows:'300',pageNo:'1',_type:'json'});
             const res = await fetch(`${process.env.BASE_URL}/api/egen?${qs}`);
             const json = await res.json();
             const items = itemsOf(json);
-            return {
-              stage1,
-              status: res.status,
-              totalCount: json?.response?.body?.totalCount,
-              count: items.length,
-              cheonanNames: items.filter(x => /천안|단국|순천향/.test(`${x.dutyName || ''} ${x.dutyAddr || ''}`)).slice(0, 20).map(x => ({ hpid: x.hpid, name: x.dutyName, addr: x.dutyAddr })),
-              sample: items.slice(0, 5).map(x => ({ hpid: x.hpid, name: x.dutyName, addr: x.dutyAddr })),
-            };
+            return {stage1,status:res.status,totalCount:json?.response?.body?.totalCount,count:items.length,sample:items.slice(0,2).map(x=>x.dutyName)};
           }
-
-          async function locationProbe(name, lat, lon, rows) {
-            const qs = new URLSearchParams({
-              _endpoint: locationEndpoint,
-              WGS84_LAT: String(lat),
-              WGS84_LON: String(lon),
-              numOfRows: String(rows),
-              pageNo: '1',
-              _type: 'json',
-            });
-            const res = await fetch(`${process.env.BASE_URL}/api/egen?${qs}`);
-            const json = await res.json();
-            const items = itemsOf(json);
-            const regions = {};
-            for (const item of items) {
-              const first = String(item.dutyAddr || '').trim().split(/\s+/)[0] || '(none)';
-              regions[first] = (regions[first] || 0) + 1;
-            }
-            return { name, rows, status: res.status, totalCount: json?.response?.body?.totalCount, count: items.length, regions };
-          }
-
-          (async () => {
-            const stageValues = ['충청남도', '충남', '충청북도', '충북', '경기도', '경기', '광주', '광주광역시', '전라남도', '전남'];
-            const bedResults = [];
-            for (const stage of stageValues) {
-              try { bedResults.push(await bedProbe(stage)); }
-              catch (error) { bedResults.push({ stage1: stage, error: String(error) }); }
-            }
-            console.log('EGEN_BED_PROBE=' + JSON.stringify(bedResults));
-
-            const locationResults = [];
-            for (const c of [
-              ['cheonan', 36.8151, 127.1139],
-              ['gwangju', 35.1595, 126.8526],
-            ]) {
-              for (const rows of [100, 300, 500]) {
-                try { locationResults.push(await locationProbe(c[0], c[1], c[2], rows)); }
-                catch (error) { locationResults.push({ name: c[0], rows, error: String(error) }); }
+          (async()=>{
+            const output=[];
+            for(const group of groups){
+              const results=[];
+              for(const stage1 of group){
+                try{results.push(await probe(stage1));}catch(error){results.push({stage1,error:String(error)});}
               }
+              output.push(results);
             }
-            console.log('EGEN_LOCATION_PROBE=' + JSON.stringify(locationResults));
-          })().catch(err => { console.error(err); process.exit(1); });
+            console.log('EGEN_ALL_REGION_PROBE='+JSON.stringify(output));
+          })().catch(err=>{console.error(err);process.exit(1);});
           NODE
-      - name: Audit live production at representative GPS coordinates
-        env:
-          BASE_URL: https://golden-time.vercel.app
-        run: |
-          mkdir -p gps-audit
-          node <<'NODE'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-
-          const cases = [
-            { name: 'seoul', lat: 37.5665, lon: 126.9780 },
-            { name: 'cheonan', lat: 36.8151, lon: 127.1139 },
-            { name: 'gwangju', lat: 35.1595, lon: 126.8526 },
-          ];
-
-          (async () => {
-            const browser = await chromium.launch({ headless: true });
-            const summary = [];
-
-            for (const c of cases) {
-              const context = await browser.newContext({
-                viewport: { width: 390, height: 844 },
-                geolocation: { latitude: c.lat, longitude: c.lon },
-                permissions: ['geolocation'],
-                locale: 'ko-KR',
-              });
-              const page = await context.newPage();
-              const consoleLines = [];
-              const failedRequests = [];
-              page.on('console', msg => consoleLines.push(`[${msg.type()}] ${msg.text()}`));
-              page.on('requestfailed', req => failedRequests.push(`${req.method()} ${req.url()} :: ${req.failure()?.errorText || ''}`));
-
-              const response = await page.goto(process.env.BASE_URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
-              await page.waitForTimeout(18000);
-
-              const bodyText = await page.locator('body').innerText().catch(() => '');
-              const cards = await page.locator('text=/km|분/').count().catch(() => 0);
-              const pageMetrics = await page.evaluate(() => ({
-                title: document.title,
-                scrollWidth: document.documentElement.scrollWidth,
-                clientWidth: document.documentElement.clientWidth,
-                textLength: document.body.innerText.length,
-              }));
-              const relevantConsole = consoleLines.filter(line =>
-                /GPS scoped search regions|Publishing .*current-region|Nationwide GPS candidate pool|Returning .*neighboring-region|Showing .*current-region|일부 검색 범위|Regional E-Gen search failed|Coordinate-based E-Gen discovery/.test(line)
-              );
-
-              await page.screenshot({ path: `gps-audit/${c.name}.png`, fullPage: true });
-              fs.writeFileSync(`gps-audit/${c.name}.txt`, [
-                `status=${response ? response.status() : 'null'}`,
-                `gps=${c.lat},${c.lon}`,
-                `cards_hint_count=${cards}`,
-                `scrollWidth=${pageMetrics.scrollWidth}`,
-                `clientWidth=${pageMetrics.clientWidth}`,
-                `body_has_partial_warning=${bodyText.includes('일부 검색 범위를 불러오지 못했습니다')}`,
-                `body_has_error=${bodyText.includes('병원 검색 중 오류가 발생했습니다')}`,
-                '',
-                '[relevant-console]',
-                ...relevantConsole,
-                '',
-                '[failed-requests]',
-                ...failedRequests,
-              ].join('\n'));
-
-              summary.push({
-                name: c.name,
-                status: response ? response.status() : null,
-                gps: [c.lat, c.lon],
-                bodyHasPartialWarning: bodyText.includes('일부 검색 범위를 불러오지 못했습니다'),
-                bodyHasError: bodyText.includes('병원 검색 중 오류가 발생했습니다'),
-                relevantConsole,
-                failedRequests,
-                ...pageMetrics,
-              });
-              await context.close();
-            }
-
-            fs.writeFileSync('gps-audit/summary.json', JSON.stringify(summary, null, 2));
-            console.log('GPS_AUDIT_SUMMARY=' + JSON.stringify(summary));
-            await browser.close();
-          })().catch(err => { console.error(err); process.exit(1); });
-          NODE
-      - name: Upload audit artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-gps-audit
-          path: gps-audit
-          retention-days: 3
