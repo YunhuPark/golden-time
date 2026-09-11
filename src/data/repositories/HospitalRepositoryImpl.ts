@@ -5,10 +5,7 @@ import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
-import {
-  getRegionsWithinRadius,
-  inferRegionFromCoordinates,
-} from '../../domain/services/RegionResolver';
+import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
 import { AIAnalysisContext } from '../../domain/types/AIContext';
 import {
   getActiveHospitalSearchPerformanceId,
@@ -16,6 +13,46 @@ import {
   recordRouteEnrichmentPerformance,
   startRouteEnrichmentPerformance,
 } from '../../infrastructure/monitoring/searchPerformance';
+
+const ADDRESS_REGION_MARKERS: Array<[string, string]> = [
+  ['서울특별시', '서울특별시'],
+  ['인천광역시', '인천광역시'],
+  ['부산광역시', '부산광역시'],
+  ['대구광역시', '대구광역시'],
+  ['광주광역시', '광주광역시'],
+  ['대전광역시', '대전광역시'],
+  ['울산광역시', '울산광역시'],
+  ['세종특별자치시', '세종특별자치시'],
+  ['경기도', '경기도'],
+  ['경상남도', '경상남도'],
+  ['경상북도', '경상북도'],
+  ['전라남도', '전라남도'],
+  ['전북특별자치도', '전북특별자치도'],
+  ['전라북도', '전북특별자치도'],
+  ['충청남도', '충청남도'],
+  ['충청북도', '충청북도'],
+  ['강원특별자치도', '강원특별자치도'],
+  ['강원도', '강원특별자치도'],
+  ['제주특별자치도', '제주특별자치도'],
+  ['제주도', '제주특별자치도'],
+];
+
+function inferRegionFromHospitalLocation(
+  address: string | undefined,
+  coords: Coordinates
+): string | null {
+  const firstToken = address?.trim().split(/\s+/)[0] ?? '';
+  for (const [marker, region] of ADDRESS_REGION_MARKERS) {
+    if (firstToken.includes(marker)) return region;
+  }
+
+  // The upstream occasionally emits transitional/combined labels such as
+  // "전남광주통합특별시". Treat an explicit 광주 marker as Gwangju only when
+  // it appears in the first administrative token; otherwise fall back to GPS.
+  if (firstToken.includes('광주')) return '광주광역시';
+
+  return inferRegionFromCoordinates(coords);
+}
 
 export class HospitalRepositoryImpl implements IHospitalRepository {
   private readonly directionsClient: KakaoDirectionsClient;
@@ -34,14 +71,47 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       this.apiClient.setPerformanceSearchId(this.performanceSearchId);
 
       const MAX_DISTANCE_KM = 100;
-      const regions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);
-      if (regions.length === 0) {
+      const currentRegion = inferRegionFromCoordinates(coords);
+      if (!currentRegion) {
         throw new Error(
           `Unsupported GPS coordinates for nationwide emergency search: ${coords.latitude}, ${coords.longitude}`
         );
       }
 
-      console.log(`🏥 GPS nationwide search regions (${regions.length}): ${regions.join(', ')}`);
+      // Use E-Gen's coordinate endpoint as the discovery surface. It already
+      // returns nearby emergency institutions in distance order, so we only fan
+      // out realtime/basic-info calls to regions actually represented near the
+      // user instead of querying every region whose coarse bounds intersect a
+      // 100km circle.
+      const discoveredRegions = new Set<string>([currentRegion]);
+      try {
+        const nearbyLocations = await this.apiClient.getNearbyEmergencyLocations(
+          coords.latitude,
+          coords.longitude,
+          100
+        );
+
+        for (const location of nearbyLocations) {
+          const latitude = Number(location.latitude ?? location.wgs84Lat);
+          const longitude = Number(location.longitude ?? location.wgs84Lon);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+
+          const hospitalCoords = new Coordinates(latitude, longitude);
+          const distanceKm = hospitalCoords.distanceTo(coords) / 1000;
+          if (distanceKm > MAX_DISTANCE_KM) continue;
+
+          const region = inferRegionFromHospitalLocation(location.dutyAddr, hospitalCoords);
+          if (region) discoveredRegions.add(region);
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ Coordinate-based E-Gen discovery unavailable; falling back to the current region only',
+          error
+        );
+      }
+
+      const regions = Array.from(discoveredRegions);
+      console.log(`🏥 GPS scoped search regions (${regions.length}): ${regions.join(', ')}`);
 
       const regionResults = await Promise.allSettled(
         regions.map((region) => this.apiClient.getCombinedHospitalData(region))
@@ -85,17 +155,12 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const hospitals = HospitalMapper.toDomainList(Array.from(combinedByHpid.values()));
       const validHospitals = hospitals.filter((hospital) => {
         if (!hospital.coordinates) return false;
-
-        const distanceKm = hospital.distanceFrom(coords) / 1000;
-        if (distanceKm > MAX_DISTANCE_KM) {
-          return false;
-        }
-        return true;
+        return hospital.distanceFrom(coords) / 1000 <= MAX_DISTANCE_KM;
       });
 
       validHospitals.sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
       console.log(
-        `✅ Nationwide GPS candidate pool: ${validHospitals.length} hospitals within ${MAX_DISTANCE_KM}km from ${successfulRegionCount}/${regions.length} regional E-Gen searches`
+        `✅ Nationwide GPS candidate pool: ${validHospitals.length} hospitals within ${MAX_DISTANCE_KM}km from ${successfulRegionCount}/${regions.length} scoped E-Gen searches`
       );
 
       const rankingStartedAt = performance.now();
