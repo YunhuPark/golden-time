@@ -63,6 +63,11 @@ export function inferRegionFromCoordinates(coords: Coordinates): string | null {
  * Return every first-level E-Gen region whose approximate geographic bounds are
  * within radiusKm of the user's GPS coordinate. The current region is returned
  * first, followed by neighboring regions ordered by distance.
+ *
+ * Jeju is intentionally isolated from mainland fan-out. Rectangular province
+ * bounds include offshore waters/islands, so a pure bounding-box distance can
+ * create a false mainland overlap even though a 100km emergency search should
+ * stay on Jeju. Mainland searches likewise do not fan out to Jeju.
  */
 export function getRegionsWithinRadius(
   coords: Coordinates,
@@ -71,7 +76,12 @@ export function getRegionsWithinRadius(
   const currentRegion = inferRegionFromCoordinates(coords);
   if (!currentRegion) return [];
 
+  if (currentRegion === '제주특별자치도') {
+    return ['제주특별자치도'];
+  }
+
   return REGION_BOUNDS
+    .filter((region) => region.name !== '제주특별자치도')
     .map((region) => ({
       name: region.name,
       distanceKm: distanceKmToBounds(coords, region),
