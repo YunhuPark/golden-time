@@ -187,7 +187,8 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const failedRegions: string[] = [];
       if (currentRegionError) failedRegions.push(currentRegion);
       neighborResults.forEach((result, index) => {
-        if (result.status === 'rejected') failedRegions.push(neighboringRegions[index]);
+        const region = neighboringRegions[index];
+        if (result.status === 'rejected' && region) failedRegions.push(region);
       });
       if ((failedRegions.length > 0 || discoveryFailed) && onCoverageWarning) {
         onCoverageWarning(failedRegions, discoveryFailed);
