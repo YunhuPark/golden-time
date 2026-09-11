@@ -5,7 +5,7 @@ import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
-import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
+import { getRegionsWithinRadius, inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
 import { AIAnalysisContext } from '../../domain/types/AIContext';
 import {
   getActiveHospitalSearchPerformanceId,
@@ -13,6 +13,8 @@ import {
   recordRouteEnrichmentPerformance,
   startRouteEnrichmentPerformance,
 } from '../../infrastructure/monitoring/searchPerformance';
+
+const MAX_DISTANCE_KM = 100;
 
 export class HospitalRepositoryImpl implements IHospitalRepository {
   private readonly directionsClient: KakaoDirectionsClient;
@@ -30,16 +32,62 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       this.performanceSearchId = getActiveHospitalSearchPerformanceId();
       this.apiClient.setPerformanceSearchId(this.performanceSearchId);
 
-      const inferredRegion = inferRegionFromCoordinates(coords);
-      const stage1 = inferredRegion ?? '서울특별시';
-      if (!inferredRegion) {
-        console.warn(`⚠️ 좌표 (${coords.latitude}, ${coords.longitude})에 대한 지역 매칭 실패. 서울로 기본 설정.`);
+      const regions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);
+      if (regions.length === 0) {
+        throw new Error(
+          `No supported E-Gen region intersects ${MAX_DISTANCE_KM}km around (${coords.latitude}, ${coords.longitude})`
+        );
       }
 
-      const combinedData = await this.apiClient.getCombinedHospitalData(stage1);
-      const hospitals = HospitalMapper.toDomainList(combinedData);
+      console.log(`🗺️ Searching E-Gen regions within ${MAX_DISTANCE_KM}km: ${regions.join(', ')}`);
 
-      const MAX_DISTANCE_KM = 100;
+      // Administrative borders must not hide a closer emergency room. Query every
+      // first-level region that can intersect the radius, while tolerating a partial
+      // regional outage as long as at least one E-Gen region succeeds.
+      const regionalResults = await Promise.allSettled(
+        regions.map(async (region) => ({
+          region,
+          data: await this.apiClient.getCombinedHospitalData(region),
+        }))
+      );
+
+      const fulfilled = regionalResults.filter(
+        (result): result is PromiseFulfilledResult<{ region: string; data: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>> }> =>
+          result.status === 'fulfilled'
+      );
+
+      for (const result of regionalResults) {
+        if (result.status === 'rejected') {
+          console.warn('⚠️ One regional E-Gen lookup failed during nationwide radius search', result.reason);
+        }
+      }
+
+      if (fulfilled.length === 0) {
+        const firstFailure = regionalResults.find(
+          (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+        throw firstFailure?.reason ?? new Error('All regional E-Gen lookups failed');
+      }
+
+      // A hospital can appear in more than one regional response near a boundary.
+      // Keep one canonical HPID record before mapping/ranking.
+      const combinedByHpid = new Map<
+        string,
+        Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>[number]
+      >();
+
+      for (const { data } of fulfilled.map((result) => result.value)) {
+        for (const item of data) {
+          const hpid = item.basicInfo.hpid || item.bedInfo?.hpid;
+          if (!hpid) continue;
+          if (!combinedByHpid.has(hpid)) {
+            combinedByHpid.set(hpid, item);
+          }
+        }
+      }
+
+      const hospitals = HospitalMapper.toDomainList(Array.from(combinedByHpid.values()));
+
       const validHospitals = hospitals.filter((hospital) => {
         if (!hospital.coordinates) return false;
 
@@ -54,7 +102,9 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       });
 
       validHospitals.sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
-      console.log(`✅ Found ${validHospitals.length} hospitals with coordinates (filtered by distance < ${MAX_DISTANCE_KM}km)`);
+      console.log(
+        `✅ Found ${validHospitals.length} unique hospitals across ${fulfilled.length}/${regions.length} E-Gen regions within ${MAX_DISTANCE_KM}km`
+      );
 
       const rankingStartedAt = performance.now();
       const rankedHospitals = HospitalRankingService.rankHospitals(validHospitals, aiContext);
