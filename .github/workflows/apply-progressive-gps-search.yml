@@ -1,0 +1,330 @@
+name: Apply progressive GPS search
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Patch progressive search flow
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          # 1) Domain contract: optional first-result callback.
+          p = Path('src/domain/repositories/IHospitalRepository.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              "  findNearby(coords: Coordinates, aiContext?: AIAnalysisContext | null): Promise<Hospital[]>;",
+              "  findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<Hospital[]>;"
+          )
+          p.write_text(s, encoding='utf-8')
+
+          # 2) Repository: start current-region request and coordinate discovery together,
+          #    publish current-region results first, then merge discovered neighboring regions.
+          p = Path('src/data/repositories/HospitalRepositoryImpl.ts')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('  async findNearby(')
+          end = s.index('\n  async findByRegion(', start)
+          replacement = r'''  async findNearby(
+    coords: Coordinates,
+    aiContext?: AIAnalysisContext | null,
+    onInitialResults?: (hospitals: Hospital[]) => void
+  ): Promise<Hospital[]> {
+    try {
+      this.performanceSearchId = getActiveHospitalSearchPerformanceId();
+      this.apiClient.setPerformanceSearchId(this.performanceSearchId);
+
+      const MAX_DISTANCE_KM = 100;
+      const currentRegion = inferRegionFromCoordinates(coords);
+      if (!currentRegion) {
+        throw new Error(
+          `Unsupported GPS coordinates for nationwide emergency search: ${coords.latitude}, ${coords.longitude}`
+        );
+      }
+
+      // Start the current-region fetch and coordinate discovery at the same time.
+      // The current region can be shown immediately while discovery determines
+      // which neighboring E-Gen regions actually need to be queried.
+      const currentRegionPromise = this.apiClient.getCombinedHospitalData(currentRegion);
+      const discoveryPromise = this.apiClient.getNearbyEmergencyLocations(
+        coords.latitude,
+        coords.longitude,
+        100
+      );
+
+      let currentRegionData: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>> = [];
+      let currentRegionError: unknown = null;
+      try {
+        currentRegionData = await currentRegionPromise;
+      } catch (error) {
+        currentRegionError = error;
+        console.warn(`⚠️ Current-region E-Gen search failed for ${currentRegion}; continuing with discovery`, error);
+      }
+
+      if (currentRegionData.length > 0 && onInitialResults) {
+        const initialHospitals = HospitalMapper.toDomainList(currentRegionData)
+          .filter((hospital) => hospital.coordinates && hospital.distanceFrom(coords) / 1000 <= MAX_DISTANCE_KM)
+          .sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
+        const initialRanked = HospitalRankingService.rankHospitals(initialHospitals, aiContext);
+        if (initialRanked.length > 0) {
+          console.log(`⚡ Publishing ${initialRanked.length} current-region hospitals before neighboring-region enrichment`);
+          onInitialResults(initialRanked);
+        }
+      }
+
+      const discoveredRegions = new Set<string>([currentRegion]);
+      try {
+        const nearbyLocations = await discoveryPromise;
+        for (const location of nearbyLocations) {
+          const latitude = Number(location.latitude ?? location.wgs84Lat);
+          const longitude = Number(location.longitude ?? location.wgs84Lon);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+
+          const hospitalCoords = new Coordinates(latitude, longitude);
+          if (hospitalCoords.distanceTo(coords) / 1000 > MAX_DISTANCE_KM) continue;
+
+          const region = inferRegionFromHospitalLocation(location.dutyAddr, hospitalCoords);
+          if (region) discoveredRegions.add(region);
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',
+          error
+        );
+      }
+
+      const neighboringRegions = Array.from(discoveredRegions).filter((region) => region !== currentRegion);
+      console.log(
+        `🏥 GPS scoped search regions (${1 + neighboringRegions.length}): ${[currentRegion, ...neighboringRegions].join(', ')}`
+      );
+
+      const neighborResults = await Promise.allSettled(
+        neighboringRegions.map((region) => this.apiClient.getCombinedHospitalData(region))
+      );
+
+      const successfulNeighborCount = neighborResults.filter((result) => result.status === 'fulfilled').length;
+      if (currentRegionError && neighboringRegions.length === 0) throw currentRegionError;
+      if (currentRegionError && successfulNeighborCount === 0) {
+        const firstFailure = neighborResults.find((result) => result.status === 'rejected');
+        if (firstFailure?.status === 'rejected') throw firstFailure.reason;
+        throw currentRegionError;
+      }
+
+      const combinedByHpid = new Map<string, Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>[number]>();
+      const addItems = (
+        items: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>
+      ) => {
+        for (const item of items) {
+          const hpid = item.basicInfo.hpid || item.bedInfo?.hpid;
+          if (!hpid) continue;
+          const existing = combinedByHpid.get(hpid);
+          if (!existing) {
+            combinedByHpid.set(hpid, item);
+            continue;
+          }
+          const existingBeds = Number(existing.bedInfo?.hvec ?? 0);
+          const incomingBeds = Number(item.bedInfo?.hvec ?? 0);
+          const existingHasCoords = Number(existing.basicInfo.wgs84Lat) !== 0 && Number(existing.basicInfo.wgs84Lon) !== 0;
+          const incomingHasCoords = Number(item.basicInfo.wgs84Lat) !== 0 && Number(item.basicInfo.wgs84Lon) !== 0;
+          if ((!existingHasCoords && incomingHasCoords) || incomingBeds > existingBeds) {
+            combinedByHpid.set(hpid, item);
+          }
+        }
+      };
+
+      addItems(currentRegionData);
+      neighborResults.forEach((result, index) => {
+        const region = neighboringRegions[index];
+        if (result.status === 'rejected') {
+          console.warn(`⚠️ Regional E-Gen search failed for ${region}; continuing with remaining regions`, result.reason);
+          return;
+        }
+        addItems(result.value);
+      });
+
+      const hospitals = HospitalMapper.toDomainList(Array.from(combinedByHpid.values()));
+      const validHospitals = hospitals.filter((hospital) =>
+        hospital.coordinates && hospital.distanceFrom(coords) / 1000 <= MAX_DISTANCE_KM
+      );
+      validHospitals.sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
+
+      const successfulRegionCount = (currentRegionError ? 0 : 1) + successfulNeighborCount;
+      console.log(
+        `✅ Nationwide GPS candidate pool: ${validHospitals.length} hospitals within ${MAX_DISTANCE_KM}km from ${successfulRegionCount}/${1 + neighboringRegions.length} scoped E-Gen searches`
+      );
+
+      const rankingStartedAt = performance.now();
+      const rankedHospitals = HospitalRankingService.rankHospitals(validHospitals, aiContext);
+      if (this.performanceSearchId !== null) {
+        recordRankingPerformance(this.performanceSearchId, performance.now() - rankingStartedAt);
+      }
+
+      console.log(`✅ Returning ${rankedHospitals.length} hospitals after neighboring-region enrichment`);
+      return rankedHospitals;
+    } catch (error) {
+      console.error('Failed to find nearby hospitals:', error);
+      throw error;
+    }
+  }
+'''
+          s = s[:start] + replacement + s[end:]
+          p.write_text(s, encoding='utf-8')
+
+          # 3) Use case: expose an optional current-region result callback while
+          #    preserving the final validation/warning path.
+          p = Path('src/domain/usecases/GetNearbyHospitals.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              "    aiContext?: AIAnalysisContext | null\n  ): Promise<HospitalSearchResult> {",
+              "    aiContext?: AIAnalysisContext | null,\n    onInitialHospitals?: (hospitals: Hospital[]) => void\n  ): Promise<HospitalSearchResult> {"
+          )
+          s = s.replace(
+              "      const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext);",
+              "      const allHospitals = await this.hospitalRepository.findNearby(\n        userLocation,\n        aiContext,\n        (initialHospitals) => {\n          const operating = initialHospitals.filter((hospital) => hospital.isOperating);\n          if (operating.length > 0) {\n            recordFirstHospitalResults(performanceSearchId, operating.length);\n            onInitialHospitals?.(operating);\n          }\n        }\n      );"
+          )
+          p.write_text(s, encoding='utf-8')
+
+          # 4) UI: render current-region candidates as soon as the callback fires,
+          #    then replace them with the final cross-region result.
+          p = Path('src/presentation/pages/HomePage.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = "        const result = await useCase.execute(userLocation, aiContext);"
+          new = r'''        const result = await useCase.execute(
+          userLocation,
+          aiContext,
+          (initialHospitals) => {
+            if (isCancelled || initialHospitals.length === 0) return;
+            setHospitals(initialHospitals, null);
+            console.log(`⚡ Showing ${initialHospitals.length} current-region hospitals while neighboring regions load`);
+          }
+        );'''
+          if old not in s:
+              raise SystemExit('HomePage execute call not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # 5) Dedicated regression tests for progressive behavior.
+          Path('src/data/repositories/HospitalRepositoryImpl.progressive.test.ts').write_text(r'''import { describe, expect, it, vi } from 'vitest';
+import { Coordinates } from '../../domain/valueObjects/Coordinates';
+import { EGenApiClient } from '../datasources/remote/EGenApiClient';
+import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
+import { HospitalRepositoryImpl } from './HospitalRepositoryImpl';
+
+function item(hpid: string, name: string, lat: number, lon: number) {
+  return {
+    basicInfo: {
+      hpid,
+      dutyName: name,
+      dutyAddr: `${name} 주소`,
+      wgs84Lat: String(lat),
+      wgs84Lon: String(lon),
+      dutyEryn: '1',
+      dutyEmcls: 'A',
+    },
+    bedInfo: { hpid, dutyName: name, hvec: '2' },
+  };
+}
+
+describe('HospitalRepositoryImpl progressive nationwide search', () => {
+  it('publishes current-region hospitals before a delayed neighboring region completes', async () => {
+    let resolveNeighbor!: (value: ReturnType<typeof item>[]) => void;
+    const events: string[] = [];
+    const apiClient = {
+      setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'GG-LOC',
+          dutyName: '경기 병원',
+          dutyAddr: '경기도 성남시',
+          latitude: 37.45,
+          longitude: 127.15,
+        },
+      ]),
+      getCombinedHospitalData: vi.fn((region: string) => {
+        if (region === '서울특별시') {
+          return Promise.resolve([item('SEOUL-1', '서울 병원', 37.56, 126.98)]);
+        }
+        if (region === '경기도') {
+          return new Promise<ReturnType<typeof item>[]>((resolve) => {
+            resolveNeighbor = resolve;
+          });
+        }
+        return Promise.resolve([]);
+      }),
+    };
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      { getBatchRouteInfoConcurrent: vi.fn() } as unknown as KakaoDirectionsClient
+    );
+
+    const finalPromise = repository.findNearby(
+      new Coordinates(37.5665, 126.9780),
+      null,
+      (hospitals) => events.push(`initial:${hospitals.map((h) => h.id).join(',')}`)
+    );
+
+    await vi.waitFor(() => expect(events).toEqual(['initial:SEOUL-1']));
+    expect(events).not.toContain('final');
+
+    resolveNeighbor([item('GG-1', '경기 병원', 37.55, 127.05)]);
+    const finalHospitals = await finalPromise;
+    events.push('final');
+
+    expect(finalHospitals.map((hospital) => hospital.id)).toEqual(
+      expect.arrayContaining(['SEOUL-1', 'GG-1'])
+    );
+    expect(events[0]).toBe('initial:SEOUL-1');
+    expect(events.at(-1)).toBe('final');
+  });
+
+  it('still returns neighboring hospitals when the current-region request fails', async () => {
+    const apiClient = {
+      setPerformanceSearchId: vi.fn(),
+      getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
+        {
+          hpid: 'GG-LOC',
+          dutyName: '경기 병원',
+          dutyAddr: '경기도 성남시',
+          latitude: 37.45,
+          longitude: 127.15,
+        },
+      ]),
+      getCombinedHospitalData: vi.fn(async (region: string) => {
+        if (region === '서울특별시') throw new Error('current region unavailable');
+        if (region === '경기도') return [item('GG-1', '경기 병원', 37.55, 127.05)];
+        return [];
+      }),
+    };
+    const repository = new HospitalRepositoryImpl(
+      apiClient as unknown as EGenApiClient,
+      { getBatchRouteInfoConcurrent: vi.fn() } as unknown as KakaoDirectionsClient
+    );
+
+    const hospitals = await repository.findNearby(new Coordinates(37.5665, 126.9780));
+    expect(hospitals.map((hospital) => hospital.id)).toContain('GG-1');
+  });
+});
+''', encoding='utf-8')
+          PY
+
+          git rm .github/workflows/apply-progressive-gps-search.yml
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src .github/workflows/apply-progressive-gps-search.yml
+          git commit -m "feat: stream current-region hospitals before cross-region enrichment"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
