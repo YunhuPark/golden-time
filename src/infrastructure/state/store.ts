@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { Hospital } from '../../domain/entities/Hospital';
 import { Coordinates } from '../../domain/valueObjects/Coordinates';
 import { HospitalSearchWarning } from '../../domain/usecases/GetNearbyHospitals';
@@ -9,6 +9,43 @@ import { ThemeMode } from '../../presentation/styles/theme';
 import { HospitalFilters, DEFAULT_FILTERS } from '../../domain/types/HospitalFilter';
 
 import { AIAnalysisContext } from '../../domain/types/AIContext';
+
+let hasWarnedStorageUnavailable = false;
+
+const warnStorageUnavailable = () => {
+  if (hasWarnedStorageUnavailable) return;
+  hasWarnedStorageUnavailable = true;
+  console.warn('⚠️ Browser storage is unavailable; continuing without persisted UI state.');
+};
+
+/**
+ * Keep Zustand persistence fail-open when browser storage is blocked or throws.
+ * Theme persistence is optional and must never break emergency-search state updates.
+ */
+const safeLocalStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      return window.localStorage.getItem(name);
+    } catch {
+      warnStorageUnavailable();
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      window.localStorage.setItem(name, value);
+    } catch {
+      warnStorageUnavailable();
+    }
+  },
+  removeItem: (name) => {
+    try {
+      window.localStorage.removeItem(name);
+    } catch {
+      warnStorageUnavailable();
+    }
+  },
+};
 
 /**
  * Application State
@@ -223,6 +260,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'golden-time-storage', // localStorage key
+      storage: createJSONStorage(() => safeLocalStorage),
       partialize: (state) => ({
         themeMode: state.themeMode, // 테마 설정만 persist
       }),
