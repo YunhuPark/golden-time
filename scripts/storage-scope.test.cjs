@@ -3,24 +3,34 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const entry = fs.readFileSync('src/main.tsx', 'utf8');
+const migration = fs.readFileSync('src/bootstrap/storageMigration.ts', 'utf8');
 const store = fs.readFileSync('src/infrastructure/state/store.ts', 'utf8');
 
+test('storage migration runs before App import can hydrate persisted state', () => {
+  const migrationImport = entry.indexOf("import './bootstrap/storageMigration';");
+  const appImport = entry.indexOf("import App from './App';");
+
+  assert.notEqual(migrationImport, -1);
+  assert.notEqual(appImport, -1);
+  assert.ok(migrationImport < appImport);
+});
+
 test('storage migration never clears the whole origin', () => {
-  assert.doesNotMatch(entry, /(?:window\.)?localStorage\.clear\s*\(/);
+  assert.doesNotMatch(migration, /(?:window\.)?localStorage\.clear\s*\(/);
 });
 
 test('storage migration only resets Golden-Time-owned keys', () => {
-  assert.match(entry, /const APP_STORAGE_KEY = 'golden-time-storage'/);
-  assert.match(entry, /window\.localStorage\.removeItem\(APP_STORAGE_KEY\)/);
-  assert.match(entry, /window\.localStorage\.removeItem\(VERSION_KEY\)/);
-  assert.match(entry, /window\.localStorage\.setItem\(APP_STORAGE_KEY,/);
-  assert.match(entry, /window\.localStorage\.setItem\(VERSION_KEY, STORAGE_VERSION\)/);
+  assert.match(migration, /const APP_STORAGE_KEY = 'golden-time-storage'/);
+  assert.match(migration, /storage\.removeItem\(APP_STORAGE_KEY\)/);
+  assert.match(migration, /storage\.removeItem\(VERSION_KEY\)/);
+  assert.match(migration, /storage\.setItem\(APP_STORAGE_KEY,/);
+  assert.match(migration, /storage\.setItem\(VERSION_KEY, STORAGE_VERSION\)/);
 });
 
 test('storage migration is fail-open when browser storage is unavailable', () => {
-  assert.match(entry, /try\s*\{/);
-  assert.match(entry, /catch\s*\{/);
-  assert.match(entry, /continuing without storage migration/);
+  assert.match(migration, /try\s*\{/);
+  assert.match(migration, /catch\s*\{/);
+  assert.match(migration, /continuing without storage migration/);
 });
 
 test('zustand persistence is also fail-open when localStorage throws', () => {
