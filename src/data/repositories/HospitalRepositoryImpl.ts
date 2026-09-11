@@ -64,7 +64,8 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
   async findNearby(
     coords: Coordinates,
     aiContext?: AIAnalysisContext | null,
-    onInitialResults?: (hospitals: Hospital[]) => void
+    onInitialResults?: (hospitals: Hospital[]) => void,
+    onCoverageWarning?: (failedRegions: string[], discoveryFailed: boolean) => void
   ): Promise<Hospital[]> {
     try {
       this.performanceSearchId = getActiveHospitalSearchPerformanceId();
@@ -106,6 +107,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       }
 
       const discoveredRegions = new Set<string>([currentRegion]);
+      let discoveryFailed = false;
       try {
         const nearbyLocations = await discoveryPromise;
         for (const location of nearbyLocations) {
@@ -120,6 +122,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
           if (region) discoveredRegions.add(region);
         }
       } catch (error) {
+        discoveryFailed = true;
         console.warn(
           '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',
           error
@@ -180,6 +183,15 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         hospital.coordinates && hospital.distanceFrom(coords) / 1000 <= MAX_DISTANCE_KM
       );
       validHospitals.sort((a, b) => a.distanceFrom(coords) - b.distanceFrom(coords));
+
+      const failedRegions: string[] = [];
+      if (currentRegionError) failedRegions.push(currentRegion);
+      neighborResults.forEach((result, index) => {
+        if (result.status === 'rejected') failedRegions.push(neighboringRegions[index]);
+      });
+      if ((failedRegions.length > 0 || discoveryFailed) && onCoverageWarning) {
+        onCoverageWarning(failedRegions, discoveryFailed);
+      }
 
       const successfulRegionCount = (currentRegionError ? 0 : 1) + successfulNeighborCount;
       console.log(
