@@ -103,6 +103,16 @@ jobs:
     - name: API Tests
       run: npm run test:api
 
+    - name: Install Playwright Chromium
+      run: npx playwright install --with-deps chromium
+
+    - name: Deterministic E2E smoke test
+      run: npx playwright test e2e/ci-smoke.spec.ts --project=chromium
+      env:
+        VITE_KAKAO_MAP_APP_KEY: dummy_kakao_key
+        VITE_SUPABASE_ENABLED: 'false'
+        VITE_ENCRYPTION_KEY: dummy_encryption_key_that_is_long_enough_for_aes_256_gcm
+
     - name: Build
       run: npm run build
       env:
