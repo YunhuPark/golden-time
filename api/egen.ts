@@ -92,7 +92,21 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   try {
-    const { _endpoint, numOfRows, pageNo, _type, STAGE1, STAGE2, Q0, Q1, QZ, ORD, HPID } = req.query;
+    const {
+      _endpoint,
+      numOfRows,
+      pageNo,
+      _type,
+      STAGE1,
+      STAGE2,
+      Q0,
+      Q1,
+      QZ,
+      ORD,
+      HPID,
+      WGS84_LAT,
+      WGS84_LON,
+    } = req.query;
 
     if (!_endpoint || typeof _endpoint !== 'string') {
       return res.status(400).json({ error: 'Bad Request: Missing _endpoint' });
@@ -126,6 +140,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return res.status(400).json({ error: 'Bad Request: Invalid HPID' });
     }
 
+    if (_endpoint === LOCATION_INFO_ENDPOINT) {
+      if (typeof WGS84_LAT !== 'string' || typeof WGS84_LON !== 'string') {
+        return res.status(400).json({ error: 'Bad Request: Location endpoint requires WGS84_LAT and WGS84_LON' });
+      }
+      const latitude = Number(WGS84_LAT);
+      const longitude = Number(WGS84_LON);
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < 33 || latitude > 39 ||
+        longitude < 124 || longitude > 132
+      ) {
+        return res.status(400).json({ error: 'Bad Request: Invalid WGS84 coordinates' });
+      }
+    }
+
     const targetUrl = new URL(`https://apis.data.go.kr/B552657${_endpoint}`);
     targetUrl.searchParams.set('serviceKey', EGEN_KEY);
     if (numOfRows) targetUrl.searchParams.set('numOfRows', String(numOfRows));
@@ -140,6 +170,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     if (ORD && typeof ORD === 'string') targetUrl.searchParams.set('ORD', ORD);
     if (HPID && typeof HPID === 'string') targetUrl.searchParams.set('HPID', HPID);
+    if (_endpoint === LOCATION_INFO_ENDPOINT) {
+      targetUrl.searchParams.set('WGS84_LAT', String(WGS84_LAT));
+      targetUrl.searchParams.set('WGS84_LON', String(WGS84_LON));
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);

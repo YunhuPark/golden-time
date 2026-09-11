@@ -31,6 +31,28 @@ export interface EmergencyRoomBedDTO {
 }
 
 /**
+ * 좌표 기반 응급의료기관 위치정보 API 응답
+ * GET /ErmctInfoInqireService/getEgytLcinfoInqire
+ *
+ * 이 endpoint의 startTime/endTime은 응급실 운영시간이 아니므로 사용하지 않습니다.
+ * 실시간 병상 정보는 별도 realtime endpoint에서 HPID로 결합합니다.
+ */
+export interface EmergencyLocationDTO {
+  hpid: string;
+  dutyName: string;
+  dutyAddr: string;
+  dutyTel1?: string;
+  dutyTel3?: string;
+  latitude?: string | number;
+  longitude?: string | number;
+  wgs84Lat?: string | number;
+  wgs84Lon?: string | number;
+  distance?: string | number;
+  dutyDiv?: string;
+  dutyDivName?: string;
+}
+
+/**
  * 응급의료기관 기본정보 API 응답
  * GET /HsptlAsembySearchService/getHsptlBassInfoInqire
  */

@@ -168,7 +168,8 @@ test('EGen API', async (t) => {
       numOfRows: '1',
       pageNo: '1',
       _type: 'json',
-      Q0: '광주광역시'
+      WGS84_LAT: '35.1595',
+      WGS84_LON: '126.8526'
     });
     await handler(req, res);
 
@@ -238,5 +239,52 @@ test('EGen API', async (t) => {
     assert.strictEqual(urlObj.searchParams.get('QZ'), 'A');
     assert.strictEqual(urlObj.searchParams.get('ORD'), 'ADDR');
     assert.strictEqual(res.headers['Cache-Control'], 's-maxage=86400, stale-while-revalidate=604800');
+  });
+
+  await t.test('13. 위치정보 endpoint는 검증된 WGS84 좌표만 upstream으로 전달', async () => {
+    let requestedUrl = '';
+    global.fetch = async (url: any) => {
+      requestedUrl = url.toString();
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ response: { header: { resultCode: '00', resultMsg: 'OK' }, body: { totalCount: 0 } } })
+      } as Response;
+    };
+
+    const { req, res } = createMockReqRes('GET', {
+      _endpoint: '/ErmctInfoInqireService/getEgytLcinfoInqire',
+      numOfRows: '10',
+      pageNo: '1',
+      _type: 'json',
+      WGS84_LAT: '35.1595',
+      WGS84_LON: '126.8526'
+    });
+    await handler(req, res);
+
+    assert.strictEqual(res.statusCode, 200);
+    const urlObj = new URL(requestedUrl);
+    assert.strictEqual(urlObj.searchParams.get('WGS84_LAT'), '35.1595');
+    assert.strictEqual(urlObj.searchParams.get('WGS84_LON'), '126.8526');
+  });
+
+  await t.test('14. 위치정보 endpoint는 누락되거나 지원 범위 밖 좌표를 400으로 거부', async () => {
+    const endpoint = '/ErmctInfoInqireService/getEgytLcinfoInqire';
+
+    const missing = createMockReqRes('GET', {
+      _endpoint: endpoint,
+      WGS84_LAT: '35.1595'
+    });
+    await handler(missing.req, missing.res);
+    assert.strictEqual(missing.res.statusCode, 400);
+
+    const invalid = createMockReqRes('GET', {
+      _endpoint: endpoint,
+      WGS84_LAT: '25.0',
+      WGS84_LON: '121.5'
+    });
+    await handler(invalid.req, invalid.res);
+    assert.strictEqual(invalid.res.statusCode, 400);
   });
 });
