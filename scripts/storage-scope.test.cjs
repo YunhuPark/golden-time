@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const entry = fs.readFileSync('src/main.tsx', 'utf8');
+const store = fs.readFileSync('src/infrastructure/state/store.ts', 'utf8');
 
 test('storage migration never clears the whole origin', () => {
   assert.doesNotMatch(entry, /(?:window\.)?localStorage\.clear\s*\(/);
@@ -20,4 +21,12 @@ test('storage migration is fail-open when browser storage is unavailable', () =>
   assert.match(entry, /try\s*\{/);
   assert.match(entry, /catch\s*\{/);
   assert.match(entry, /continuing without storage migration/);
+});
+
+test('zustand persistence is also fail-open when localStorage throws', () => {
+  assert.match(store, /const safeLocalStorage: StateStorage/);
+  assert.match(store, /getItem:[\s\S]*try\s*\{[\s\S]*window\.localStorage\.getItem/);
+  assert.match(store, /setItem:[\s\S]*try\s*\{[\s\S]*window\.localStorage\.setItem/);
+  assert.match(store, /removeItem:[\s\S]*try\s*\{[\s\S]*window\.localStorage\.removeItem/);
+  assert.match(store, /storage: createJSONStorage\(\(\) => safeLocalStorage\)/);
 });
