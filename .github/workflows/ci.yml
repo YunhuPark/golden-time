@@ -6,12 +6,17 @@ on:
   pull_request:
     branches: [ master ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Use Node.js
       uses: actions/setup-node@v4
@@ -79,6 +84,9 @@ jobs:
 
     - name: Storage scope regression tests
       run: node --test scripts/storage-scope.test.cjs
+
+    - name: GitHub Actions security regression tests
+      run: node --test scripts/github-actions-security.test.cjs
 
     - name: Unit Tests
       run: npm run test:unit
