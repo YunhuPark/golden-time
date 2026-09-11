@@ -35,37 +35,29 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   routeCalcStatus,
   onHospitalClick,
 }) => {
-  // 테마 모드 & AI 컨텍스트
   const { themeMode, aiContext } = useAppStore();
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
-
-  // 표시할 병원 수 상태 (10개씩 증가)
   const [displayCount, setDisplayCount] = React.useState(10);
 
-  // 정렬된 병원 목록 (useMemo로 최적화)
   const sortedHospitals = useMemo(() => {
     return HospitalSortService.sortHospitals(hospitals, sortOption, userLocation, aiContext);
   }, [hospitals, sortOption, userLocation, aiContext]);
 
-  // 정렬 옵션이나 병원 목록이 변경되면 displayCount 초기화
   React.useEffect(() => {
     setDisplayCount(10);
   }, [sortOption, hospitals]);
 
-  // 표시할 병원 목록 (displayCount까지만)
   const displayedHospitals = useMemo(() => {
     return sortedHospitals.slice(0, displayCount);
   }, [sortedHospitals, displayCount]);
 
-  // 더 보기 핸들러
   const handleLoadMore = () => {
     setDisplayCount((prev) => prev + 10);
   };
-  // 로딩 상태 - 스켈레톤 UI 표시
+
   if (isLoading) {
     return (
       <div>
-        {/* 로딩 헤더 */}
         <div
           style={{
             backgroundColor: '#E3F2FD',
@@ -93,12 +85,9 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             실시간 경로 정보를 계산하고 있습니다
           </p>
         </div>
-
-        {/* 스켈레톤 카드 (3개) */}
         <SkeletonCard />
         <SkeletonCard />
         <SkeletonCard />
-
         <style>
           {`
             @keyframes spin {
@@ -111,7 +100,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
     );
   }
 
-  // 경고 메시지 렌더링
   const renderWarning = () => {
     if (!warning) return null;
 
@@ -121,6 +109,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
         case 'NO_BEDS_AVAILABLE':
           return { bgColor: '#FF3B30', textColor: '#fff' };
         case 'DATA_STALE':
+        case 'PARTIAL_COVERAGE':
           return { bgColor: '#FF9500', textColor: '#fff' };
         case 'LOW_ACCURACY':
           return { bgColor: '#FFD60A', textColor: '#000' };
@@ -167,7 +156,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
     );
   };
 
-  // 병원 없음
   if (hospitals.length === 0 && !isLoading) {
     return (
       <div>
@@ -183,11 +171,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   return (
     <div>
       {renderWarning()}
-
-      {/* 정렬 옵션 */}
       <SortSelector selectedOption={sortOption} onOptionChange={onSortChange} />
-
-      {/* 결과 요약 */}
       <div style={{ marginBottom: '16px', color: theme.text.secondary, fontSize: '14px', transition: 'color 0.3s ease' }}>
         총 <strong style={{ color: theme.text.primary, transition: 'color 0.3s ease' }}>{hospitals.length}개</strong> 병원 검색됨
         {displayCount < sortedHospitals.length && (
@@ -196,8 +180,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
           </span>
         )}
       </div>
-
-      {/* 병원 카드 목록 (10개씩 표시) */}
       <div role="list">
         {displayedHospitals.map((hospital) => (
           <HospitalCard
@@ -210,8 +192,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
           />
         ))}
       </div>
-
-      {/* 더 보기 버튼 (10개씩 추가 로드) */}
       {displayCount < sortedHospitals.length && (
         <button
           onClick={handleLoadMore}
@@ -241,8 +221,6 @@ export const HospitalList: React.FC<HospitalListProps> = ({
           📋 다음 10개 병원 보기 ({displayCount}/{sortedHospitals.length})
         </button>
       )}
-
-      {/* 하단 안내 메시지 */}
       <div
         style={{
           textAlign: 'center',
@@ -253,9 +231,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
           marginTop: '20px',
         }}
       >
-        <p style={{ margin: 0 }}>
-          실제 병상 가용 현황은 병원에 직접 문의하시기 바랍니다.
-        </p>
+        <p style={{ margin: 0 }}>실제 병상 가용 현황은 병원에 직접 문의하시기 바랍니다.</p>
         <p style={{ margin: '8px 0 0' }}>
           응급 상황 시 <strong style={{ color: '#FF3B30' }}>119</strong>에 먼저 연락하세요.
         </p>
