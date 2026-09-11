@@ -1,0 +1,176 @@
+name: Apply partial region warning
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Patch degraded coverage warning
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('src/domain/repositories/IHospitalRepository.ts')
+          s = p.read_text(encoding='utf-8')
+          marker = "import { AIAnalysisContext } from '../types/AIContext';\n"
+          addition = """import { AIAnalysisContext } from '../types/AIContext';\n\nexport interface HospitalSearchCoverageWarning {\n  failedRegions: string[];\n  discoveryFailed: boolean;\n}\n"""
+          if 'HospitalSearchCoverageWarning' not in s:
+              s = s.replace(marker, addition, 1)
+          old = """  findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<Hospital[]>;"""
+          new = """  findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void,\n    onCoverageWarning?: (warning: HospitalSearchCoverageWarning) => void\n  ): Promise<Hospital[]>;"""
+          if old not in s:
+              raise SystemExit('IHospitalRepository signature not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/data/repositories/HospitalRepositoryImpl.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              "import { IHospitalRepository } from '../../domain/repositories/IHospitalRepository';",
+              "import { IHospitalRepository, HospitalSearchCoverageWarning } from '../../domain/repositories/IHospitalRepository';",
+              1,
+          )
+          old_sig = """  async findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<Hospital[]> {"""
+          new_sig = """  async findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void,\n    onCoverageWarning?: (warning: HospitalSearchCoverageWarning) => void\n  ): Promise<Hospital[]> {"""
+          if old_sig not in s:
+              raise SystemExit('Repository signature not found')
+          s = s.replace(old_sig, new_sig, 1)
+          s = s.replace(
+              "      let currentRegionData: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>> = [];\n      let currentRegionError: unknown = null;",
+              "      let currentRegionData: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>> = [];\n      let currentRegionError: unknown = null;\n      const failedRegions: string[] = [];\n      let discoveryFailed = false;",
+              1,
+          )
+          s = s.replace(
+              "        currentRegionError = error;\n        console.warn(`⚠️ Current-region E-Gen search failed for ${currentRegion}; continuing with discovery`, error);",
+              "        currentRegionError = error;\n        failedRegions.push(currentRegion);\n        console.warn(`⚠️ Current-region E-Gen search failed for ${currentRegion}; continuing with discovery`, error);",
+              1,
+          )
+          s = s.replace(
+              "      } catch (error) {\n        console.warn(\n          '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',",
+              "      } catch (error) {\n        discoveryFailed = true;\n        console.warn(\n          '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',",
+              1,
+          )
+          s = s.replace(
+              "        if (result.status === 'rejected') {\n          console.warn(`⚠️ Regional E-Gen search failed for ${region}; continuing with remaining regions`, result.reason);",
+              "        if (result.status === 'rejected') {\n          failedRegions.push(region);\n          console.warn(`⚠️ Regional E-Gen search failed for ${region}; continuing with remaining regions`, result.reason);",
+              1,
+          )
+          needle = """      console.log(`✅ Returning ${rankedHospitals.length} hospitals after neighboring-region enrichment`);\n      return rankedHospitals;"""
+          replacement = """      if (onCoverageWarning && (failedRegions.length > 0 || discoveryFailed)) {\n        onCoverageWarning({\n          failedRegions: Array.from(new Set(failedRegions)),\n          discoveryFailed,\n        });\n      }\n\n      console.log(`✅ Returning ${rankedHospitals.length} hospitals after neighboring-region enrichment`);\n      return rankedHospitals;"""
+          if needle not in s:
+              raise SystemExit('Repository return marker not found')
+          s = s.replace(needle, replacement, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/domain/usecases/GetNearbyHospitals.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace(
+              "import { IHospitalRepository } from '../repositories/IHospitalRepository';",
+              "import { IHospitalRepository, HospitalSearchCoverageWarning } from '../repositories/IHospitalRepository';",
+              1,
+          )
+          s = s.replace(
+              "  type: 'NO_HOSPITALS_FOUND' | 'NO_BEDS_AVAILABLE' | 'DATA_STALE' | 'LOW_ACCURACY' | 'NETWORK_ERROR';",
+              "  type: 'NO_HOSPITALS_FOUND' | 'NO_BEDS_AVAILABLE' | 'DATA_STALE' | 'LOW_ACCURACY' | 'NETWORK_ERROR' | 'PARTIAL_REGION_DATA';",
+              1,
+          )
+          needle = """    try {\n      const allHospitals = await this.hospitalRepository.findNearby(\n        userLocation,\n        aiContext,\n        (initialHospitals) => {"""
+          replacement = """    try {\n      let coverageWarning: HospitalSearchCoverageWarning | null = null;\n      const allHospitals = await this.hospitalRepository.findNearby(\n        userLocation,\n        aiContext,\n        (initialHospitals) => {"""
+          if needle not in s:
+              raise SystemExit('Use case findNearby start not found')
+          s = s.replace(needle, replacement, 1)
+          needle2 = """            onInitialHospitals?.(operating);\n          }\n        }\n      );"""
+          replacement2 = """            onInitialHospitals?.(operating);\n          }\n        },\n        (warning) => {\n          coverageWarning = warning;\n        }\n      );"""
+          if needle2 not in s:
+              raise SystemExit('Use case callback end not found')
+          s = s.replace(needle2, replacement2, 1)
+          old_warning = """      const warning: HospitalSearchWarning | null = hasStaleData\n        ? {\n            type: 'DATA_STALE',\n            message: '일부 병원 정보가 5분 이상 지난 데이터입니다. 실제 상황과 다를 수 있습니다.',\n            action: {\n              type: 'REFRESH_DATA',\n              label: '새로고침',\n            },\n          }\n        : null;"""
+          new_warning = """      const warning: HospitalSearchWarning | null = hasStaleData\n        ? {\n            type: 'DATA_STALE',\n            message: '일부 병원 정보가 5분 이상 지난 데이터입니다. 실제 상황과 다를 수 있습니다.',\n            action: {\n              type: 'REFRESH_DATA',\n              label: '새로고침',\n            },\n          }\n        : coverageWarning\n          ? {\n              type: 'PARTIAL_REGION_DATA',\n              message: coverageWarning.discoveryFailed\n                ? '인접 지역 탐색이 일시적으로 제한되어 현재 확인 가능한 응급실 정보만 표시합니다.'\n                : `일부 지역(${coverageWarning.failedRegions.join(', ')})의 실시간 정보를 불러오지 못해 확인 가능한 응급실만 표시합니다.`,\n              action: {\n                type: 'REFRESH_DATA',\n                label: '다시 시도',\n              },\n            }\n          : null;"""
+          if old_warning not in s:
+              raise SystemExit('Use case warning block not found')
+          s = s.replace(old_warning, new_warning, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Repository regression: partial failure emits coverage metadata.
+          p = Path('src/data/repositories/HospitalRepositoryImpl.progressive.test.ts')
+          s = p.read_text(encoding='utf-8')
+          needle = """    const hospitals = await repository.findNearby(new Coordinates(37.5665, 126.9780));\n    expect(hospitals.map((hospital) => hospital.id)).toContain('GG-1');"""
+          replacement = """    const warnings: Array<{ failedRegions: string[]; discoveryFailed: boolean }> = [];\n    const hospitals = await repository.findNearby(\n      new Coordinates(37.5665, 126.9780),\n      null,\n      undefined,\n      (warning) => warnings.push(warning)\n    );\n    expect(hospitals.map((hospital) => hospital.id)).toContain('GG-1');\n    expect(warnings).toEqual([{ failedRegions: ['서울특별시'], discoveryFailed: false }]);"""
+          if needle not in s:
+              raise SystemExit('Progressive test target not found')
+          s = s.replace(needle, replacement, 1)
+          p.write_text(s, encoding='utf-8')
+
+          # Use-case regression: coverage degradation becomes a non-blocking user warning.
+          Path('src/domain/usecases/GetNearbyHospitals.coverage.test.ts').write_text(r'''import { describe, expect, it } from 'vitest';
+import { Hospital } from '../entities/Hospital';
+import { Coordinates } from '../valueObjects/Coordinates';
+import { IHospitalRepository } from '../repositories/IHospitalRepository';
+import { GetNearbyHospitals } from './GetNearbyHospitals';
+
+function hospital(): Hospital {
+  return new Hospital(
+    'H1',
+    '테스트 응급실',
+    new Coordinates(37.55, 127.05),
+    '경기도 테스트로 1',
+    '031-000-0000',
+    null,
+    3,
+    10,
+    ['응급의학과'],
+    2,
+    true,
+    new Date(),
+    true,
+    true,
+    true,
+    5
+  );
+}
+
+describe('GetNearbyHospitals coverage warning', () => {
+  it('returns hospitals and a non-blocking warning when one region fails', async () => {
+    const repository: IHospitalRepository = {
+      findNearby: async (_coords, _ctx, _initial, onCoverageWarning) => {
+        onCoverageWarning?.({ failedRegions: ['서울특별시'], discoveryFailed: false });
+        return [hospital()];
+      },
+      findByRegion: async () => [],
+      findById: async () => null,
+    };
+
+    const result = await new GetNearbyHospitals(repository).execute(
+      new Coordinates(37.5665, 126.9780)
+    );
+
+    expect(result.hospitals).toHaveLength(1);
+    expect(result.warning?.type).toBe('PARTIAL_REGION_DATA');
+    expect(result.warning?.message).toContain('서울특별시');
+    expect(result.warning?.action?.type).toBe('REFRESH_DATA');
+  });
+});
+''', encoding='utf-8')
+          PY
+
+          git rm .github/workflows/apply-partial-region-warning.yml
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src .github/workflows/apply-partial-region-warning.yml
+          git commit -m "feat: surface partial regional E-Gen coverage"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
