@@ -51,28 +51,15 @@ export const HomePage: React.FC = () => {
     openLoginModal,
   } = useAppStore();
 
-  // 현재 테마
   const theme = themeMode === 'light' ? lightTheme : darkTheme;
-
-  // 위치 정보 획득
   const { location, error, isLoading: isLoadingLocation } = useGeolocation();
-
-  // 네트워크 상태 감지
   const { isOffline, justReconnected } = useNetworkStatus();
-
-  // 인증 상태
   const { user: authUser, signOut } = useAuth();
-
-  // URL 쿼리 파라미터 확인 (Medical AI 연동)
   const [triageLevel, setTriageLevel] = useState<string | null>(null);
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    
-    // 질환명 파싱 (우선순위: primaryCondition -> condition -> disease)
     const conditionStr = params.get('primaryCondition') || params.get('condition') || params.get('disease');
-    
-    // 배열형 파라미터 안전한 파싱
     const parseArrayParam = (paramName: string): string[] => {
       const val = params.get(paramName);
       if (!val) return [];
@@ -86,8 +73,6 @@ export const HomePage: React.FC = () => {
     const triage = params.get('triage');
     const analysisMode = params.get('analysisMode');
     const clinicalValidation = params.get('clinicalValidation') === 'true';
-    
-    // AI 분석 컨텍스트 구성
     const aiContext = {
       triage: triage,
       primaryCondition: conditionStr,
@@ -99,78 +84,48 @@ export const HomePage: React.FC = () => {
       clinicalValidation: clinicalValidation
     };
 
-    // 조건이 있거나 analysisMode가 ai 관련이면 AI 컨텍스트로 설정
     const isAiMode = analysisMode === 'ai_triage' || analysisMode === 'synthetic_demo' || conditionStr !== null;
-    
     if (isAiMode) {
       useAppStore.getState().setAiContext(aiContext);
     }
 
-    
-
-    
     if (triage) {
       setTriageLevel(triage);
-      
-      // 질환별 요구 역량은 HospitalAICardService/RankingService에서 반영합니다.
-      // RED라고 해서 모든 질환에 수술 가능 필터를 강제하지 않습니다.
     }
   }, []);
 
-  // 인증 상태 동기화
   useEffect(() => {
     setUser(authUser);
   }, [authUser, setUser]);
 
-  // 테마 모드 동기화 (body data-theme 속성 업데이트)
   useEffect(() => {
     document.body.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
-  // 로그아웃 핸들러
   const handleLogout = async () => {
     await signOut();
     alert('✅ 로그아웃되었습니다.');
     window.location.reload();
   };
 
-  // 지도/리스트 뷰 토글 (모바일용)
   const [showMapView, setShowMapView] = useState(false);
-
-  // 프로필 페이지 표시 여부
   const [showProfilePage, setShowProfilePage] = useState(false);
-
-  // 병원 상세 모달 (리뷰 표시)
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [modalHospital, setModalHospital] = useState<Hospital | null>(null);
-
-  // Bottom Sheet (지도 마커 클릭용)
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [bottomSheetHospital, setBottomSheetHospital] = useState<Hospital | null>(null);
-
-  // Filter Bottom Sheet
   const [showFilterSheet, setShowFilterSheet] = useState(false);
-
-  // Favorites Bottom Sheet
   const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
-
-  // 강제 새로고침 플래그
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // 경로 계산 UI 상태
   const [routeCalcStatus, setRouteCalcStatus] = useState<Record<string, 'CALCULATING' | 'FAILED'>>({});
   const searchRequestIdRef = React.useRef(0);
-
-  // 즐겨찾기한 병원 목록
   const [favoriteHospitals, setFavoriteHospitals] = useState<Hospital[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
 
-  // 필터가 적용된 병원 목록 (useMemo로 최적화)
   const filteredHospitals = useMemo(() => {
     return applyFilters(hospitals, filters, userLocation);
   }, [hospitals, filters, userLocation]);
 
-  // 위치 정보를 스토어에 동기화
   useEffect(() => {
     if (location) {
       setUserLocation(location);
@@ -180,7 +135,6 @@ export const HomePage: React.FC = () => {
     }
   }, [location, error, setUserLocation, setLocationError]);
 
-  // 즐겨찾기한 병원 ID 목록 로드 및 매칭
   useEffect(() => {
     if (!user || hospitals.length === 0) {
       setFavoriteHospitals([]);
@@ -199,8 +153,6 @@ export const HomePage: React.FC = () => {
 
         if (fetchError) {
           console.error('Failed to load favorites:', fetchError);
-
-          // Supabase 에러 로깅
           logError(new Error(`Favorites fetch error: ${fetchError.message}`), {
             area: 'auth',
             severity: 'medium',
@@ -212,11 +164,9 @@ export const HomePage: React.FC = () => {
         const favoriteIds = new Set(data?.map((fav) => fav.hospital_id) || []);
         const favHospitals = hospitals.filter((h) => favoriteIds.has(h.id));
         setFavoriteHospitals(favHospitals);
-
         logEvent('favorites_loaded', { count: favHospitals.length });
       } catch (err) {
         console.error('Error loading favorites:', err);
-
         logError(err as Error, {
           area: 'auth',
           severity: 'low',
@@ -229,10 +179,8 @@ export const HomePage: React.FC = () => {
     loadFavorites();
   }, [user, hospitals]);
 
-  // 병원 검색 (위치가 확정되면 자동 실행)
   useEffect(() => {
     if (!userLocation) return;
-    
     let isCancelled = false;
 
     const searchHospitals = async () => {
@@ -240,77 +188,65 @@ export const HomePage: React.FC = () => {
       setLoadingHospitals(true);
 
       try {
-        // Use Case 실행
         const apiClient = new EGenApiClient();
         const repository = new HospitalRepositoryImpl(apiClient);
         const useCase = new GetNearbyHospitals(repository);
         const { aiContext } = useAppStore.getState();
 
-        const result = await useCase.execute(userLocation, aiContext);
+        const result = await useCase.execute(
+          userLocation,
+          aiContext,
+          (initialHospitals) => {
+            if (isCancelled || initialHospitals.length === 0) return;
+            setHospitals(initialHospitals, null);
+            console.log(`⚡ Showing ${initialHospitals.length} current-region hospitals while neighboring regions load`);
+          }
+        );
 
-        // API 성공 시 캐시에 저장
         if (result.hospitals.length > 0) {
           HospitalCache.save(result.hospitals, userLocation);
         }
 
         if (isCancelled) return;
-        // E-Gen/지오코딩 결과는 이미 AI/응급도 기준으로 1차 랭킹되어 있습니다.
-        // 실제 도로 경로 계산은 느릴 수 있으므로 병원 목록을 즉시 노출하고,
-        // 상위 후보의 경로시간만 백그라운드에서 보강한 뒤 최종 랭킹을 갱신합니다.
         setHospitals(result.hospitals, result.warning);
         console.log(`✅ Showing ${result.hospitals.length} hospitals immediately; enriching top 10 route info in background`);
 
-        // 진행 중인 경로 계산 요청 ID 갱신
         searchRequestIdRef.current += 1;
         const currentReqId = searchRequestIdRef.current;
-
-        // 상위 10개 병원 추출 (화면에 먼저 보일 병원들)
         const top10 = result.hospitals.slice(0, 10);
-        
-        // UI를 "경로 계산 중" 상태로 업데이트
         const newRouteCalcStatus: Record<string, 'CALCULATING' | 'FAILED'> = {};
         top10.forEach(h => { newRouteCalcStatus[h.id] = 'CALCULATING'; });
         setRouteCalcStatus(newRouteCalcStatus);
 
-        // 성공 이벤트 로깅
         logEvent('hospital_search_success', {
           hospital_count: result.hospitals.length,
           has_warning: !!result.warning,
         });
 
-        // 경로 계산은 초기 결과 렌더링을 막지 않습니다.
         void (async () => {
           try {
             const fetchedHospitals = await repository.loadMoreRouteInfo(userLocation, result.hospitals, 0, 10);
-            
-            // 만약 새 검색이 시작되었거나 언마운트되었다면 무시
             if (isCancelled || searchRequestIdRef.current !== currentReqId) return;
 
-            // 상태 업데이트
             setRouteCalcStatus(prev => {
               const nextStatus = { ...prev };
               fetchedHospitals.forEach(h => {
                 if (h.routeDuration === undefined) {
                   nextStatus[h.id] = 'FAILED';
                 } else {
-                  delete nextStatus[h.id]; // 성공 시 상태 삭제
+                  delete nextStatus[h.id];
                 }
               });
               return nextStatus;
             });
 
-            // 전체 병원 목록 합치기
             const newAllHospitals = [...fetchedHospitals, ...result.hospitals.slice(10)];
-            // 최종 재정렬 (경로 시간 반영)
             const finalRanked = HospitalRankingService.rankHospitals(newAllHospitals, aiContext);
-            
-            // 상태 갱신
             setHospitals(finalRanked, result.warning);
             console.log(`✅ Final ranking completed with route info for top 10 hospitals`);
           } catch (routeErr) {
             console.error('Failed to calculate routes in background:', routeErr);
             if (!isCancelled && searchRequestIdRef.current === currentReqId) {
-              // 초기 병원 목록은 이미 노출되어 있으므로 유지하고 경로 상태만 실패로 표시합니다.
               setRouteCalcStatus(prev => {
                 const nextStatus = { ...prev };
                 top10.forEach(h => { nextStatus[h.id] = 'FAILED'; });
@@ -323,35 +259,27 @@ export const HomePage: React.FC = () => {
         console.error('❌ Failed to search hospitals from API:', err);
         if (isCancelled) return;
 
-        // 에러 로깅 (Sentry)
         logError(err as Error, {
           area: 'api',
           severity: 'high',
         });
 
-        // API 실패 시 캐시 데이터 시도
         const cached = HospitalCache.load(userLocation);
-
         if (cached) {
           console.warn(`⚠️ Using cached hospital data (${cached.ageMinutes} minutes old)`);
-
-          // 캐시 사용 이벤트 로깅
           logEvent('hospital_search_fallback_cache', {
             cache_age_minutes: cached.ageMinutes,
             is_fresh: cached.isFresh,
             hospital_count: cached.hospitals.length,
           });
-
           setHospitals(cached.hospitals, {
             type: 'DATA_STALE',
             message: `서버 연결에 실패하여 ${cached.ageMinutes}분 전 데이터를 사용하고 있습니다. ${cached.isFresh ? '' : '정보가 오래되었을 수 있습니다.'}`,
           });
         } else {
-          // 캐시도 없으면 에러 표시
           logEvent('hospital_search_complete_failure', {
             has_cache: false,
           });
-
           setHospitals([], {
             type: 'NO_HOSPITALS_FOUND',
             message: '병원 검색 중 오류가 발생했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.',
@@ -365,54 +293,26 @@ export const HomePage: React.FC = () => {
     };
 
     searchHospitals();
-    
     return () => {
       isCancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation, refreshTrigger]);
 
-  // 119 긴급 호출
   const handleEmergencyCall = () => {
     if (window.confirm('119 구급대에 전화를 걸까요?')) {
       window.location.href = 'tel:119';
     }
   };
 
-  // 병원 검색 새로고침
   const handleRefresh = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // 추가 병원 경로 정보 로드 (현재 사용하지 않음 - 향후 무한 스크롤 구현 시 사용)
-  // const handleLoadMoreRoutes = async () => {
-  //   if (!userLocation || isLoadingMoreRoutes) return;
-  //   setLoadingMoreRoutes(true);
-  //   try {
-  //     const apiClient = new EGenApiClient();
-  //     const repository = new HospitalRepositoryImpl(apiClient);
-  //     const hospitalsWithRoutes = await repository.loadMoreRouteInfo(
-  //       userLocation,
-  //       hospitals,
-  //       loadedRouteCount,
-  //       10
-  //     );
-  //     updateHospitalsWithRoutes(hospitalsWithRoutes);
-  //     setLoadedRouteCount(loadedRouteCount + hospitalsWithRoutes.length);
-  //     console.log(`✅ Loaded route info for ${hospitalsWithRoutes.length} more hospitals`);
-  //   } catch (err) {
-  //     console.error('Failed to load more route info:', err);
-  //   } finally {
-  //     setLoadingMoreRoutes(false);
-  //   }
-  // };
-
-  // 프로필 페이지가 표시되면 해당 페이지만 렌더링
   if (showProfilePage) {
     return <ProfilePage onBack={() => setShowProfilePage(false)} />;
   }
 
-  // 초기 로딩 상태 (위치 + 병원 데이터)
   if (isLoadingLocation && !userLocation) {
     return <EcgLoader message="Acquiring GPS Coordinates..." />;
   }
@@ -423,7 +323,6 @@ export const HomePage: React.FC = () => {
 
   return (
     <>
-      {/* 네트워크 상태 배너 */}
       <NetworkStatusBanner
         isOffline={isOffline}
         justReconnected={justReconnected}
@@ -434,12 +333,11 @@ export const HomePage: React.FC = () => {
         maxWidth: '800px',
         margin: '0 auto',
         padding: '12px',
-        paddingTop: isOffline || justReconnected ? '68px' : '12px', // 배너 높이만큼 여백 (모바일 최적화)
+        paddingTop: isOffline || justReconnected ? '68px' : '12px',
         backgroundColor: theme.background.primary,
         minHeight: '100vh',
         transition: 'background-color 0.3s ease, padding-top 0.3s ease',
       }}>
-        {/* 헤더 - 모바일 최적화 */}
       <header style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '6px' }}>
           <h1 style={{
@@ -454,7 +352,6 @@ export const HomePage: React.FC = () => {
             🏥 Golden Time
           </h1>
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
-            {/* 테마 토글 */}
             <ThemeToggle />
 
             {user && (
@@ -525,7 +422,6 @@ export const HomePage: React.FC = () => {
         </p>
       </header>
 
-      {/* Medical AI 연동 알림 배너 */}
       {(triageLevel === 'RED' || triageLevel === 'YELLOW') && (
         <div style={{
           backgroundColor: triageLevel === 'RED' ? '#ef4444' : '#eab308',
@@ -553,7 +449,6 @@ export const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* 긴급 호출 버튼 (항상 표시) - 모바일 최적화 */}
       <button
         onClick={handleEmergencyCall}
         style={{
@@ -574,7 +469,6 @@ export const HomePage: React.FC = () => {
         🚨 119 구급대 호출
       </button>
 
-      {/* 위치 정보 에러 */}
       {error && (
         <LocationPermissionPrompt
           error={error}
@@ -622,7 +516,6 @@ export const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* 필터 & 즐겨찾기 버튼 */}
       <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
         {user && favoriteHospitals.length > 0 && (
           <button
@@ -671,7 +564,6 @@ export const HomePage: React.FC = () => {
         </button>
       </div>
 
-      {/* 뷰 전환 버튼 (모바일용) */}
       <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', width: '100%' }}>
         <button
           onClick={() => setShowMapView(false)}
@@ -713,8 +605,6 @@ export const HomePage: React.FC = () => {
         </button>
       </div>
 
-
-      {/* 지도 뷰 */}
       {showMapView && (
         <div style={{ marginBottom: '16px' }}>
           <KakaoMap
@@ -732,14 +622,13 @@ export const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* 병원 목록 뷰 */}
       {!showMapView && (
         <>
           {filteredHospitals.length === 0 && !isLoadingHospitals ? (
             <EmptyHospitalList
               hasActiveFilters={Object.values(filters).some(v => v)}
               onClearFilters={() => useAppStore.getState().clearFilters()}
-              onExpandRadius={undefined} // TODO: 반경 확대 기능 구현 시 추가
+              onExpandRadius={undefined}
             />
           ) : (
             <HospitalList
@@ -760,10 +649,8 @@ export const HomePage: React.FC = () => {
         </>
       )}
 
-      {/* 로그인 모달 */}
       <LoginModal />
 
-      {/* 병원 상세 모달 (리뷰) - 목록 뷰용 */}
       {showDetailModal && modalHospital && (
         <HospitalDetailModal
           hospital={modalHospital}
@@ -774,7 +661,6 @@ export const HomePage: React.FC = () => {
         />
       )}
 
-      {/* Bottom Sheet (지도 마커 클릭용) */}
       <HospitalBottomSheet
         hospital={bottomSheetHospital}
         isOpen={showBottomSheet}
@@ -784,13 +670,11 @@ export const HomePage: React.FC = () => {
         }}
       />
 
-      {/* Filter Bottom Sheet */}
       <HospitalFilterPanel
         isOpen={showFilterSheet}
         onClose={() => setShowFilterSheet(false)}
       />
 
-      {/* Favorites Bottom Sheet */}
       <FavoritesBottomSheet
         isOpen={showFavoritesSheet}
         onClose={() => setShowFavoritesSheet(false)}
