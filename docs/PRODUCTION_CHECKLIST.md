@@ -30,6 +30,10 @@
 ## CI / 품질
 
 - [ ] `node --test scripts/validate-env.test.cjs`
+- [ ] `node --test scripts/security-headers.test.cjs`
+- [ ] `node --test scripts/brand-metadata.test.cjs`
+- [ ] `node --test scripts/storage-scope.test.cjs`
+- [ ] `node --test scripts/github-actions-security.test.cjs`
 - [ ] `npm run test:unit`
 - [ ] `npm run type-check`
 - [ ] `npm run type-check:api`
@@ -60,6 +64,8 @@
 - [ ] 서버 비밀키가 브라우저 bundle/Network URL에 노출되지 않음
 - [ ] E-Gen endpoint allowlist 동작
 - [ ] Kakao server proxy 입력 검증 동작
+- [ ] GitHub Actions workflow token이 `contents: read` 최소 권한만 사용
+- [ ] GitHub Actions checkout이 `persist-credentials: false`로 설정됨
 - [ ] Supabase 비활성 상태에서 외부 Supabase 요청이 발생하지 않음
 - [ ] Sentry 활성 상태에서도 민감 telemetry 필드가 redaction됨
 - [ ] 과거 공개된 API 키가 있다면 폐기/재발급 완료
