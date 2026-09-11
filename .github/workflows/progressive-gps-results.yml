@@ -1,0 +1,87 @@
+name: Progressive GPS results
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply progressive search patch
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('src/domain/repositories/IHospitalRepository.ts')
+          s = p.read_text()
+          s = s.replace(
+            'findNearby(coords: Coordinates, aiContext?: AIAnalysisContext | null): Promise<Hospital[]>;',
+            'findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<Hospital[]>;'
+          )
+          p.write_text(s)
+
+          p = Path('src/data/repositories/HospitalRepositoryImpl.ts')
+          s = p.read_text()
+          old = '''  async findNearby(coords: Coordinates, aiContext?: AIAnalysisContext | null): Promise<Hospital[]> {\n    try {\n      this.performanceSearchId = getActiveHospitalSearchPerformanceId();\n      this.apiClient.setPerformanceSearchId(this.performanceSearchId);\n\n      const MAX_DISTANCE_KM = 100;\n      const regions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);\n      if (regions.length === 0) {\n        throw new Error(\n          `Unsupported GPS coordinates for nationwide emergency search: ${coords.latitude}, ${coords.longitude}`\n        );\n      }\n\n      console.log(`🏥 GPS nationwide search regions (${regions.length}): ${regions.join(', ')}`);\n\n      const regionResults = await Promise.allSettled(\n        regions.map((region) => this.apiClient.getCombinedHospitalData(region))\n      );\n'''
+          new = '''  async findNearby(\n    coords: Coordinates,\n    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<Hospital[]> {\n    try {\n      this.performanceSearchId = getActiveHospitalSearchPerformanceId();\n      this.apiClient.setPerformanceSearchId(this.performanceSearchId);\n\n      const MAX_DISTANCE_KM = 100;\n      const regions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);\n      if (regions.length === 0) {\n        throw new Error(\n          `Unsupported GPS coordinates for nationwide emergency search: ${coords.latitude}, ${coords.longitude}`\n        );\n      }\n\n      console.log(`🏥 GPS nationwide search regions (${regions.length}): ${regions.join(', ')}`);\n\n      // Start every regional request immediately, but await the current region first.\n      // This preserves parallel I/O while allowing the UI to paint useful local\n      // candidates before slower neighboring regions finish.\n      const regionalRequests = regions.map((region) => ({\n        region,\n        promise: this.apiClient.getCombinedHospitalData(region),\n      }));\n\n      const currentRequest = regionalRequests[0];\n      try {\n        const currentData = await currentRequest.promise;\n        const currentHospitals = HospitalMapper.toDomainList(currentData)\n          .filter((hospital) => hospital.coordinates && hospital.distanceFrom(coords) / 1000 <= MAX_DISTANCE_KM);\n        const initialRanked = HospitalRankingService.rankHospitals(currentHospitals, aiContext);\n        if (initialRanked.length > 0) {\n          console.log(`⚡ Initial GPS results: ${initialRanked.length} hospitals from ${currentRequest.region}`);\n          onInitialResults?.(initialRanked);\n        }\n      } catch (error) {\n        console.warn(`⚠️ Current-region E-Gen search failed for ${currentRequest.region}; waiting for neighboring regions`, error);\n      }\n\n      const regionResults = await Promise.allSettled(\n        regionalRequests.map(({ promise }) => promise)\n      );\n'''
+          if old not in s:
+            raise SystemExit('HospitalRepositoryImpl findNearby prefix not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('src/domain/usecases/GetNearbyHospitals.ts')
+          s = p.read_text()
+          s = s.replace(
+            '    aiContext?: AIAnalysisContext | null\n  ): Promise<HospitalSearchResult> {',
+            '    aiContext?: AIAnalysisContext | null,\n    onInitialResults?: (hospitals: Hospital[]) => void\n  ): Promise<HospitalSearchResult> {'
+          )
+          s = s.replace(
+            '      const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext);',
+            '      const allHospitals = await this.hospitalRepository.findNearby(userLocation, aiContext, onInitialResults);'
+          )
+          p.write_text(s)
+
+          p = Path('src/presentation/pages/HomePage.tsx')
+          s = p.read_text()
+          old = '        const result = await useCase.execute(userLocation, aiContext);'
+          new = '''        const result = await useCase.execute(userLocation, aiContext, (initialHospitals) => {\n          if (isCancelled || initialHospitals.length === 0) return;\n          setHospitals(initialHospitals, {\n            type: 'DATA_STALE',\n            message: '현재 지역 응급실을 먼저 표시했습니다. 인접 지역 결과를 확인하는 중입니다.',\n          });\n          console.log(`⚡ Showing ${initialHospitals.length} current-region hospitals while neighboring regions load`);\n        });'''
+          if old not in s:
+            raise SystemExit('HomePage execute call not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('src/data/repositories/HospitalRepositoryImpl.test.ts')
+          s = p.read_text()
+          insert = '''\n  it('publishes current-region candidates before a slower neighboring request finishes', async () => {\n    let resolveNeighbor!: (value: ReturnType<typeof combinedHospital>[]) => void;\n    const apiClient = {\n      setPerformanceSearchId: vi.fn(),\n      getCombinedHospitalData: vi.fn((region: string) => {\n        if (region === '서울특별시') {\n          return Promise.resolve([combinedHospital({\n            hpid: 'SEOUL-1', name: '서울 즉시 병원', lat: 37.56, lon: 126.99,\n          })]);\n        }\n        if (region === '경기도') {\n          return new Promise<ReturnType<typeof combinedHospital>[]>((resolve) => { resolveNeighbor = resolve; });\n        }\n        return Promise.resolve([]);\n      }),\n    };\n    const repository = new HospitalRepositoryImpl(apiClient as unknown as EGenApiClient);\n    const onInitialResults = vi.fn();\n    const pending = repository.findNearby(new Coordinates(37.5665, 126.9780), null, onInitialResults);\n\n    await vi.waitFor(() => expect(onInitialResults).toHaveBeenCalledTimes(1));\n    expect(onInitialResults.mock.calls[0][0][0].id).toBe('SEOUL-1');\n\n    resolveNeighbor([]);\n    const final = await pending;\n    expect(final.map((hospital) => hospital.id)).toContain('SEOUL-1');\n  });\n'''
+          anchor = "  it('deduplicates the same HPID returned by overlapping regional searches', async () => {"
+          if anchor not in s:
+            raise SystemExit('repository test anchor not found')
+          s = s.replace(anchor, insert + '\n' + anchor, 1)
+          p.write_text(s)
+
+          p = Path('src/presentation/pages/HomePage.test.tsx')
+          s = p.read_text()
+          s = s.replace(
+            '  it(\'keeps the newest hospital search when an older request resolves late\', async () => {',
+            '''  it('shows current-region preliminary hospitals before the nationwide result resolves', async () => {\n    const preliminary = makeHospital('local', 'Local Hospital');\n    const finalHospital = makeHospital('national', 'National Hospital');\n    let resolveFinal!: (value: Hospital[]) => void;\n\n    mockFindNearby.mockImplementation((_location, _context, onInitialResults) => {\n      onInitialResults?.([preliminary]);\n      return new Promise<Hospital[]>((resolve) => { resolveFinal = resolve; });\n    });\n    mockLoadMoreRouteInfo.mockImplementation(async (_location, hospitals) => hospitals);\n\n    render(<HomePage />);\n    await waitFor(() => expect(useAppStore.getState().hospitals[0]?.id).toBe('local'));\n\n    await act(async () => { resolveFinal([finalHospital]); });\n    await waitFor(() => expect(useAppStore.getState().hospitals[0]?.id).toBe('national'));\n  });\n\n  it('keeps the newest hospital search when an older request resolves late', async () => {''',
+            1
+          )
+          p.write_text(s)
+
+          Path('.github/workflows/progressive-gps-results.yml').unlink()
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "perf: stream current-region ER results first"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
