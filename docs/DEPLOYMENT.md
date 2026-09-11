@@ -79,18 +79,24 @@ npm ci
 npm run dev
 ```
 
-`npm run dev`는 Vercel 개발 서버를 사용해 `/api/*` 프록시까지 포함한 흐름을 실행합니다.
+`npm run dev`는 **Vite UI 개발 서버**를 실행합니다. 현재 저장소에는 Vercel CLI가 dev dependency로 포함되어 있지 않으므로 이 명령만으로 Vercel Serverless Function(`/api/*`)을 로컬 통합 실행하지 않습니다.
 
-UI만 확인하려면:
+`npm run dev:ui`는 같은 Vite UI 서버를 명시적으로 실행하는 alias입니다.
 
 ```bash
 npm run dev:ui
 ```
 
+Serverless API 경계는 `npm run test:api`로 회귀 검증하고, 실제 Vercel 통합 동작은 Preview/Production deployment에서 확인합니다.
+
 ## 5. 배포 전 검증
 
 ```bash
 node --test scripts/validate-env.test.cjs
+node --test scripts/security-headers.test.cjs
+node --test scripts/brand-metadata.test.cjs
+node --test scripts/storage-scope.test.cjs
+node --test scripts/github-actions-security.test.cjs
 npm run test:unit
 npm run type-check
 npm run type-check:api
@@ -100,7 +106,7 @@ npm run build
 npm audit --omit=dev --audit-level=moderate
 ```
 
-GitHub Actions의 CI도 같은 핵심 검증을 수행합니다.
+GitHub Actions CI는 위 핵심 검증을 수행하며, 워크플로 토큰은 `contents: read` 최소 권한으로 제한하고 checkout 자격 증명을 persist하지 않습니다.
 
 ## 6. Vercel 배포
 
