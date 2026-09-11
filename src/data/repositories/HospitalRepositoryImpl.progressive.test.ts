@@ -66,7 +66,7 @@ describe('HospitalRepositoryImpl progressive nationwide search', () => {
       expect.arrayContaining(['SEOUL-1', 'GG-1'])
     );
     expect(events[0]).toBe('initial:SEOUL-1');
-    expect(events.at(-1)).toBe('final');
+    expect(events[events.length - 1]).toBe('final');
   });
 
   it('still returns neighboring hospitals when the current-region request fails', async () => {
