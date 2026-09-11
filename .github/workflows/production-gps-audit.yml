@@ -1,0 +1,111 @@
+name: Production GPS audit
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit live production at representative GPS coordinates
+        env:
+          BASE_URL: https://golden-time.vercel.app
+        run: |
+          mkdir -p gps-audit
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          const cases = [
+            { name: 'seoul', lat: 37.5665, lon: 126.9780 },
+            { name: 'cheonan', lat: 36.8151, lon: 127.1139 },
+            { name: 'gwangju', lat: 35.1595, lon: 126.8526 },
+          ];
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const summary = [];
+
+            for (const c of cases) {
+              const context = await browser.newContext({
+                viewport: { width: 390, height: 844 },
+                geolocation: { latitude: c.lat, longitude: c.lon },
+                permissions: ['geolocation'],
+                locale: 'ko-KR',
+              });
+              const page = await context.newPage();
+              const consoleLines = [];
+              const failedRequests = [];
+              page.on('console', msg => consoleLines.push(`[${msg.type()}] ${msg.text()}`));
+              page.on('requestfailed', req => failedRequests.push(`${req.method()} ${req.url()} :: ${req.failure()?.errorText || ''}`));
+
+              const response = await page.goto(process.env.BASE_URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
+              await page.waitForTimeout(18000);
+
+              const bodyText = await page.locator('body').innerText().catch(() => '');
+              const cards = await page.locator('text=/km|분/').count().catch(() => 0);
+              const pageMetrics = await page.evaluate(() => ({
+                title: document.title,
+                scrollWidth: document.documentElement.scrollWidth,
+                clientWidth: document.documentElement.clientWidth,
+                textLength: document.body.innerText.length,
+              }));
+              const relevantConsole = consoleLines.filter(line =>
+                /GPS scoped search regions|Publishing .*current-region|Nationwide GPS candidate pool|Returning .*neighboring-region|Showing .*current-region|일부 검색 범위|Regional E-Gen search failed|Coordinate-based E-Gen discovery/.test(line)
+              );
+
+              await page.screenshot({ path: `gps-audit/${c.name}.png`, fullPage: true });
+              fs.writeFileSync(`gps-audit/${c.name}.txt`, [
+                `status=${response ? response.status() : 'null'}`,
+                `gps=${c.lat},${c.lon}`,
+                `cards_hint_count=${cards}`,
+                `scrollWidth=${pageMetrics.scrollWidth}`,
+                `clientWidth=${pageMetrics.clientWidth}`,
+                `body_has_partial_warning=${bodyText.includes('일부 검색 범위를 불러오지 못했습니다')}`,
+                `body_has_error=${bodyText.includes('병원 검색 중 오류가 발생했습니다')}`,
+                '',
+                '[relevant-console]',
+                ...relevantConsole,
+                '',
+                '[failed-requests]',
+                ...failedRequests,
+              ].join('\n'));
+
+              summary.push({
+                name: c.name,
+                status: response ? response.status() : null,
+                gps: [c.lat, c.lon],
+                bodyHasPartialWarning: bodyText.includes('일부 검색 범위를 불러오지 못했습니다'),
+                bodyHasError: bodyText.includes('병원 검색 중 오류가 발생했습니다'),
+                relevantConsole,
+                failedRequests,
+                ...pageMetrics,
+              });
+              await context.close();
+            }
+
+            fs.writeFileSync('gps-audit/summary.json', JSON.stringify(summary, null, 2));
+            await browser.close();
+          })().catch(err => { console.error(err); process.exit(1); });
+          NODE
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-gps-audit
+          path: gps-audit
+          retention-days: 3
