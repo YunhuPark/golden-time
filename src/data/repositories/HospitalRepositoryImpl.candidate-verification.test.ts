@@ -25,7 +25,11 @@ describe('HospitalRepositoryImpl geometric candidate verification', () => {
         if (region === '인천광역시') return incheonList;
         return [];
       }),
-      getCombinedHospitalData: vi.fn(async () => []),
+      getCombinedHospitalData: vi.fn(async (
+        _region?: string,
+        _stage2?: string,
+        _basicInfo?: unknown[]
+      ) => []),
     };
     const repository = new HospitalRepositoryImpl(
       apiClient as unknown as EGenApiClient,
@@ -55,7 +59,11 @@ describe('HospitalRepositoryImpl geometric candidate verification', () => {
         if (region === '인천광역시') return incompleteList;
         return [];
       }),
-      getCombinedHospitalData: vi.fn(async () => []),
+      getCombinedHospitalData: vi.fn(async (
+        _region?: string,
+        _stage2?: string,
+        _basicInfo?: unknown[]
+      ) => []),
     };
     const repository = new HospitalRepositoryImpl(
       apiClient as unknown as EGenApiClient,
@@ -88,10 +96,17 @@ describe('HospitalRepositoryImpl geometric candidate verification', () => {
           longitude: 126.73,
         },
       ]),
-      getHospitalBasicInfo: vi.fn(async () => {
-        throw new Error('verification should not run for coordinate-discovered region');
+      getHospitalBasicInfo: vi.fn(async (region: string) => {
+        if (region === '인천광역시') {
+          throw new Error('verification should not run for coordinate-discovered region');
+        }
+        return [];
       }),
-      getCombinedHospitalData: vi.fn(async () => []),
+      getCombinedHospitalData: vi.fn(async (
+        _region?: string,
+        _stage2?: string,
+        _basicInfo?: unknown[]
+      ) => []),
     };
     const repository = new HospitalRepositoryImpl(
       apiClient as unknown as EGenApiClient,
@@ -113,7 +128,11 @@ describe('HospitalRepositoryImpl geometric candidate verification', () => {
         if (region === '경기도') throw new Error('regional list unavailable');
         return [];
       }),
-      getCombinedHospitalData: vi.fn(async () => []),
+      getCombinedHospitalData: vi.fn(async (
+        _region?: string,
+        _stage2?: string,
+        _basicInfo?: unknown[]
+      ) => []),
     };
     const repository = new HospitalRepositoryImpl(
       apiClient as unknown as EGenApiClient,
