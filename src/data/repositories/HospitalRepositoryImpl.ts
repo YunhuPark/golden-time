@@ -113,6 +113,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const discoveredRegions = new Set<string>(
         geometricRegions.length > 0 ? geometricRegions : [currentRegion]
       );
+      const coordinateDiscoveredUpstreamKeys = new Set<string>();
       let discoveryFailed = false;
       try {
         const nearbyLocations = await discoveryPromise;
@@ -125,7 +126,10 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
           if (hospitalCoords.distanceTo(coords) / 1000 > MAX_DISTANCE_KM) continue;
 
           const region = inferRegionFromHospitalLocation(location.dutyAddr, hospitalCoords);
-          if (region) discoveredRegions.add(region);
+          if (region) {
+            discoveredRegions.add(region);
+            coordinateDiscoveredUpstreamKeys.add(normalizeEGenRegion(region) ?? region);
+          }
         }
       } catch (error) {
         discoveryFailed = true;
@@ -158,6 +162,23 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       const neighborResults: NeighborOutcome[] = await Promise.all(
         neighboringRegions.map(async (region): Promise<NeighborOutcome> => {
+          const upstreamKey = normalizeEGenRegion(region) ?? region;
+
+          // Coordinate discovery already observed an actual hospital inside the
+          // radius for this upstream scope. Keep that evidence fail-open instead
+          // of making the regional list a new prerequisite for realtime data.
+          if (coordinateDiscoveredUpstreamKeys.has(upstreamKey)) {
+            try {
+              return {
+                region,
+                data: await this.apiClient.getCombinedHospitalData(region),
+                skipped: false,
+              };
+            } catch (error) {
+              return { region, data: [], skipped: false, error };
+            }
+          }
+
           const getBasicInfo = this.apiClient.getHospitalBasicInfo?.bind(this.apiClient);
           if (!getBasicInfo) {
             try {
@@ -173,14 +194,26 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
           try {
             const basicInfo = await getBasicInfo(region);
-            const hasHospitalWithinRadius = basicInfo.some((hospital) => {
+            let hasHospitalWithinRadius = false;
+            let allHospitalsHaveValidCoordinates = basicInfo.length > 0;
+
+            for (const hospital of basicInfo) {
               const latitude = Number(hospital.wgs84Lat);
               const longitude = Number(hospital.wgs84Lon);
-              if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
-              return new Coordinates(latitude, longitude).distanceTo(coords) / 1000 <= MAX_DISTANCE_KM;
-            });
+              if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                allHospitalsHaveValidCoordinates = false;
+                continue;
+              }
+              if (new Coordinates(latitude, longitude).distanceTo(coords) / 1000 <= MAX_DISTANCE_KM) {
+                hasHospitalWithinRadius = true;
+                break;
+              }
+            }
 
-            if (!hasHospitalWithinRadius) {
+            // Only skip when the regional list conclusively proves every listed
+            // hospital is outside the radius. Empty/incomplete-coordinate lists
+            // remain fail-open so this optimization cannot reduce coverage.
+            if (!hasHospitalWithinRadius && allHospitalsHaveValidCoordinates) {
               console.log(`⏭️ Skipping realtime E-Gen fanout for ${region}; regional list has no hospital within ${MAX_DISTANCE_KM}km`);
               return { region, data: [], skipped: true };
             }
