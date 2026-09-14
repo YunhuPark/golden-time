@@ -5,7 +5,7 @@ import { EGenApiClient } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
-import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
+import { getRegionsWithinRadius, inferRegionFromCoordinates } from '../../domain/services/RegionResolver';
 import { AIAnalysisContext } from '../../domain/types/AIContext';
 import {
   getActiveHospitalSearchPerformanceId,
@@ -106,7 +106,13 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         }
       }
 
-      const discoveredRegions = new Set<string>([currentRegion]);
+      // Use geometric 100km coverage as the baseline so border searches do not
+      // depend on the location endpoint returning at least one hospital from every
+      // relevant first-level region. Live coordinate discovery is additive.
+      const geometricRegions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);
+      const discoveredRegions = new Set<string>(
+        geometricRegions.length > 0 ? geometricRegions : [currentRegion]
+      );
       let discoveryFailed = false;
       try {
         const nearbyLocations = await discoveryPromise;
@@ -124,7 +130,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       } catch (error) {
         discoveryFailed = true;
         console.warn(
-          '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',
+          '⚠️ Coordinate-based E-Gen discovery unavailable; using geometric GPS region coverage',
           error
         );
       }
