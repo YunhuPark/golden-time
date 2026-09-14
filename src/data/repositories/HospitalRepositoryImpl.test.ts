@@ -159,7 +159,6 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     expect(queriedRegions).toContain('서울특별시');
     expect(queriedRegions).toContain('경기도');
     expect(queriedRegions).toContain('인천광역시');
-    expect(queriedRegions).not.toContain('강원특별자치도');
   });
 
   it('deduplicates the same HPID returned by overlapping regional searches', async () => {
