@@ -58,4 +58,46 @@ describe('EGenApiClient regional hospital list', () => {
       'A1509999',
     ]);
   });
+
+  it('uses the live E-Gen 전남 alias for the Jeollanam-do hospital list', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        response: {
+          header: { resultCode: '00', resultMsg: 'NORMAL SERVICE.' },
+          body: { items: {}, numOfRows: 300, pageNo: 1, totalCount: 0 },
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new EGenApiClient();
+    await client.getHospitalBasicInfo('전라남도');
+
+    const requestUrl = String(fetchMock.mock.calls[0]?.[0]);
+    const parsed = new URL(requestUrl, 'https://golden-time.test');
+    expect(parsed.searchParams.get('Q0')).toBe('전남');
+  });
+
+  it('uses the live E-Gen 전남 alias for Jeollanam-do realtime beds', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        response: {
+          header: { resultCode: '00', resultMsg: 'NORMAL SERVICE.' },
+          body: { items: {}, numOfRows: 100, pageNo: 1, totalCount: 0 },
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new EGenApiClient();
+    await client.getEmergencyRoomBeds('전라남도');
+
+    const requestUrl = String(fetchMock.mock.calls[0]?.[0]);
+    const parsed = new URL(requestUrl, 'https://golden-time.test');
+    expect(parsed.searchParams.get('STAGE1')).toBe('전남');
+  });
 });
