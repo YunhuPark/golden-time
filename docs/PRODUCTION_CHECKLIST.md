@@ -30,6 +30,7 @@
 ## CI / 품질
 
 - [ ] `node --test scripts/validate-env.test.cjs`
+- [ ] `node --test scripts/vercel-runtime.test.cjs`
 - [ ] `node --test scripts/security-headers.test.cjs`
 - [ ] `node --test scripts/brand-metadata.test.cjs`
 - [ ] `node --test scripts/storage-scope.test.cjs`
@@ -79,6 +80,7 @@
 - [ ] `[PERF] hospital_search_initial` 기록 확인
 - [ ] geocoding fallback이 불필요하게 대량 발생하지 않음
 - [ ] E-Gen coordinate match 수치 확인
+- [ ] API 요청 후 Vercel 로그에 플랫폼 `DEP0169` 경고가 없음
 
 ## 문서
 
