@@ -1,7 +1,7 @@
 import { Hospital } from '../../domain/entities/Hospital';
 import { Coordinates } from '../../domain/valueObjects/Coordinates';
 import { IHospitalRepository } from '../../domain/repositories/IHospitalRepository';
-import { EGenApiClient } from '../datasources/remote/EGenApiClient';
+import { EGenApiClient, normalizeEGenRegion } from '../datasources/remote/EGenApiClient';
 import { HospitalMapper } from '../models/mappers/HospitalMapper';
 import { KakaoDirectionsClient } from '../datasources/remote/KakaoDirectionsClient';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
@@ -135,7 +135,19 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         );
       }
 
-      const neighboringRegions = Array.from(discoveredRegions).filter((region) => region !== currentRegion);
+      // Some first-level regions map to the same upstream E-Gen region key. In
+      // particular, Gwangju and Jeonnam are served by 전남광주통합특별시. Querying
+      // both would duplicate the same hospital-list and realtime-bed requests.
+      const upstreamRegionKeys = new Set<string>([
+        normalizeEGenRegion(currentRegion) ?? currentRegion,
+      ]);
+      const neighboringRegions = Array.from(discoveredRegions).filter((region) => {
+        if (region === currentRegion) return false;
+        const upstreamKey = normalizeEGenRegion(region) ?? region;
+        if (upstreamRegionKeys.has(upstreamKey)) return false;
+        upstreamRegionKeys.add(upstreamKey);
+        return true;
+      });
       console.log(
         `🏥 GPS scoped search regions (${1 + neighboringRegions.length}): ${[currentRegion, ...neighboringRegions].join(', ')}`
       );
