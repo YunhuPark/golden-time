@@ -10,6 +10,13 @@
 - Frontend: Vite + React
 - Server boundary: Vercel Serverless Functions (`/api/egen`, `/api/kakao/*`)
 
+Vercel의 Node.js 래퍼가 Node 24에서 런타임 폐기 경고가 된
+[`url.parse()`](https://nodejs.org/docs/latest-v24.x/api/deprecations.html#DEP0169)를
+호출하는 동안에는 `vercel.json`에서 `DEP0169`만 선택적으로 숨깁니다. 이 경고는
+[Vercel upstream issue](https://github.com/vercel/vercel/issues/16109)가 해결되면 설정과
+회귀 테스트를 함께 제거합니다. 다른 폐기 경고와 일반 경고는 계속 기록되어야 하므로
+`--no-deprecation`이나 `--no-warnings`로 범위를 넓히지 않습니다.
+
 의존성 설치는 재현 가능한 lockfile 설치를 위해 다음 명령을 사용합니다.
 
 ```bash
@@ -93,6 +100,7 @@ Serverless API 경계는 `npm run test:api`로 회귀 검증하고, 실제 Verce
 
 ```bash
 node --test scripts/validate-env.test.cjs
+node --test scripts/vercel-runtime.test.cjs
 node --test scripts/security-headers.test.cjs
 node --test scripts/brand-metadata.test.cjs
 node --test scripts/storage-scope.test.cjs
