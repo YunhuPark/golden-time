@@ -19,6 +19,7 @@
     "type-check:api": "tsc --project tsconfig.api.json --noEmit",
     "test:unit": "vitest run",
     "test:api": "tsx --test api/egen.test.ts api/kakao/directions.test.ts api/kakao/geocoding.test.ts",
+    "test:crawler": "tsx --test scripts/ai-crawler/crawler.test.ts",
     "crawler": "npx tsx scripts/ai-crawler/index.ts",
     "validate:env": "node scripts/validate-env.cjs",
     "validate:env:dev": "node scripts/validate-env.cjs --env=development",
