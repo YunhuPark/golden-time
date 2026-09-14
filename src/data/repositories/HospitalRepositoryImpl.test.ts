@@ -36,7 +36,7 @@ function combinedHospital({
 }
 
 describe('HospitalRepositoryImpl.findNearby', () => {
-  it('uses coordinate discovery to query only regions represented near the user', async () => {
+  it('combines geometric 100km coverage with coordinate-discovered regions', async () => {
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
       getNearbyEmergencyLocations: vi.fn().mockResolvedValue([
@@ -86,12 +86,13 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     expect(apiClient.getNearbyEmergencyLocations).toHaveBeenCalledWith(36.8151, 127.1139, 100);
     const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);
     expect(queriedRegions).toContain('충청남도');
+    expect(queriedRegions).toContain('세종특별자치시');
     expect(queriedRegions).toContain('충청북도');
-    expect(queriedRegions).not.toContain('경기도');
+    expect(queriedRegions).toContain('경기도');
     expect(hospitals.map((hospital) => hospital.id)).toContain('CB-CLOSE');
   });
 
-  it('falls back to the current region only when coordinate discovery fails', async () => {
+  it('falls back to geometric 100km region coverage when coordinate discovery fails', async () => {
     const apiClient = {
       setPerformanceSearchId: vi.fn(),
       getNearbyEmergencyLocations: vi.fn().mockRejectedValue(new Error('temporary location failure')),
@@ -115,8 +116,10 @@ describe('HospitalRepositoryImpl.findNearby', () => {
 
     const hospitals = await repository.findNearby(new Coordinates(37.5665, 126.9780));
 
-    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledTimes(1);
-    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledWith('서울특별시');
+    const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);
+    expect(queriedRegions).toContain('서울특별시');
+    expect(queriedRegions).toContain('경기도');
+    expect(queriedRegions).toContain('인천광역시');
     expect(hospitals.map((hospital) => hospital.id)).toContain('SEOUL-1');
   });
 
@@ -153,7 +156,9 @@ describe('HospitalRepositoryImpl.findNearby', () => {
     await repository.findNearby(new Coordinates(37.5665, 126.9780));
 
     const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);
-    expect(queriedRegions).toEqual(['서울특별시']);
+    expect(queriedRegions).toContain('서울특별시');
+    expect(queriedRegions).toContain('경기도');
+    expect(queriedRegions).toContain('인천광역시');
   });
 
   it('deduplicates the same HPID returned by overlapping regional searches', async () => {
