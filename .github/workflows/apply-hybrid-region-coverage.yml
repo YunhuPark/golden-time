@@ -1,0 +1,89 @@
+name: Apply hybrid region coverage
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Patch hybrid nationwide region coverage
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          repo = Path('src/data/repositories/HospitalRepositoryImpl.ts')
+          s = repo.read_text(encoding='utf-8')
+          s = s.replace(
+            "import { inferRegionFromCoordinates } from '../../domain/services/RegionResolver';",
+            "import { getRegionsWithinRadius, inferRegionFromCoordinates } from '../../domain/services/RegionResolver';"
+          )
+          s = s.replace(
+            "      const discoveredRegions = new Set<string>([currentRegion]);\n      let discoveryFailed = false;",
+            "      // Start from the geometric 100km candidate set so provincial-border\n      // coverage does not depend on the coordinate-discovery endpoint returning at\n      // least one institution from every relevant first-level region. Coordinate\n      // discovery is then used as an additive signal for any extra region observed\n      // in the live E-Gen location response.\n      const geometricRegions = getRegionsWithinRadius(coords, MAX_DISTANCE_KM);\n      const discoveredRegions = new Set<string>(\n        geometricRegions.length > 0 ? geometricRegions : [currentRegion]\n      );\n      let discoveryFailed = false;"
+          )
+          s = s.replace(
+            "          '⚠️ Coordinate-based E-Gen discovery unavailable; using the current region only',",
+            "          '⚠️ Coordinate-based E-Gen discovery unavailable; using geometric GPS region coverage',"
+          )
+          repo.write_text(s, encoding='utf-8')
+
+          tests = Path('src/data/repositories/HospitalRepositoryImpl.test.ts')
+          t = tests.read_text(encoding='utf-8')
+          t = t.replace(
+            "  it('uses coordinate discovery to query only regions represented near the user', async () => {",
+            "  it('combines geometric 100km coverage with coordinate-discovered regions', async () => {"
+          )
+          t = t.replace(
+            "    expect(queriedRegions).toContain('충청남도');\n    expect(queriedRegions).toContain('충청북도');\n    expect(queriedRegions).not.toContain('경기도');",
+            "    expect(queriedRegions).toContain('충청남도');\n    expect(queriedRegions).toContain('세종특별자치시');\n    expect(queriedRegions).toContain('충청북도');\n    expect(queriedRegions).toContain('경기도');"
+          )
+          t = t.replace(
+            "  it('falls back to the current region only when coordinate discovery fails', async () => {",
+            "  it('falls back to geometric 100km region coverage when coordinate discovery fails', async () => {"
+          )
+          t = t.replace(
+            "    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledTimes(1);\n    expect(apiClient.getCombinedHospitalData).toHaveBeenCalledWith('서울특별시');",
+            "    const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);\n    expect(queriedRegions).toContain('서울특별시');\n    expect(queriedRegions).toContain('경기도');\n    expect(queriedRegions).toContain('인천광역시');"
+          )
+          t = t.replace(
+            "    const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);\n    expect(queriedRegions).toEqual(['서울특별시']);",
+            "    const queriedRegions = apiClient.getCombinedHospitalData.mock.calls.map(([region]) => region);\n    expect(queriedRegions).toContain('서울특별시');\n    expect(queriedRegions).toContain('경기도');\n    expect(queriedRegions).toContain('인천광역시');\n    expect(queriedRegions).not.toContain('강원특별자치도');"
+          )
+          tests.write_text(t, encoding='utf-8')
+
+          progressive = Path('src/data/repositories/HospitalRepositoryImpl.progressive.test.ts')
+          p = progressive.read_text(encoding='utf-8')
+          p = p.replace(
+            "        if (region === '경기도') {\n          return new Promise<ReturnType<typeof item>[]>((resolve) => {\n            resolveNeighbor = resolve;\n          });\n        }\n        return Promise.resolve([]);",
+            "        if (region === '경기도') {\n          return new Promise<ReturnType<typeof item>[]>((resolve) => {\n            resolveNeighbor = resolve;\n          });\n        }\n        return Promise.resolve([]);"
+          )
+          progressive.write_text(p, encoding='utf-8')
+
+          # Add an explicit regression test for the production audit gap in Gwangju.
+          region_test = Path('src/domain/services/RegionResolver.test.ts')
+          r = region_test.read_text(encoding='utf-8')
+          marker = "  it('includes cross-border regions when the user is close to a provincial boundary', () => {"
+          insertion = "  it('includes Jeollanam-do for a Gwangju 100km search', () => {\n    const gwangju = new Coordinates(35.1595, 126.8526);\n    const regions = getRegionsWithinRadius(gwangju, 100);\n\n    expect(regions[0]).toBe('광주광역시');\n    expect(regions).toContain('전라남도');\n  });\n\n"
+          if insertion not in r:
+            r = r.replace(marker, insertion + marker)
+          region_test.write_text(r, encoding='utf-8')
+          PY
+
+          git rm .github/workflows/apply-hybrid-region-coverage.yml
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src .github/workflows/apply-hybrid-region-coverage.yml
+          git commit -m "fix: combine geometric and live GPS region coverage"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
