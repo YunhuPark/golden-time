@@ -34,6 +34,14 @@ describe('getRegionsWithinRadius', () => {
     expect(regions).toContain('인천광역시');
   });
 
+  it('includes Jeollanam-do for a Gwangju 100km search', () => {
+    const gwangju = new Coordinates(35.1595, 126.8526);
+    const regions = getRegionsWithinRadius(gwangju, 100);
+
+    expect(regions[0]).toBe('광주광역시');
+    expect(regions).toContain('전라남도');
+  });
+
   it('includes cross-border regions when the user is close to a provincial boundary', () => {
     const cheonan = new Coordinates(36.8151, 127.1139);
     const regions = getRegionsWithinRadius(cheonan, 100);
