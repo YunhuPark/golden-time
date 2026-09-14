@@ -294,12 +294,16 @@ export class EGenApiClient {
   }
 
   private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
-    if (stage1 === '광주광역시') return '광주';
+    if (stage1 === '광주광역시' || stage1 === '전라남도') {
+      return '전남광주통합특별시';
+    }
     return stage1;
   }
 
   private normalizeHospitalListRegion(region?: string): string | undefined {
-    if (region === '광주광역시') return '광주';
+    if (region === '광주광역시' || region === '전라남도') {
+      return '전남광주통합특별시';
+    }
     return region;
   }
 
