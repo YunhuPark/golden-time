@@ -34,7 +34,7 @@ describe('getRegionsWithinRadius', () => {
     expect(regions).toContain('인천광역시');
   });
 
-  // Regression from the live Production GPS audit: coordinate discovery returned
+  // Regression from the live production GPS audit: coordinate discovery returned
   // only Gwangju, but a true 100km candidate search must also inspect Jeollanam-do.
   it('includes Jeollanam-do for a Gwangju 100km search', () => {
     const gwangju = new Coordinates(35.1595, 126.8526);
