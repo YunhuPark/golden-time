@@ -9,6 +9,11 @@ import { NetworkError, RateLimitError } from '../../../infrastructure/errors/App
 import { recordEGenPerformance } from '../../../infrastructure/monitoring/searchPerformance';
 import { KakaoPlacesClient } from './KakaoPlacesClient';
 
+const EGEN_REGION_ALIASES: Readonly<Record<string, string>> = {
+  광주광역시: '광주',
+  전라남도: '전남',
+};
+
 export class EGenApiClient {
   private readonly timeout: number;
   private readonly maxRetries: number;
@@ -294,13 +299,11 @@ export class EGenApiClient {
   }
 
   private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
-    if (stage1 === '광주광역시') return '광주';
-    return stage1;
+    return stage1 ? (EGEN_REGION_ALIASES[stage1] ?? stage1) : undefined;
   }
 
   private normalizeHospitalListRegion(region?: string): string | undefined {
-    if (region === '광주광역시') return '광주';
-    return region;
+    return region ? (EGEN_REGION_ALIASES[region] ?? region) : undefined;
   }
 
   private async fetchWithRetry<T>(
