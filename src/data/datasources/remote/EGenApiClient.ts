@@ -9,6 +9,13 @@ import { NetworkError, RateLimitError } from '../../../infrastructure/errors/App
 import { recordEGenPerformance } from '../../../infrastructure/monitoring/searchPerformance';
 import { KakaoPlacesClient } from './KakaoPlacesClient';
 
+export function normalizeEGenRegion(region?: string): string | undefined {
+  if (region === '광주광역시' || region === '전라남도') {
+    return '전남광주통합특별시';
+  }
+  return region;
+}
+
 export class EGenApiClient {
   private readonly timeout: number;
   private readonly maxRetries: number;
@@ -294,17 +301,11 @@ export class EGenApiClient {
   }
 
   private normalizeEmergencyBedStage1(stage1?: string): string | undefined {
-    if (stage1 === '광주광역시' || stage1 === '전라남도') {
-      return '전남광주통합특별시';
-    }
-    return stage1;
+    return normalizeEGenRegion(stage1);
   }
 
   private normalizeHospitalListRegion(region?: string): string | undefined {
-    if (region === '광주광역시' || region === '전라남도') {
-      return '전남광주통합특별시';
-    }
-    return region;
+    return normalizeEGenRegion(region);
   }
 
   private async fetchWithRetry<T>(
