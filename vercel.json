@@ -5,6 +5,9 @@
   "devCommand": "npm run dev:ui",
   "installCommand": "npm install",
   "framework": "vite",
+  "env": {
+    "NODE_OPTIONS": "--disable-warning=DEP0169"
+  },
   "git": {
     "deploymentEnabled": {
       "privacy/*": false,
