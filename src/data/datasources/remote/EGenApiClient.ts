@@ -142,15 +142,18 @@ export class EGenApiClient {
 
   async getCombinedHospitalData(
     stage1?: string,
-    stage2?: string
+    stage2?: string,
+    preloadedBasicInfo?: HospitalBasicInfoDTO[]
   ): Promise<CombinedHospitalDTO[]> {
     console.log('🏥 병원 정보 조회 시작:', { stage1, stage2 });
 
     const fetchStartedAt = performance.now();
-    const basicInfoPromise = this.getHospitalBasicInfo(stage1, stage2).catch((error) => {
-      console.warn('⚠️ E-Gen regional hospital list unavailable; using Kakao fallback', error);
-      return [] as HospitalBasicInfoDTO[];
-    });
+    const basicInfoPromise = preloadedBasicInfo !== undefined
+      ? Promise.resolve(preloadedBasicInfo)
+      : this.getHospitalBasicInfo(stage1, stage2).catch((error) => {
+          console.warn('⚠️ E-Gen regional hospital list unavailable; using Kakao fallback', error);
+          return [] as HospitalBasicInfoDTO[];
+        });
     const bedsPromise = this.getEmergencyRoomBeds(stage1, stage2, 100);
 
     const [beds, basicInfo] = await Promise.all([bedsPromise, basicInfoPromise]);
