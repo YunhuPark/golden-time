@@ -113,6 +113,7 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       const discoveredRegions = new Set<string>(
         geometricRegions.length > 0 ? geometricRegions : [currentRegion]
       );
+      const coordinateDiscoveredUpstreamKeys = new Set<string>();
       let discoveryFailed = false;
       try {
         const nearbyLocations = await discoveryPromise;
@@ -125,7 +126,10 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
           if (hospitalCoords.distanceTo(coords) / 1000 > MAX_DISTANCE_KM) continue;
 
           const region = inferRegionFromHospitalLocation(location.dutyAddr, hospitalCoords);
-          if (region) discoveredRegions.add(region);
+          if (region) {
+            discoveredRegions.add(region);
+            coordinateDiscoveredUpstreamKeys.add(normalizeEGenRegion(region) ?? region);
+          }
         }
       } catch (error) {
         discoveryFailed = true;
@@ -135,9 +139,6 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         );
       }
 
-      // Some first-level regions map to the same upstream E-Gen region key. In
-      // particular, Gwangju and Jeonnam are served by 전남광주통합특별시. Querying
-      // both would duplicate the same hospital-list and realtime-bed requests.
       const upstreamRegionKeys = new Set<string>([
         normalizeEGenRegion(currentRegion) ?? currentRegion,
       ]);
@@ -152,15 +153,88 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
         `🏥 GPS scoped search regions (${1 + neighboringRegions.length}): ${[currentRegion, ...neighboringRegions].join(', ')}`
       );
 
-      const neighborResults = await Promise.allSettled(
-        neighboringRegions.map((region) => this.apiClient.getCombinedHospitalData(region))
+      type NeighborOutcome = {
+        region: string;
+        data: Awaited<ReturnType<EGenApiClient['getCombinedHospitalData']>>;
+        skipped: boolean;
+        error?: unknown;
+      };
+
+      const neighborResults: NeighborOutcome[] = await Promise.all(
+        neighboringRegions.map(async (region): Promise<NeighborOutcome> => {
+          const upstreamKey = normalizeEGenRegion(region) ?? region;
+
+          // Coordinate discovery already observed an actual hospital inside the
+          // radius for this upstream scope. Keep that evidence fail-open instead
+          // of making the regional list a new prerequisite for realtime data.
+          if (coordinateDiscoveredUpstreamKeys.has(upstreamKey)) {
+            try {
+              return {
+                region,
+                data: await this.apiClient.getCombinedHospitalData(region),
+                skipped: false,
+              };
+            } catch (error) {
+              return { region, data: [], skipped: false, error };
+            }
+          }
+
+          const getBasicInfo = this.apiClient.getHospitalBasicInfo?.bind(this.apiClient);
+          if (!getBasicInfo) {
+            try {
+              return {
+                region,
+                data: await this.apiClient.getCombinedHospitalData(region),
+                skipped: false,
+              };
+            } catch (error) {
+              return { region, data: [], skipped: false, error };
+            }
+          }
+
+          try {
+            const basicInfo = await getBasicInfo(region);
+            let hasHospitalWithinRadius = false;
+            let allHospitalsHaveValidCoordinates = basicInfo.length > 0;
+
+            for (const hospital of basicInfo) {
+              const latitude = Number(hospital.wgs84Lat);
+              const longitude = Number(hospital.wgs84Lon);
+              if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                allHospitalsHaveValidCoordinates = false;
+                continue;
+              }
+              if (new Coordinates(latitude, longitude).distanceTo(coords) / 1000 <= MAX_DISTANCE_KM) {
+                hasHospitalWithinRadius = true;
+                break;
+              }
+            }
+
+            // Only skip when the regional list conclusively proves every listed
+            // hospital is outside the radius. Empty/incomplete-coordinate lists
+            // remain fail-open so this optimization cannot reduce coverage.
+            if (!hasHospitalWithinRadius && allHospitalsHaveValidCoordinates) {
+              console.log(`⏭️ Skipping realtime E-Gen fanout for ${region}; regional list has no hospital within ${MAX_DISTANCE_KM}km`);
+              return { region, data: [], skipped: true };
+            }
+
+            return {
+              region,
+              data: await this.apiClient.getCombinedHospitalData(region, undefined, basicInfo),
+              skipped: false,
+            };
+          } catch (error) {
+            console.warn(`⚠️ Regional E-Gen candidate verification failed for ${region}`, error);
+            return { region, data: [], skipped: false, error };
+          }
+        })
       );
 
-      const successfulNeighborCount = neighborResults.filter((result) => result.status === 'fulfilled').length;
+      const successfulNeighborCount = neighborResults.filter((result) => !result.error).length;
       if (currentRegionError && neighboringRegions.length === 0) throw currentRegionError;
       if (currentRegionError && successfulNeighborCount === 0) {
-        const firstFailure = neighborResults.find((result) => result.status === 'rejected');
-        if (firstFailure?.status === 'rejected') throw firstFailure.reason;
+        const firstFailure = neighborResults.find((result) => result.error);
+        if (firstFailure?.error) throw firstFailure.error;
         throw currentRegionError;
       }
 
@@ -187,13 +261,12 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
       };
 
       addItems(currentRegionData);
-      neighborResults.forEach((result, index) => {
-        const region = neighboringRegions[index];
-        if (result.status === 'rejected') {
-          console.warn(`⚠️ Regional E-Gen search failed for ${region}; continuing with remaining regions`, result.reason);
+      neighborResults.forEach((result) => {
+        if (result.error) {
+          console.warn(`⚠️ Regional E-Gen search failed for ${result.region}; continuing with remaining regions`, result.error);
           return;
         }
-        addItems(result.value);
+        addItems(result.data);
       });
 
       const hospitals = HospitalMapper.toDomainList(Array.from(combinedByHpid.values()));
@@ -204,9 +277,8 @@ export class HospitalRepositoryImpl implements IHospitalRepository {
 
       const failedRegions: string[] = [];
       if (currentRegionError) failedRegions.push(currentRegion);
-      neighborResults.forEach((result, index) => {
-        const region = neighboringRegions[index];
-        if (result.status === 'rejected' && region) failedRegions.push(region);
+      neighborResults.forEach((result) => {
+        if (result.error) failedRegions.push(result.region);
       });
       if ((failedRegions.length > 0 || discoveryFailed) && onCoverageWarning) {
         onCoverageWarning(failedRegions, discoveryFailed);
