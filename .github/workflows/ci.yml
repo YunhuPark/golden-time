@@ -112,8 +112,8 @@ jobs:
     - name: Install Playwright Chromium
       run: npx playwright install --with-deps chromium
 
-    - name: Deterministic E2E smoke test
-      run: npx playwright test e2e/ci-smoke.spec.ts --project=chromium
+    - name: Deterministic E2E tests
+      run: npx playwright test --project=chromium
       env:
         VITE_KAKAO_MAP_APP_KEY: dummy_kakao_key
         VITE_SUPABASE_ENABLED: 'false'
