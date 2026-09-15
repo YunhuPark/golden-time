@@ -106,3 +106,45 @@ describe('EGenApiClient regional hospital list', () => {
     expect(parsed.searchParams.get('Q0')).toBe('전남광주통합특별시');
   });
 });
+
+describe('EGenApiClient 응답 무결성', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const respond = (body: unknown) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        response: {
+          header: { resultCode: '00', resultMsg: 'NORMAL SERVICE.' },
+          body,
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  it('결과가 0건이면 빈 목록으로 처리한다', async () => {
+    // E-Gen은 해당 지역에 병원이 없으면 totalCount 0과 함께 items를 생략한다.
+    respond({ numOfRows: 100, pageNo: 1, totalCount: 0 });
+
+    await expect(new EGenApiClient().getHospitalBasicInfo('강원도')).resolves.toEqual([]);
+  });
+
+  // 이 경우를 빈 지역으로 넘기면 해당 지역 병원이 통째로 사라진 채
+  // 부분 커버리지 경고도 뜨지 않는다.
+  it('totalCount가 0이 아닌데 items가 없으면 실패로 올린다', async () => {
+    respond({ numOfRows: 100, pageNo: 1, totalCount: 42 });
+
+    await expect(new EGenApiClient().getHospitalBasicInfo('서울특별시')).rejects.toThrow(/totalCount 42/);
+  });
+
+  it('totalCount를 알 수 없으면 빈 목록으로 둔다', async () => {
+    respond({ numOfRows: 100, pageNo: 1 });
+
+    await expect(new EGenApiClient().getHospitalBasicInfo('제주특별자치도')).resolves.toEqual([]);
+  });
+});
