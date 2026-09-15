@@ -1,254 +1,264 @@
 import { test, expect } from '@playwright/test';
+import {
+  mockEmergencyApis,
+  DEFAULT_HOSPITALS,
+  CT_ONLY_HOSPITAL,
+  MRI_ONLY_HOSPITAL,
+  GWANGJU_COORDS,
+} from './helpers/egen-mocks';
 
 /**
  * E2E Tests for Exception Cases
- * EXCEPTION_HANDLING_GUIDE.md의 케이스들을 자동으로 테스트
+ * EXCEPTION_HANDLING_GUIDE.md의 케이스들을 자동으로 테스트한다.
  *
- * ⚠️ 현재 실행되지 않는다. playwright.config.ts의 testIgnore로 제외되어 있고
- * CI도 ci-smoke.spec.ts만 실행한다. 아래 테스트 대부분이 실제 병원 목록이
- * 렌더링되기를 기대하는데, 그러려면 /api/egen과 /api/kakao/* 응답이 필요하다.
- * 이 경로들은 Vercel 서버리스 함수이고 `npm run dev`(Vite)는 이를 제공하지
- * 않는다. 즉 로컬에서도 CI에서도 통과할 수 없는 상태다.
- *
- * 되살리려면 ci-smoke.spec.ts와 같이 page.route로 /api/* 응답을 고정해
- * 결정론적으로 만들어야 한다. 그때 아래 시나리오들은 그대로 재사용할 수 있다.
+ * 모든 외부 응답은 helpers/egen-mocks.ts에서 고정한다. 실제 E-Gen/Kakao를
+ * 호출하면 로컬(/api 프록시 없음)과 CI 양쪽에서 결과가 달라지기 때문이다.
  */
 
-test.describe('예외 케이스 처리 테스트', () => {
+const ORIGIN = 'http://localhost:3000';
 
-  test.describe('위치 정보 관련', () => {
-    test('위치 권한 거부 시 LocationPermissionPrompt 표시', async ({ page, context }) => {
-      // 위치 권한 거부
-      await context.grantPermissions([], { origin: 'http://localhost:3000' });
+test.describe('예외 케이스 처리', () => {
+  test.describe('위치 정보', () => {
+    test('위치 권한 거부 시 LocationPermissionPrompt와 119 안내가 보인다', async ({ page, context }) => {
+      await context.grantPermissions([], { origin: ORIGIN });
+      await mockEmergencyApis(page);
 
       await page.goto('/');
 
-      // LocationPermissionPrompt가 표시되는지 확인
-      await expect(page.getByText(/위치 권한이 필요합니다/i)).toBeVisible({ timeout: 10000 });
-
-      // 기본 위치 안내 확인
-      await expect(page.getByText(/기본 위치 사용 중/i)).toBeVisible();
-
-      // 재시도 버튼 존재 확인
-      await expect(page.getByRole('button', { name: /다시 시도/i })).toBeVisible();
+      await expect(page.getByText('위치 권한이 필요합니다')).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/기본 위치 사용 중/)).toBeVisible();
+      // PERMISSION_DENIED의 액션 문구. '다시 시도'는 타임아웃 등 다른 오류용이다.
+      await expect(page.getByRole('button', { name: /권한 설정 방법 보기/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /119/ })).toBeVisible();
     });
 
-    test('위치 권한 허용 시 정상 작동', async ({ page, context }) => {
-      // 위치 권한 허용 및 서울시청 좌표 설정
-      await context.setGeolocation({ latitude: 37.5663, longitude: 126.9779 });
-      await context.grantPermissions(['geolocation']);
+    test('위치 권한 허용 시 좌표와 병원 목록이 표시된다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
 
       await page.goto('/');
 
-      // 병원 목록이 로드되는지 확인
-      await expect(page.getByText(/병원/i)).toBeVisible({ timeout: 15000 });
-
-      // 위치 정보 표시 확인
-      await expect(page.getByText(/현재 위치:/i)).toBeVisible();
+      await expect(page.getByText(/현재 위치: 35\.1595, 126\.8526/)).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(MRI_ONLY_HOSPITAL.name).first()).toBeVisible();
     });
   });
 
-  test.describe('네트워크 관련', () => {
-    test('오프라인 시 NetworkStatusBanner 표시', async ({ page, context }) => {
-      await page.goto('/');
+  test.describe('네트워크', () => {
+    test('오프라인 전환 시 NetworkStatusBanner가 보인다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
 
-      // 오프라인 모드로 전환
+      await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+
+      // 페이지 로드 후에 끊는다. 먼저 끊으면 문서 자체를 받지 못한다.
       await context.setOffline(true);
 
-      // 새로고침 트리거
-      await page.reload();
-
-      // 오프라인 배너 확인
-      await expect(page.getByText(/네트워크 연결 없음/i)).toBeVisible({ timeout: 5000 });
-      await expect(page.getByText(/캐시된 데이터를 사용 중/i)).toBeVisible();
+      await expect(page.getByText(/네트워크 연결 없음/)).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(/캐시된 데이터를 사용 중/)).toBeVisible();
     });
 
-    test('네트워크 복구 시 재연결 배너 표시', async ({ page, context }) => {
-      // 먼저 오프라인
-      await context.setOffline(true);
-      await page.goto('/');
+    test('네트워크 복구 시 재연결 배너와 새로고침 버튼이 보인다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
 
-      // 다시 온라인
+      await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+
+      await context.setOffline(true);
+      await expect(page.getByText(/네트워크 연결 없음/)).toBeVisible({ timeout: 10_000 });
+
       await context.setOffline(false);
 
-      // 재연결 배너 확인
-      await expect(page.getByText(/네트워크 연결 복구됨/i)).toBeVisible({ timeout: 5000 });
-
-      // "최신 데이터 불러오기" 버튼 확인
-      await expect(page.getByRole('button', { name: /최신 데이터 불러오기/i })).toBeVisible();
+      // 재연결 배너는 5초 뒤 사라지므로 그 안에 확인해야 한다.
+      await expect(page.getByText(/네트워크 연결 복구됨/)).toBeVisible({ timeout: 4_000 });
+      await expect(page.getByRole('button', { name: /최신 데이터 불러오기/ })).toBeVisible();
     });
   });
 
-  test.describe('검색 결과 관련', () => {
-    test('필터 활성화로 결과 0건 시 EmptyHospitalList 표시', async ({ page }) => {
+  test.describe('검색 결과', () => {
+    test('결과 0건이면 EmptyHospitalList와 119 안내가 보인다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
 
-      // 병원 목록 로드 대기
-      await page.waitForSelector('text=/병원/i', { timeout: 15000 });
+      // 어느 병원도 CT와 MRI를 동시에 갖지 않으므로 결과는 0건이 된다.
+      await page.getByRole('button', { name: /필터/ }).first().click();
+      await page.getByRole('button', { name: /CT 촬영 가능/ }).click();
+      await page.getByRole('button', { name: /MRI 촬영 가능/ }).click();
+      await page.getByRole('button', { name: /필터 적용/ }).click();
 
-      // 필터 버튼 클릭
-      await page.click('button:has-text("필터")');
-
-      // 모든 필터 활성화 (결과 0개로 만들기)
-      await page.click('text=CT 촬영 가능');
-      await page.click('text=MRI 촬영 가능');
-      await page.click('text=수술 가능');
-      await page.click('text=24시간 운영');
-      await page.click('text=병상 여유 있음');
-
-      // 필터 적용
-      await page.click('button:has-text("필터 적용")');
-
-      // EmptyHospitalList 확인
-      await expect(page.getByText(/조건에 맞는 병원이 없습니다/i)).toBeVisible({ timeout: 5000 });
-
-      // 필터 초기화 버튼 확인
-      await expect(page.getByRole('button', { name: /필터 초기화/i })).toBeVisible();
-
-      // 119 긴급 전화 안내 확인
-      await expect(page.getByText(/긴급 상황이신가요/i)).toBeVisible();
+      await expect(page.getByText('조건에 맞는 병원이 없습니다')).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole('button', { name: /필터 초기화/ })).toBeVisible();
+      await expect(page.getByText(/긴급 상황이신가요/)).toBeVisible();
     });
 
-    test('필터 초기화 시 병원 목록 복구', async ({ page }) => {
+    test('필터 초기화 시 병원 목록이 복구된다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
 
-      // 필터 활성화 후 초기화
-      await page.click('button:has-text("필터")');
-      await page.click('text=CT 촬영 가능');
-      await page.click('text=MRI 촬영 가능');
-      await page.click('button:has-text("필터 적용")');
+      await page.getByRole('button', { name: /필터/ }).first().click();
+      await page.getByRole('button', { name: /CT 촬영 가능/ }).click();
+      await page.getByRole('button', { name: /MRI 촬영 가능/ }).click();
+      await page.getByRole('button', { name: /필터 적용/ }).click();
+      await expect(page.getByText('조건에 맞는 병원이 없습니다')).toBeVisible({ timeout: 10_000 });
 
-      // 결과 없음 확인
-      await expect(page.getByText(/조건에 맞는 병원이 없습니다/i)).toBeVisible({ timeout: 5000 });
+      await page.getByRole('button', { name: /필터 초기화/ }).click();
 
-      // 필터 초기화
-      await page.click('button:has-text("필터 초기화")');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(MRI_ONLY_HOSPITAL.name).first()).toBeVisible();
+    });
 
-      // 병원 목록 복구 확인
-      await expect(page.getByText(/병원/i)).toBeVisible({ timeout: 5000 });
+    test('CT 필터만 적용하면 해당 병원만 남는다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
+      await page.goto('/');
+      await expect(page.getByText(MRI_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByRole('button', { name: /필터/ }).first().click();
+      await page.getByRole('button', { name: /CT 촬영 가능/ }).click();
+      await page.getByRole('button', { name: /필터 적용/ }).click();
+
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText(MRI_ONLY_HOSPITAL.name)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /필터 \(1\)/ })).toBeVisible();
     });
   });
 
   test.describe('UI 인터랙션', () => {
-    test('119 긴급 호출 버튼 항상 접근 가능', async ({ page }) => {
+    test('119 호출 버튼은 확인 대화상자를 거친다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
 
-      // 119 버튼 확인
-      const emergencyButton = page.getByRole('button', { name: /119/i });
-      await expect(emergencyButton).toBeVisible();
+      const emergencyButton = page.getByRole('button', { name: /119/ }).first();
+      await expect(emergencyButton).toBeVisible({ timeout: 10_000 });
 
-      // 클릭 시 confirm 다이얼로그 표시 (실제 전화는 안 걸림)
-      page.on('dialog', dialog => {
-        expect(dialog.message()).toContain('119');
-        dialog.dismiss();
+      let dialogMessage = '';
+      page.on('dialog', async (dialog) => {
+        dialogMessage = dialog.message();
+        // 실제로 전화가 걸리지 않도록 반드시 취소한다.
+        await dialog.dismiss();
       });
 
       await emergencyButton.click();
+
+      await expect.poll(() => dialogMessage).toContain('119');
     });
 
-    test('지도/리스트 뷰 전환', async ({ page }) => {
+    test('지도 보기로 전환하면 목록이 숨겨지고 다시 전환하면 돌아온다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
+      const hospitalName = page.getByText(CT_ONLY_HOSPITAL.name).first();
+      await expect(hospitalName).toBeVisible({ timeout: 10_000 });
 
-      // 병원 목록 로드 대기
-      await page.waitForSelector('text=/병원/i', { timeout: 15000 });
+      const mapToggle = page.getByRole('button', { name: /지도 보기/ });
+      await mapToggle.click();
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name)).toHaveCount(0);
 
-      // 지도 보기 버튼 클릭
-      await page.click('button:has-text("지도 보기")');
-
-      // 지도가 표시되는지 확인 (Kakao Map)
-      await expect(page.locator('#kakao-map')).toBeVisible({ timeout: 5000 });
-
-      // 리스트 보기로 다시 전환
-      await page.click('button:has-text("리스트 보기")');
-
-      // 병원 목록 확인
-      await expect(page.getByText(/병원/i)).toBeVisible();
-    });
-
-    test('필터 적용 시 카운트 표시', async ({ page }) => {
-      await page.goto('/');
-
-      // 필터 버튼 클릭
-      await page.click('button:has-text("필터")');
-
-      // CT 필터 활성화
-      await page.click('text=CT 촬영 가능');
-
-      // 필터 적용
-      await page.click('button:has-text("필터 적용")');
-
-      // 필터 카운트 확인
-      await expect(page.getByText(/필터.*1/i)).toBeVisible();
+      await mapToggle.click();
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible();
     });
   });
 
-  test.describe('성능 및 로딩', () => {
-    test('초기 로딩 시간 15초 이내', async ({ page }) => {
-      const startTime = Date.now();
+  test.describe('로딩', () => {
+    test('병원 목록이 15초 안에 렌더링된다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
 
+      const startedAt = Date.now();
       await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 15_000 });
 
-      // 병원 목록 로드 완료까지 대기
-      await page.waitForSelector('text=/병원/i', { timeout: 15000 });
-
-      const loadTime = Date.now() - startTime;
-
-      // 15초 이내 로딩 확인
-      expect(loadTime).toBeLessThan(15000);
-      console.log(`Initial load time: ${loadTime}ms`);
+      expect(Date.now() - startedAt).toBeLessThan(15_000);
     });
 
-    test('병원 목록 스크롤 성능', async ({ page }) => {
+    test('스크롤 후에도 페이지가 응답한다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
 
-      // 병원 목록 로드 대기
-      await page.waitForSelector('text=/병원/i', { timeout: 15000 });
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-      // 스크롤 테스트
-      await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-      });
-
-      // 렌더링 안정성 확인 (에러 없이 스크롤 완료)
-      await page.waitForTimeout(1000);
-
-      // 페이지가 여전히 응답하는지 확인
-      await expect(page.getByText(/Golden Time/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /119/ }).first()).toBeVisible();
     });
   });
 
   test.describe('모바일 UX', () => {
-    test.use({ viewport: { width: 375, height: 667 } }); // iPhone SE
+    test.use({ viewport: { width: 375, height: 667 } });
 
-    test('모바일에서 터치 인터랙션', async ({ page }) => {
+    test('필터 바텀시트를 열고 닫을 수 있다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
+      await expect(page.getByText(CT_ONLY_HOSPITAL.name).first()).toBeVisible({ timeout: 10_000 });
 
-      // 병원 목록 로드 대기
-      await page.waitForSelector('text=/병원/i', { timeout: 15000 });
+      await page.getByRole('button', { name: /필터/ }).first().click();
+      const sheetDescription = page.getByText(/원하는 조건의 병원/);
+      await expect(sheetDescription).toBeVisible();
 
-      // 필터 버튼 터치
-      await page.tap('button:has-text("필터")');
-
-      // BottomSheet 표시 확인
-      await expect(page.getByText(/원하는 조건의 병원/i)).toBeVisible();
-
-      // 닫기 버튼 터치
-      await page.tap('button:has-text("×")');
-
-      // BottomSheet 닫힘 확인
-      await expect(page.getByText(/원하는 조건의 병원/i)).not.toBeVisible();
+      await page.getByRole('button', { name: '×' }).click();
+      await expect(sheetDescription).toBeHidden();
     });
 
-    test('모바일에서 119 긴급 호출 버튼 접근성', async ({ page }) => {
+    test('119 버튼은 터치하기 충분한 크기다', async ({ page, context }) => {
+      await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+      await context.setGeolocation(GWANGJU_COORDS);
+      await mockEmergencyApis(page);
+
       await page.goto('/');
 
-      // 119 버튼이 상단에 고정되어 있고 접근 가능한지 확인
-      const emergencyButton = page.getByRole('button', { name: /119/i });
-      await expect(emergencyButton).toBeVisible();
+      const emergencyButton = page.getByRole('button', { name: /119/ }).first();
+      await expect(emergencyButton).toBeVisible({ timeout: 10_000 });
 
-      // 버튼 크기 확인 (터치하기 충분히 큰지)
       const box = await emergencyButton.boundingBox();
-      expect(box!.height).toBeGreaterThanOrEqual(44); // 최소 44px (Apple HIG)
+      // Apple HIG 최소 터치 타깃
+      expect(box!.height).toBeGreaterThanOrEqual(44);
     });
   });
+});
+
+test.describe('데이터 없음', () => {
+  test('주변 병원이 없으면 빈 목록 안내가 보인다', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation'], { origin: ORIGIN });
+    await context.setGeolocation(GWANGJU_COORDS);
+    await mockEmergencyApis(page, []);
+
+    await page.goto('/');
+
+    await expect(page.getByText(/병원이 없습니다/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /119/ }).first()).toBeVisible();
+  });
+});
+
+// DEFAULT_HOSPITALS의 구성이 필터 시나리오의 전제다. 어긋나면 위 테스트들이
+// 조용히 무의미해지므로 여기서 고정한다.
+test('픽스처 전제: CT와 MRI를 동시에 갖춘 병원이 없다', () => {
+  expect(DEFAULT_HOSPITALS.some((h) => h.ct && h.mri)).toBe(false);
+  expect(DEFAULT_HOSPITALS.some((h) => h.ct)).toBe(true);
+  expect(DEFAULT_HOSPITALS.some((h) => h.mri)).toBe(true);
 });
