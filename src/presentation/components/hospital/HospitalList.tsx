@@ -4,6 +4,7 @@ import { Coordinates } from '../../../domain/valueObjects/Coordinates';
 import { HospitalSearchWarning } from '../../../domain/usecases/GetNearbyHospitals';
 import { SortOption } from '../../../domain/types/SortOption';
 import { HospitalSortService } from '../../../domain/services/HospitalSortService';
+import { HospitalSpecialtyService } from '../../../domain/services/HospitalSpecialtyService';
 import { HospitalCard } from './HospitalCard';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { SortSelector } from './SortSelector';
@@ -18,6 +19,8 @@ interface HospitalListProps {
   sortOption: SortOption;
   onSortChange: (option: SortOption) => void;
   routeCalcStatus?: Record<string, 'CALCULATING' | 'FAILED'>;
+  /** 수집된 특화 분야를 불러오기 전에는 카드에 표시하지 않는다. */
+  specialtiesReady?: boolean;
   onHospitalClick?: (hospital: Hospital) => void;
 }
 
@@ -33,6 +36,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
   sortOption,
   onSortChange,
   routeCalcStatus,
+  specialtiesReady = false,
   onHospitalClick,
 }) => {
   const { themeMode, aiContext } = useAppStore();
@@ -188,6 +192,7 @@ export const HospitalList: React.FC<HospitalListProps> = ({
             userLocation={userLocation}
             aiContext={aiContext}
             routeStatus={routeCalcStatus?.[hospital.id]}
+            specialtyInfo={specialtiesReady ? HospitalSpecialtyService.getSpecialtyInfo(hospital) : null}
             onClick={() => onHospitalClick?.(hospital)}
           />
         ))}

@@ -1,95 +1,99 @@
 import { Hospital } from '../entities/Hospital';
-
-import { supabase } from '../../infrastructure/supabase/supabaseClient';
+import { supabase, supabaseOptionalFeaturesEnabled } from '../../infrastructure/supabase/supabaseClient';
 
 /**
- * 전국의 병원 전문/강점 분야를 매핑하는 DB 및 추론 엔진
+ * AI 크롤러(scripts/ai-crawler)가 수집해 둔 병원별 특화 분야를 읽는다.
+ *
+ * 여기서 다루는 값은 공개 자료에서 추출한 참고 정보이지 진료 역량의 증명이
+ * 아니다. 따라서 병원 순위나 추천에는 쓰지 않고, 출처와 신뢰도를 함께 노출해
+ * 표시 용도로만 사용한다.
  */
+
+export interface HospitalSpecialtyInfo {
+  specialties: string[];
+  /** 0~100. 크롤러가 기록하지 않았으면 null */
+  confidenceScore: number | null;
+  /** 'ai_crawler' | 'no_data' | 'ai_empty' 등 크롤러가 남긴 출처 */
+  inferredFrom: string;
+}
+
+interface SpecialtyRow {
+  hpid: string;
+  specialties: string[] | null;
+  confidence_score: number | null;
+  inferred_from: string | null;
+}
+
 export class HospitalSpecialtyService {
-  // Supabase에서 불러온 병원별 특화 분야 캐시
-  private static dbSpecialties: Record<string, string[]> = {};
-  private static isLoaded = false;
+  private static byHpid = new Map<string, HospitalSpecialtyInfo>();
+  private static loaded = false;
 
   /**
-   * Supabase에서 전체 병원 특화 정보를 한 번 로드하여 메모리에 캐싱합니다.
+   * 특화 분야를 한 번 불러와 메모리에 캐싱한다.
+   * Supabase 선택 기능이 꺼져 있으면 아무것도 하지 않는다.
    */
-  static async loadSpecialtiesFromDB(): Promise<void> {
-    if (this.isLoaded) return;
+  static async load(): Promise<void> {
+    if (this.loaded || !supabaseOptionalFeaturesEnabled) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('hospital_specialties')
-        .select('hospital_name, specialties');
+    const { data, error } = await supabase
+      .from('hospital_specialties')
+      .select('hpid, specialties, confidence_score, inferred_from');
 
-      if (error) {
-        console.error('Failed to load hospital specialties from Supabase:', error);
-        return;
-      }
-
-      if (data) {
-        data.forEach((row) => {
-          this.dbSpecialties[row.hospital_name] = row.specialties;
-        });
-      }
-      
-      this.isLoaded = true;
-      console.log(`✅ Loaded ${data?.length || 0} hospital specialties from DB`);
-    } catch (err) {
-      console.error('Exception loading hospital specialties:', err);
+    if (error) {
+      console.warn('병원 특화 분야를 불러오지 못했습니다:', error.message);
+      return;
     }
+
+    for (const row of (data ?? []) as SpecialtyRow[]) {
+      if (!row.hpid) continue;
+
+      const specialties = (row.specialties ?? []).filter((s) => typeof s === 'string' && s.trim() !== '');
+      // 크롤러는 수집 실패도 빈 값으로 기록한다(negative cache). 표시할 게 없으므로 담지 않는다.
+      if (specialties.length === 0) continue;
+
+      this.byHpid.set(row.hpid, {
+        specialties,
+        confidenceScore: typeof row.confidence_score === 'number' ? row.confidence_score : null,
+        inferredFrom: row.inferred_from ?? 'unknown',
+      });
+    }
+
+    this.loaded = true;
   }
 
   /**
-   * 특정 병원의 전문/강점 분야를 반환합니다.
-   * 1. DB에 매칭되는 병원이 있으면 해당 강점을 반환
-   * 2. 없으면 병원 이름과 메타데이터를 분석하여 Heuristic하게 추론(Fallback)
+   * 수집된 특화 분야를 반환한다. 병원 이름에서 추론하지 않는다.
+   *
+   * 이름에 '뇌'가 들어간다고 뇌졸중을 다룬다고 볼 수 없고, '대학'이 들어간다고
+   * 중환자의학 역량을 보장할 수 없다. 응급 상황에서 근거 없는 임상적 주장은
+   * 정보가 없는 것보다 나쁘다.
    */
+  static getSpecialtyInfo(hospital: Hospital): HospitalSpecialtyInfo | null {
+    return this.byHpid.get(hospital.id) ?? null;
+  }
+
   static getSpecialties(hospital: Hospital): string[] {
-    const specialties = new Set<string>();
-
-    // 1. DB 매칭 (정확한 이름 또는 포함하는 이름)
-    for (const [dbName, dbSpecs] of Object.entries(this.dbSpecialties)) {
-      if (hospital.name.includes(dbName)) {
-        dbSpecs.forEach(s => specialties.add(s));
-      }
-    }
-
-    // 2. Heuristic 추론 엔진 (DB에 없는 타 지역 병원이거나 기본 중증 질환 강점 추가)
-    const name = hospital.name;
-
-    // 대형 대학병원급은 중증 질환 전반에 강점이 있다고 추론
-    if (name.includes('대학교') || name.includes('국립') || name.includes('대학')) {
-      ['패혈증', '호흡곤란증후군', '중환자의학'].forEach(s => specialties.add(s));
-    }
-
-    // 이름에 특정 키워드가 포함된 전문 병원 추론
-    if (name.includes('심혈관') || name.includes('심장')) {
-      ['심근경색', '심혈관'].forEach(s => specialties.add(s));
-    }
-    if (name.includes('뇌') || name.includes('신경')) {
-      ['뇌졸중', '뇌종양'].forEach(s => specialties.add(s));
-    }
-
-    // 권역외상센터나 권역응급의료센터인 경우 (traumaLevel이 1 또는 2)
-    if (hospital.traumaLevel === 1) {
-      ['중증외상', '저혈량성 쇼크', '출혈성 쇼크'].forEach(s => specialties.add(s));
-    }
-
-    return Array.from(specialties);
+    return this.getSpecialtyInfo(hospital)?.specialties ?? [];
   }
 
   /**
-   * 환자의 질환(targetDisease)이 해당 병원의 강점(Specialty)과 일치하는지 확인합니다.
+   * 수집된 특화 분야 중 해당 질환과 일치하는 것이 있는지 확인한다.
+   * 표기 차이를 흡수하되, 양방향 부분일치처럼 느슨하게 보지는 않는다.
    */
   static hasSpecialtyMatch(hospital: Hospital, targetDisease: string): boolean {
-    if (!targetDisease) return false;
-    
-    const specialties = this.getSpecialties(hospital);
-    
-    // 타겟 질환에 특화 분야 키워드가 포함되어 있는지 검사 (예: targetDisease="패혈증 (Sepsis)")
-    return specialties.some(specialty => 
-      targetDisease.toLowerCase().includes(specialty.toLowerCase()) || 
-      specialty.toLowerCase().includes(targetDisease.toLowerCase())
-    );
+    const normalized = this.normalize(targetDisease);
+    if (!normalized) return false;
+
+    return this.getSpecialties(hospital).some((specialty) => this.normalize(specialty) === normalized);
+  }
+
+  /** 테스트와 로그아웃 등으로 캐시를 비울 때 사용한다. */
+  static reset(): void {
+    this.byHpid.clear();
+    this.loaded = false;
+  }
+
+  private static normalize(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, '');
   }
 }
