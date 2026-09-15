@@ -359,7 +359,15 @@ export class EGenApiClient {
     if (header.resultCode !== '00') {
       throw new NetworkError(`API Error: ${header.resultMsg}`);
     }
-    if (!body?.items?.item) return [];
+    if (!body?.items?.item) {
+      // E-Gen은 결과가 0건이면 totalCount를 0으로 두고 items를 생략한다.
+      // totalCount가 0이 아닌데 items가 없으면 응답이 잘린 것이므로, 조용히
+      // 빈 지역으로 넘기지 않고 실패로 올려 부분 커버리지 경고에 태운다.
+      if (typeof body?.totalCount === 'number' && body.totalCount > 0) {
+        throw new NetworkError(`API Error: totalCount ${body.totalCount} but no items returned`);
+      }
+      return [];
+    }
     return Array.isArray(body.items.item) ? body.items.item : [body.items.item];
   }
 
