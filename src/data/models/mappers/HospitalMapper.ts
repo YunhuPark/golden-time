@@ -8,8 +8,10 @@ export class HospitalMapper {
       const { basicInfo, bedInfo } = dto;
       if (!basicInfo.hpid || !basicInfo.dutyName) return null;
 
-      const coordinates = this.parseCoordinates(basicInfo.wgs84Lat, basicInfo.wgs84Lon)
-        ?? new Coordinates(37.5663, 126.9779);
+      // 좌표를 확인할 수 없으면 병원을 제외한다. 임의의 기본 좌표를 쓰면 실제로는
+      // 먼 곳에 있는 병원이 가까운 것처럼 표시되고 거리 기준 순위 상단에 올라온다.
+      const coordinates = this.parseCoordinates(basicInfo.wgs84Lat, basicInfo.wgs84Lon);
+      if (!coordinates) return null;
 
       const resources = this.parseBedInfo(bedInfo);
       const hasCT = bedInfo?.hvctayn === 'Y';
@@ -53,7 +55,18 @@ export class HospitalMapper {
   }
 
   static toDomainList(dtos: CombinedHospitalDTO[]): Hospital[] {
-    return dtos.map(dto => this.toDomain(dto)).filter((h): h is Hospital => h !== null);
+    const hospitals = dtos
+      .map(dto => this.toDomain(dto))
+      .filter((h): h is Hospital => h !== null);
+
+    // 몇 건이 빠졌는지 보이지 않으면 데이터 품질 저하를 알아챌 수 없다.
+    // 병원명이나 좌표는 남기지 않는다.
+    const dropped = dtos.length - hospitals.length;
+    if (dropped > 0) {
+      console.warn(`⚠️ 좌표 또는 식별자를 확인할 수 없어 병원 ${dropped}건을 목록에서 제외했습니다.`);
+    }
+
+    return hospitals;
   }
 
   private static parseCoordinates(lat?: string | number, lon?: string | number): Coordinates | null {
