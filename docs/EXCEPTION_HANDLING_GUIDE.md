@@ -281,4 +281,4 @@
 ### 액션 아이템 현황
 1. ✅ 네트워크 끊김 감지 — `src/presentation/hooks/useNetworkStatus.ts`에 구현되어 `HomePage`에서 오프라인/재연결 배너로 사용 중
 2. ✅ Sentry 통합 — `src/infrastructure/monitoring/sentry.ts` (`VITE_SENTRY_DSN`이 설정된 경우에만 초기화)
-3. ⚠️ E2E 자동화 — `e2e/ci-smoke.spec.ts`만 CI에서 실행된다. `e2e/exception-cases.spec.ts`는 외부 API를 목킹하지 않아 `/api/*` 서버리스 프록시가 없는 `npm run dev` 환경에서 통과할 수 없어 `playwright.config.ts`의 `testIgnore`로 제외되어 있다. 되살리려면 `ci-smoke.spec.ts`처럼 `page.route`로 응답을 고정해야 한다.
+3. ✅ E2E 자동화 — `e2e/ci-smoke.spec.ts`와 `e2e/exception-cases.spec.ts` 모두 CI에서 실행된다. 외부 응답은 `e2e/helpers/egen-mocks.ts`에서 고정하므로 `/api/*` 서버리스 프록시가 없는 로컬에서도 동일하게 통과한다. 새 예외 케이스를 추가할 때는 이 헬퍼의 픽스처를 확장한다.
