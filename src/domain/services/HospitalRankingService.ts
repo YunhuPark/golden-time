@@ -73,9 +73,11 @@ export class HospitalRankingService {
 
   private static calculateTimeScore(hospital: Hospital, allHospitals: Hospital[]): number {
     const MAX_SCORE = 40;
-    if (!hospital.routeDuration) return 0;
+    // 0초는 경로를 모르는 것이 아니라 바로 옆이라는 뜻이다. falsy로 판단하면
+    // 가장 가까운 병원이 시간 점수 0점을 받고 기본 정렬에서 밀린다.
+    if (hospital.routeDuration == null) return 0;
 
-    const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration);
+    const hospitalsWithRoute = allHospitals.filter((h) => h.routeDuration != null);
     if (hospitalsWithRoute.length <= 1) return MAX_SCORE;
 
     const minDuration = Math.min(...hospitalsWithRoute.map((h) => h.routeDuration!));
