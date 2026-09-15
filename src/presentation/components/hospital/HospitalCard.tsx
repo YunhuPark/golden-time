@@ -3,6 +3,7 @@ import { Hospital, AvailabilityStatus } from '../../../domain/entities/Hospital'
 import { Coordinates } from '../../../domain/valueObjects/Coordinates';
 import { useAppStore } from '../../../infrastructure/state/store';
 import { GeofencingService } from '../../../domain/services/GeofencingService';
+import type { HospitalSpecialtyInfo } from '../../../domain/services/HospitalSpecialtyService';
 import { HospitalAICardService } from '../../../domain/services/HospitalAICardService';
 import { AIAnalysisContext } from '../../../domain/types/AIContext';
 import { cn } from '../../../lib/utils';
@@ -15,6 +16,7 @@ interface HospitalCardProps {
   userLocation: Coordinates | null;
   aiContext?: AIAnalysisContext | null;
   routeStatus?: 'CALCULATING' | 'FAILED';
+  specialtyInfo?: HospitalSpecialtyInfo | null;
   onClick?: () => void;
 }
 
@@ -23,6 +25,7 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
   userLocation,
   aiContext,
   routeStatus,
+  specialtyInfo,
   onClick,
 }) => {
   const { user, openLoginModal, themeMode } = useAppStore();
@@ -320,6 +323,13 @@ export const HospitalCard: React.FC<HospitalCardProps> = ({
       )}
       {hospital.traumaLevel && (
         <div className="text-xs sm:text-[13px] text-muted-foreground mb-3">🚑 {hospital.traumaLevel === 1 ? '권역외상센터' : hospital.traumaLevel === 2 ? '지역외상센터' : '지역응급의료센터'}</div>
+      )}
+      {specialtyInfo && specialtyInfo.specialties.length > 0 && (
+        <div className="text-xs sm:text-[13px] text-muted-foreground mb-3 break-words">
+          📚 공개 자료 참고: {specialtyInfo.specialties.slice(0, 3).join(', ')}
+          {specialtyInfo.specialties.length > 3 && ' 외'}
+          {specialtyInfo.confidenceScore !== null && ` · 신뢰도 ${specialtyInfo.confidenceScore}`}
+        </div>
       )}
       {estimatedArrivalTime && (
         <div className={cn('text-xs sm:text-sm font-semibold mb-3 p-2 rounded-md', isDark ? 'text-info bg-info/10' : 'text-[#1E88E5] bg-blue-50')}>

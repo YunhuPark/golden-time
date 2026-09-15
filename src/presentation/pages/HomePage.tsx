@@ -25,6 +25,7 @@ import { logError, logEvent } from '../../infrastructure/monitoring/telemetry';
 import { Hospital } from '../../domain/entities/Hospital';
 import { applyFilters } from '../../domain/types/HospitalFilter';
 import { HospitalRankingService } from '../../domain/services/HospitalRankingService';
+import { HospitalSpecialtyService } from '../../domain/services/HospitalSpecialtyService';
 
 /**
  * HomePage Component
@@ -134,6 +135,19 @@ export const HomePage: React.FC = () => {
       setLocationError(error.message);
     }
   }, [location, error, setUserLocation, setLocationError]);
+
+  // 수집된 병원 특화 분야를 한 번 불러온다. Supabase 선택 기능이 꺼져 있으면
+  // 서비스가 알아서 아무것도 하지 않는다. 상태를 갱신해야 카드가 다시 그려진다.
+  const [specialtiesLoaded, setSpecialtiesLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void HospitalSpecialtyService.load().then(() => {
+      if (!cancelled) setSpecialtiesLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user || hospitals.length === 0) {
@@ -639,6 +653,7 @@ export const HomePage: React.FC = () => {
               sortOption={sortOption}
               onSortChange={setSortOption}
               routeCalcStatus={routeCalcStatus}
+              specialtiesReady={specialtiesLoaded}
               onHospitalClick={(hospital) => {
                 setSelectedHospital(hospital);
                 setModalHospital(hospital);
