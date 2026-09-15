@@ -106,6 +106,9 @@ jobs:
     - name: API Tests
       run: npm run test:api
 
+    - name: AI Crawler Tests
+      run: npm run test:crawler
+
     - name: Install Playwright Chromium
       run: npx playwright install --with-deps chromium
 
