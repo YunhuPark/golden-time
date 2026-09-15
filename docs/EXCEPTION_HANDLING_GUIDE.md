@@ -72,25 +72,10 @@
 
 ## 🚧 추가 구현 필요한 예외 케이스
 
-### 7. 네트워크 완전 끊김 (Offline Mode)
+### 7. 네트워크 완전 끊김 (Offline Mode) — ✅ 구현됨
 - **상황**: 인터넷 연결이 완전히 끊어짐
-- **현재 문제**: API 호출 실패 시 일반 에러로 처리됨
-- **개선 방안**:
-  ```typescript
-  // Network status 감지
-  window.addEventListener('offline', () => {
-    // 즉시 캐시 모드 전환
-    setNetworkStatus('offline');
-    showOfflineNotification();
-  });
-
-  // Online 복구 시 자동 새로고침
-  window.addEventListener('online', () => {
-    setNetworkStatus('online');
-    autoRefreshHospitals();
-  });
-  ```
-- **우선순위**: ⭐⭐⭐ (높음)
+- **현재 동작**: `useNetworkStatus`가 `online`/`offline` 이벤트를 구독하고 `navigator.onLine` 오탐을 보정한다. `HomePage`는 이 상태로 오프라인 배너와 재연결 안내를 표시한다.
+- **구현 위치**: `src/presentation/hooks/useNetworkStatus.ts`, `src/presentation/pages/HomePage.tsx`
 
 ### 8. 데이터 파싱 실패 (Malformed API Response)
 - **상황**: API 응답이 예상과 다른 형식으로 반환됨
@@ -293,7 +278,7 @@
 3. **테스트되어야 함**: 수동/자동 테스트 시나리오 포함
 4. **모니터링되어야 함**: 실운영 환경에서 발생 빈도 추적
 
-### 다음 스프린트 액션 아이템
-1. ⭐⭐⭐ 우선순위 케이스 구현 (네트워크 끊김 감지)
-2. Sentry 등 에러 모니터링 도구 통합
-3. E2E 테스트로 예외 케이스 자동화
+### 액션 아이템 현황
+1. ✅ 네트워크 끊김 감지 — `src/presentation/hooks/useNetworkStatus.ts`에 구현되어 `HomePage`에서 오프라인/재연결 배너로 사용 중
+2. ✅ Sentry 통합 — `src/infrastructure/monitoring/sentry.ts` (`VITE_SENTRY_DSN`이 설정된 경우에만 초기화)
+3. ⚠️ E2E 자동화 — `e2e/ci-smoke.spec.ts`만 CI에서 실행된다. `e2e/exception-cases.spec.ts`는 외부 API를 목킹하지 않아 `/api/*` 서버리스 프록시가 없는 `npm run dev` 환경에서 통과할 수 없어 `playwright.config.ts`의 `testIgnore`로 제외되어 있다. 되살리려면 `ci-smoke.spec.ts`처럼 `page.route`로 응답을 고정해야 한다.

@@ -3,6 +3,15 @@ import { test, expect } from '@playwright/test';
 /**
  * E2E Tests for Exception Cases
  * EXCEPTION_HANDLING_GUIDE.md의 케이스들을 자동으로 테스트
+ *
+ * ⚠️ 현재 실행되지 않는다. playwright.config.ts의 testIgnore로 제외되어 있고
+ * CI도 ci-smoke.spec.ts만 실행한다. 아래 테스트 대부분이 실제 병원 목록이
+ * 렌더링되기를 기대하는데, 그러려면 /api/egen과 /api/kakao/* 응답이 필요하다.
+ * 이 경로들은 Vercel 서버리스 함수이고 `npm run dev`(Vite)는 이를 제공하지
+ * 않는다. 즉 로컬에서도 CI에서도 통과할 수 없는 상태다.
+ *
+ * 되살리려면 ci-smoke.spec.ts와 같이 page.route로 /api/* 응답을 고정해
+ * 결정론적으로 만들어야 한다. 그때 아래 시나리오들은 그대로 재사용할 수 있다.
  */
 
 test.describe('예외 케이스 처리 테스트', () => {
