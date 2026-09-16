@@ -63,7 +63,7 @@ Google 계정으로 간편하게 로그인할 수 있도록 OAuth 2.0을 설정�
    - **ADD URI** 클릭
    - 다음 URI를 **정확히** 입력:
      ```
-     https://aiggzhblnuxkgzzmsgrl.supabase.co/auth/v1/callback
+     https://<your-project-ref>.supabase.co/auth/v1/callback
      ```
 
    ⚠️ **중요**: URL을 정확하게 입력하세요! 오타가 있으면 작동하지 않습니다.
@@ -79,7 +79,7 @@ Google 계정으로 간편하게 로그인할 수 있도록 OAuth 2.0을 설정�
 ## 2단계: Supabase에 Google OAuth 등록
 
 1. **Supabase Dashboard 접속**
-   - https://supabase.com/dashboard/project/aiggzhblnuxkgzzmsgrl/auth/providers
+   - https://supabase.com/dashboard/project/<your-project-ref>/auth/providers
 
 2. **Google Provider 활성화**
    - **Google** 항목 찾기
@@ -113,7 +113,7 @@ Google 계정으로 간편하게 로그인할 수 있도록 OAuth 2.0을 설정�
 1. 프로젝트 생성
 2. OAuth 동의 화면 구성
 3. OAuth 2.0 Client ID 생성
-4. Redirect URI: `https://aiggzhblnuxkgzzmsgrl.supabase.co/auth/v1/callback`
+4. Redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`
 
 ### Supabase Dashboard에서:
 1. Authentication → Providers → Google
@@ -128,7 +128,7 @@ Google 계정으로 간편하게 로그인할 수 있도록 OAuth 2.0을 설정�
 - **원인**: Redirect URI가 정확하지 않음
 - **해결**: Google Cloud Console에서 정확한 URI 재확인
   ```
-  https://aiggzhblnuxkgzzmsgrl.supabase.co/auth/v1/callback
+  https://<your-project-ref>.supabase.co/auth/v1/callback
   ```
 
 ### "Access blocked: This app's request is invalid"

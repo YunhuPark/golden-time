@@ -91,7 +91,7 @@ CREATE POLICY "Anyone can update view count"
 `.env` 파일에 다음 값들이 설정되어 있는지 확인:
 
 ```env
-VITE_SUPABASE_URL=https://aiggzhblnuxkgzzmsgrl.supabase.co
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
