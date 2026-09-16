@@ -103,6 +103,13 @@ Supabase 기반 인증/즐겨찾기/프로필/리뷰/방문기록은 **선택 �
 - URL/key 누락, 잘못된 URL, 알려진 비가용 프로젝트, project mismatch 시 fail-closed
 - Supabase가 없어도 병원 검색, E-Gen, Kakao 기능은 정상 동작
 
+### 📚 병원 특화 분야 참고 정보 (선택)
+
+`scripts/ai-crawler`가 공개 자료에서 추출해 `hospital_specialties` 테이블에 모아둔 값을 병원 카드에 표시합니다. Supabase 선택 기능이 켜져 있을 때만 동작합니다.
+
+- 병원 이름에서 추론하지 않고 **수집된 값만** 사용하며, 출처와 신뢰도를 함께 표시
+- **표시 전용입니다.** 공개 기사 기반 참고 정보이므로 병원 순위나 추천에는 반영하지 않습니다
+
 ### 🔐 로컬 암호화 시연
 
 의료 프로필 관련 일부 로컬 데이터에 Web Crypto API(AES-GCM)를 사용하는 시연 코드가 포함되어 있습니다.
@@ -167,14 +174,18 @@ GitHub Actions는 Node 24.x에서 `npm ci` 기반으로 재현 가능한 설치�
 ```text
 npm audit --omit=dev --audit-level=moderate
 Environment validation tests
+Vercel runtime configuration tests
 Security header regression tests
 Brand metadata regression tests
 Storage scope regression tests
+GitHub Actions security regression tests
 Unit Tests
 Frontend Type Check
 API Type Check
 ESLint
 API Tests
+AI Crawler Tests
+Deterministic E2E tests
 Production Build
 ```
 
