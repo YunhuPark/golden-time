@@ -71,13 +71,19 @@ export class GetNearbyHospitals {
         (h) => h.isOperating
       );
 
+      // 검색 범위 일부를 못 불러왔다면 "없다"고 단정할 수 없다. 아래 두 경고는
+      // 119 안내가 붙어 있어 유지하되, 단정적인 문구만 누그러뜨린다.
+      const partialCoverageNote = coverageWarning
+        ? ' 다만 일부 검색 범위를 불러오지 못해 확인되지 않은 응급실이 있을 수 있습니다.'
+        : '';
+
       if (availableHospitals.length === 0) {
         recordFirstHospitalResults(performanceSearchId, allHospitals.length);
         return {
           hospitals: allHospitals,
           warning: {
             type: 'NO_HOSPITALS_FOUND',
-            message: `운영중인 응급실이 없습니다. 아래 병원들은 현재 미운영 상태입니다.`,
+            message: `운영중인 응급실이 없습니다. 아래 병원들은 현재 미운영 상태입니다.${partialCoverageNote}`,
             action: {
               type: 'CALL_119',
               label: '119 구급대 호출',
@@ -91,7 +97,8 @@ export class GetNearbyHospitals {
         };
       }
 
-      const hasAvailableBeds = allHospitals.some((h) => h.availableBeds > 0);
+      // 미운영 병원이 병상을 보고해도 갈 수 있는 응급실은 아니다.
+      const hasAvailableBeds = availableHospitals.some((h) => h.availableBeds > 0);
       if (!hasAvailableBeds) {
         console.warn('⚠️ 반경 내 가용 병상이 있는 응급실이 없습니다.');
         recordFirstHospitalResults(performanceSearchId, allHospitals.length);
@@ -99,7 +106,7 @@ export class GetNearbyHospitals {
           hospitals: allHospitals,
           warning: {
             type: 'NO_BEDS_AVAILABLE',
-            message: '주변의 모든 응급실이 만실 상태입니다. 위급 상황 시 119에 연락하세요.',
+            message: `주변의 모든 응급실이 만실 상태입니다. 위급 상황 시 119에 연락하세요.${partialCoverageNote}`,
             action: {
               type: 'CALL_119',
               label: '119 전화하기',
