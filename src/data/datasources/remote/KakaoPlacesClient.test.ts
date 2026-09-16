@@ -178,3 +178,60 @@ describe('KakaoPlacesClient.keywordToCoordinates', () => {
     expect(queries).toEqual([name, `${name} 광주광역시`]);
   });
 });
+
+describe('KakaoPlacesClient SDK 대기', () => {
+  const doc = {
+    y: '35.1524229',
+    x: '126.8539184',
+    road_address_name: '광주광역시 서구 상무자유로 181-7',
+    category_group_code: 'HP8',
+  };
+
+  afterEach(() => {
+    delete window.kakaoSDKReady;
+    delete (window as { kakao?: unknown }).kakao;
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  // 예전에는 SDK 로딩을 100ms 간격으로 5초간 폴링했다. 가짜 타이머를 쓰면
+  // 폴링이 남아 있을 경우 타이머를 진행시키지 않는 한 끝나지 않는다.
+  it('SDK 로더가 시작되지 않았으면 기다리지 않는다', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documents: [] }) }));
+    vi.useFakeTimers();
+
+    const result = await new KakaoPlacesClient().keywordToCoordinates('SDK없음병원');
+
+    expect(result).toBeNull();
+  });
+
+  it('SDK 로딩이 실패로 끝나면 기다리지 않는다', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documents: [] }) }));
+    window.kakaoSDKReady = Promise.resolve(false);
+    vi.useFakeTimers();
+
+    const result = await new KakaoPlacesClient().keywordToCoordinates('SDK실패병원');
+
+    expect(result).toBeNull();
+  });
+
+  it('프록시가 비면 SDK 검색으로 넘어간다', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documents: [] }) }));
+
+    const keywordSearch = vi.fn((_query: string, callback: (r: unknown[], s: string) => void) => {
+      callback([doc], 'OK');
+    });
+    (window as unknown as { kakao: unknown }).kakao = {
+      maps: { services: { Places: function () { return { keywordSearch }; }, Status: { OK: 'OK' } } },
+    };
+    window.kakaoSDKReady = Promise.resolve(true);
+
+    const result = await new KakaoPlacesClient().keywordToCoordinates('SDK사용병원');
+
+    expect(keywordSearch).toHaveBeenCalled();
+    expect(result?.latitude).toBeCloseTo(35.1524229, 6);
+  });
+});
