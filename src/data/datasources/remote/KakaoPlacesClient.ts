@@ -61,43 +61,19 @@ export class KakaoPlacesClient {
   private async waitForKakaoSDK(): Promise<void> {
     if (typeof window === 'undefined') return;
 
-    if (window.kakaoSDKReady) {
-      const isReady = await window.kakaoSDKReady;
-      if (!isReady || typeof window === 'undefined') return;
-    }
+    // main.tsx가 부트스트랩에서 이 약속을 심는다. 없다면 SDK 로딩이 시작조차
+    // 되지 않은 환경(테스트/SSR)이므로 기다릴 대상이 없다.
+    if (!window.kakaoSDKReady) return;
 
-    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+    const isReady = await window.kakaoSDKReady;
+    // jsdom/SSR 환경에서는 대기 중에 window가 사라질 수 있다.
+    if (!isReady || typeof window === 'undefined') return;
+
+    // 이 약속은 kakao.maps.load() 콜백 안에서 resolve되므로, true라면
+    // services는 이미 붙어 있다. 따로 폴링할 필요가 없다.
+    if (window.kakao?.maps?.services) {
       this.placesService = new window.kakao.maps.services.Places();
-      return;
     }
-
-    const maxWaitTime = 5000;
-    const checkInterval = 100;
-    let waited = 0;
-
-    return new Promise((resolve) => {
-      const checkSDK = setInterval(() => {
-        // jsdom/SSR environments may remove the browser global while this
-        // asynchronous poll is still alive. Stop cleanly instead of touching
-        // a destroyed window object.
-        if (typeof window === 'undefined') {
-          clearInterval(checkSDK);
-          resolve();
-          return;
-        }
-
-        if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-          clearInterval(checkSDK);
-          this.placesService = new window.kakao.maps.services.Places();
-          resolve();
-        } else if (waited >= maxWaitTime) {
-          clearInterval(checkSDK);
-          resolve();
-        } else {
-          waited += checkInterval;
-        }
-      }, checkInterval);
-    });
   }
 
   async keywordToCoordinates(
