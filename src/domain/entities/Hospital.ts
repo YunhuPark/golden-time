@@ -156,18 +156,20 @@ export class Hospital {
     );
   }
 
+  // 경로 값이 0이면 "모른다"가 아니라 "바로 앞"이다. falsy로 판단하면 가장
+  // 가까운 병원만 도착 정보가 비어 보인다.
   getEstimatedArrivalTime(): Date | null {
-    if (!this.routeDuration) return null;
+    if (this.routeDuration == null) return null;
     return new Date(Date.now() + this.routeDuration * 1000);
   }
 
   getRouteDurationMinutes(): number | null {
-    if (!this.routeDuration) return null;
+    if (this.routeDuration == null) return null;
     return Math.ceil(this.routeDuration / 60);
   }
 
   getRouteDistanceKm(): number | null {
-    if (!this.routeDistance) return null;
+    if (this.routeDistance == null) return null;
     return this.routeDistance / 1000;
   }
 }
