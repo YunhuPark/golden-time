@@ -3,11 +3,21 @@
  * Node.js로 직접 PostgreSQL에 연결하여 SQL 실행
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const https = require('https');
 
-const SUPABASE_URL = 'https://aiggzhblnuxkgzzmsgrl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpZ2d6aGJsbnV4a2d6em1zZ3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjM4MzMsImV4cCI6MjA4MjYzOTgzM30.f2-BrgPCKhZ_lHLfvOBY2Q4f55xFsGGYGGjAgxttcHc';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('❌ VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY 환경변수가 설정되지 않았습니다.');
+  console.error('   .env 파일에 두 값을 채운 뒤 다시 실행하세요 (.env.example 참고).');
+  process.exit(1);
+}
+
+const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0];
+const dashboardSqlUrl = `https://supabase.com/dashboard/project/${projectRef}/sql/new`;
 
 // SQL 파일 읽기
 const sql = fs.readFileSync('supabase_schema.sql', 'utf8');
@@ -20,7 +30,7 @@ console.log('URL:', SUPABASE_URL);
 const payload = JSON.stringify({ query: sql });
 
 const options = {
-  hostname: 'aiggzhblnuxkgzzmsgrl.supabase.co',
+  hostname: new URL(SUPABASE_URL).hostname,
   port: 443,
   path: '/rest/v1/rpc/exec_sql',
   method: 'POST',
@@ -52,7 +62,7 @@ const req = https.request(options, (res) => {
       console.error('\n❌ 오류 발생:', res.statusCode);
       console.error('응답:', data);
       console.log('\n💡 Supabase Dashboard에서 수동으로 실행해주세요:');
-      console.log('   https://supabase.com/dashboard/project/aiggzhblnuxkgzzmsgrl/sql/new');
+      console.log('  ', dashboardSqlUrl);
     }
   });
 });
@@ -60,7 +70,7 @@ const req = https.request(options, (res) => {
 req.on('error', (error) => {
   console.error('\n❌ 연결 오류:', error.message);
   console.log('\n💡 대안: Supabase Dashboard의 SQL Editor 사용');
-  console.log('   1. https://supabase.com/dashboard/project/aiggzhblnuxkgzzmsgrl/sql/new 접속');
+  console.log(`   1. ${dashboardSqlUrl} 접속`);
   console.log('   2. supabase_schema.sql 파일 내용 복사 & 붙여넣기');
   console.log('   3. Run 버튼 클릭');
 });
