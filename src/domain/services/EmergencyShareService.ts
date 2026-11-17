@@ -63,12 +63,12 @@ export class EmergencyShareService {
     shareToken: string
   ): Promise<{ success: boolean; data?: EmergencyShare; error?: string }> {
     try {
-      const { data, error } = await supabase
-        .from('emergency_shares')
-        .select('*')
-        .eq('share_token', shareToken)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shareToken)) {
+        return { success: false, error: 'Share not found or expired' };
+      }
+      // The server validates the token/expiry and increments only the counter.
+      const { data: rows, error } = await supabase.rpc('read_emergency_share', { p_token: shareToken });
+      const data = rows?.[0];
 
       if (error) {
         console.error('Failed to get emergency share:', error);
@@ -79,17 +79,11 @@ export class EmergencyShareService {
         return { success: false, error: 'Share not found or expired' };
       }
 
-      // 조회 횟수 증가
-      await supabase
-        .from('emergency_shares')
-        .update({ view_count: (data.view_count || 0) + 1 })
-        .eq('id', data.id);
-
       return {
         success: true,
         data: {
           id: data.id,
-          shareToken: data.share_token,
+          shareToken,
           medicalData: data.medical_data,
           expiresAt: data.expires_at,
           viewCount: data.view_count || 0,
