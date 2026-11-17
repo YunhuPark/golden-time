@@ -6,83 +6,23 @@
 
 ---
 
-## 1. Supabase 테이블 생성
+## 1. 배포 전 보안 migration 적용 (필수)
 
-Supabase Dashboard → SQL Editor에서 다음 SQL을 실행하세요:
+기존 공개 SELECT/UPDATE 정책은 안전하지 않습니다. Supabase SQL Editor의 DB 소유자 권한으로
+`supabase/migrations/20261113000000_secure_emergency_shares.sql` 전체를 적용하세요.
+이 migration은 기존 정책을 제거하고 소유자의 SELECT/INSERT/DELETE만 허용합니다.
+익명 의료진은 `read_emergency_share(p_token)` RPC로 정확한 토큰과 만료를 검증받으며,
+조회수 갱신은 같은 원자적 SQL에서 처리합니다. 직접 테이블 UPDATE 권한은 없습니다.
 
-### 📊 emergency_shares 테이블
+배포 순서:
+1. 의료정보 공유를 잠시 비활성화하고 DB 백업 및 기존 정책을 확인합니다.
+2. migration을 적용하고 로컬 정책 회귀 검증을 확인합니다.
+3. 새 RPC를 사용하는 프론트엔드를 배포한 뒤 선택 기능을 다시 활성화합니다.
+4. 이미 공개 정책을 운영했다면 접근 로그를 검토하고 기존 공유를 폐기/재발급합니다.
 
-```sql
--- emergency_shares 테이블 생성
-CREATE TABLE emergency_shares (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-
-  -- 공유 토큰 (URL에 사용)
-  share_token TEXT NOT NULL UNIQUE,
-
-  -- 의료 정보 스냅샷 (JSON 형태로 저장)
-  medical_data JSONB NOT NULL,
-
-  -- 만료 시간 (기본 24시간)
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-
-  -- 조회 횟수 (선택사항)
-  view_count INTEGER DEFAULT 0,
-
-  -- 생성 시간
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
-);
-
--- 인덱스 생성
-CREATE INDEX emergency_shares_user_id_idx ON emergency_shares(user_id);
-CREATE INDEX emergency_shares_token_idx ON emergency_shares(share_token);
-CREATE INDEX emergency_shares_expires_at_idx ON emergency_shares(expires_at);
-
--- 만료된 토큰 자동 삭제 함수
-CREATE OR REPLACE FUNCTION delete_expired_emergency_shares()
-RETURNS void AS $$
-BEGIN
-  DELETE FROM emergency_shares WHERE expires_at < NOW();
-END;
-$$ LANGUAGE plpgsql;
-
--- 매일 자정에 만료된 토큰 삭제 (선택사항)
--- SELECT cron.schedule('delete-expired-shares', '0 0 * * *', 'SELECT delete_expired_emergency_shares()');
-```
-
-### 🔐 Row Level Security (RLS) 설정
-
-```sql
--- RLS 활성화
-ALTER TABLE emergency_shares ENABLE ROW LEVEL SECURITY;
-
--- 정책 1: 사용자는 자신의 공유 토큰만 생성 가능
-CREATE POLICY "Users can create own emergency shares"
-  ON emergency_shares FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- 정책 2: 사용자는 자신의 공유 토큰 목록만 조회 가능
-CREATE POLICY "Users can view own emergency shares"
-  ON emergency_shares FOR SELECT
-  USING (auth.uid() = user_id);
-
--- 정책 3: 유효한 토큰은 누구나 조회 가능 (의료진용)
-CREATE POLICY "Anyone can view valid tokens"
-  ON emergency_shares FOR SELECT
-  USING (expires_at > NOW());
-
--- 정책 4: 사용자는 자신의 공유 토큰만 삭제 가능
-CREATE POLICY "Users can delete own emergency shares"
-  ON emergency_shares FOR DELETE
-  USING (auth.uid() = user_id);
-
--- 정책 5: 조회 횟수 업데이트는 누구나 가능
-CREATE POLICY "Anyone can update view count"
-  ON emergency_shares FOR UPDATE
-  USING (expires_at > NOW())
-  WITH CHECK (expires_at > NOW());
-```
+클라이언트 변경만으로 이미 배포된 DB 정책이 수정되지는 않습니다. 운영 DB 적용은 별도 작업입니다.
+검증 항목은 anon 전체 조회/수정 거부, 타인 계정 차단, 만료 토큰 거부 및 정확한 토큰의
+조회/조회수 증가 허용입니다. 실사용 의료정보로 보안 검증하지 마세요.
 
 ---
 
@@ -127,7 +67,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 ### ✅ 안전한 설계:
 
-1. **토큰 암호화**: UUID v4 사용 (추측 불가능)
+1. **추측하기 어려운 공유 토큰**: 암호학적 무작위 UUID v4 사용
 2. **유효기간 제한**: 24시간 후 자동 만료
 3. **조회 횟수 추적**: 비정상적인 접근 감지
 4. **RLS 정책**: 본인만 생성/삭제 가능
