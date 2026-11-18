@@ -32,3 +32,19 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- Public reference data is read-only for browser roles. Keep the crawler's
+-- explicit service_role grants; RLS alone does not guard TRUNCATE privileges.
+ALTER TABLE public.hospital_specialties ENABLE ROW LEVEL SECURITY;
+DO $$ DECLARE old_policy record;
+BEGIN
+  FOR old_policy IN SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'hospital_specialties'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.hospital_specialties', old_policy.policyname);
+  END LOOP;
+END $$;
+REVOKE ALL ON TABLE public.hospital_specialties FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.hospital_specialties TO anon, authenticated;
+CREATE POLICY reference_public_read ON public.hospital_specialties
+  FOR SELECT TO anon, authenticated USING (true);
