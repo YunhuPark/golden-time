@@ -91,6 +91,11 @@ jobs:
     - name: GitHub Actions security regression tests
       run: node --test scripts/github-actions-security.test.cjs
 
+    - name: Database authorization regression tests
+      run: |
+        npm install --prefix "$RUNNER_TEMP/rls-runtime" --no-package-lock --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.5.16
+        NODE_PATH="$RUNNER_TEMP/rls-runtime/node_modules" node --test scripts/emergency-rls.test.cjs scripts/private-tables-rls.test.cjs
+
     - name: Unit Tests
       run: npm run test:unit
 
