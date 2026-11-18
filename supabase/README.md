@@ -2,6 +2,34 @@
 
 이 폴더에는 Golden Time 프로젝트의 Supabase 데이터베이스 스키마 및 마이그레이션 파일이 포함되어 있습니다.
 
+## 복구 후 필수 보안 마이그레이션
+
+프로젝트가 복구됐다는 상태만으로 테이블 접근 정책이 안전하다고 판단하지 마세요.
+프런트엔드의 `VITE_SUPABASE_ENABLED=false`는 직접 Data API 접근을 차단하지 않습니다.
+복원 작업이 **완료된 뒤** 다음 마이그레이션을 데이터베이스 소유자로 적용하고,
+실제 `pg_class.relrowsecurity`, 정책 및 역할별 권한을 확인하세요. 복원 중 적용한
+설정은 복원된 데이터베이스로 교체되면서 사라질 수 있습니다.
+
+1. `20261113000000_secure_emergency_shares.sql`
+2. `20261118000000_secure_private_tables.sql`
+
+새 데이터베이스는 먼저 `supabase_schema.sql`로 기본 테이블을 생성해야 합니다.
+
+두 번째 마이그레이션은 행을 삭제하지 않고 기존의 모든 정책을 재설정합니다.
+의료 프로필·방문 기록·즐겨찾기는 인증된 소유자에게만 허용합니다. 병원 리뷰의
+공개 읽기는 기존 제품 동작대로 유지하며, 생성·변경·삭제는 인증된 소유자에게만
+허용합니다. 익명 쓰기와 모든 클라이언트의 TRUNCATE 권한은 제거합니다.
+검증이 끝나기 전에는 Supabase 선택 기능을 활성화하지 마세요.
+
+실제 PostgreSQL 권한 회귀 테스트(환자 데이터·운영 자격 증명 사용 없음):
+
+```sh
+NODE_PATH=/path/to/rls-runtime/node_modules node --test scripts/emergency-rls.test.cjs scripts/private-tables-rls.test.cjs
+```
+
+테스트 런타임은 `@electric-sql/pglite@0.5.16`이며 CI에서도 별도 임시 경로에
+설치해 익명 접근, 소유자 간 경계, 소유자 변경, TRUNCATE 및 재적용을 검증합니다.
+
 ## 📂 폴더 구조
 
 ```
