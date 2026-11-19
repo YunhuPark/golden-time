@@ -23,9 +23,24 @@ for (const workflowPath of workflowPaths) {
   });
 
   test(`${workflowPath} does not persist checkout credentials`, () => {
-    assert.match(
-      workflow,
-      /uses:\s*actions\/checkout@v4[\s\S]{0,160}?persist-credentials:\s*false/
-    );
+    const parsed = yaml.load(workflow);
+    const checkouts = Object.values(parsed.jobs)
+      .flatMap((job) => job.steps || [])
+      .filter((step) => step.uses?.startsWith('actions/checkout@'));
+    assert.ok(checkouts.length > 0, 'A checkout step must be verified');
+    for (const step of checkouts) {
+      assert.equal(step.with?.['persist-credentials'], false);
+    }
+  });
+
+  test(`${workflowPath} pins every external action to a full commit SHA`, () => {
+    const parsed = yaml.load(workflow);
+    for (const job of Object.values(parsed.jobs)) {
+      const references = [job.uses, ...(job.steps || []).map((step) => step.uses)]
+        .filter((value) => value && !value.startsWith('./'));
+      for (const reference of references) {
+        assert.match(reference, /@[0-9a-f]{40}$/);
+      }
+    }
   });
 }
