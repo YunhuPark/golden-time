@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 test('하드코딩 키가 소스에 존재하지 않는 테스트', () => {
   const content = fs.readFileSync(path.join(__dirname, 'index.ts'), 'utf-8');
   assert.ok(!content.includes('HARDCODED_KEY'), 'HARDCODED_KEY 변수명이 존재합니다.');
-  assert.ok(!content.includes('<REDACTED>'), '실제 하드코딩 키 문자열이 존재합니다.');
+  assert.doesNotMatch(content, /(['"])[a-f0-9]{64}\1/i, '64자리 서비스 키 리터럴이 존재합니다.');
 });
 
 test('EGEN_SERVICE_KEY 누락 시 외부 요청 없이 실패하는 테스트', async () => {
