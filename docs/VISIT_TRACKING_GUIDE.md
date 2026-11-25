@@ -177,8 +177,8 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 - 병원 도착 후 Geofence 자동 제거 (일회성)
 
 ### **데이터 저장**:
-- 방문 기록은 Supabase에 암호화 저장
-- RLS 정책으로 본인 데이터만 접근 가능
+- 방문 기록은 Supabase에 저장되며 RLS 정책으로 본인 데이터만 접근 가능
+- (의료 프로필은 브라우저에서 AES-GCM 으로 암호화한 뒤 저장하지만, 키가 앱 번들에 포함되므로 접근 제어의 핵심은 계정 로그인·RLS입니다)
 
 ---
 

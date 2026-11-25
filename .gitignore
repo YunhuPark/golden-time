@@ -50,3 +50,15 @@ playwright/.cache/
 Thumbs.db
 .AppleDouble
 .LSOverride
+
+# 비밀 정보·로컬 자격 증명 (커밋 금지)
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+cookies.txt
+*.pem
+*.key
+token*.json
+credentials*.json
