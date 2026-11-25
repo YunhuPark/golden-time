@@ -9,9 +9,10 @@
 - [ ] `EGEN_SERVICE_KEY` 설정
 - [ ] `KAKAO_REST_API_KEY` 설정
 - [ ] `VITE_KAKAO_MAP_APP_KEY` 설정
-- [ ] `VITE_ENCRYPTION_KEY`가 placeholder가 아님
+- [ ] `VITE_ENCRYPTION_KEY`가 placeholder가 아님 (단, 브라우저 번들에 포함되는 값이므로 보안 모델로 오해하지 않기 — 실제 접근 제어는 RLS)
 - [ ] Kakao Web 플랫폼에 Production 도메인 등록
 - [ ] `.env` 및 비밀키가 Git에 포함되지 않음
+- [ ] `/api/*` 레이트리밋 설정 (Vercel 방화벽 Rate Limit 규칙 또는 Upstash Redis 리미터, IP당 분당 30~60회부터). Vercel 서버리스는 인스턴스 메모리를 공유하지 않으므로 메모리 기반 리미터는 효과가 없습니다
 
 ## 선택 기능
 
