@@ -3,6 +3,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAppStore } from '../../../infrastructure/state/store';
 import { lightTheme, darkTheme } from '../../styles/theme';
 
+// Keep in sync with the Supabase Email minimum; never apply it to existing-password sign-in.
+const MIN_SIGNUP_PASSWORD_LENGTH = 15;
+
 /**
  * LoginModal Component
  * 선택적 로그인 모달 - 부가 기능 사용 시에만 표시
@@ -37,8 +40,12 @@ export const LoginModal: React.FC = () => {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    if (mode === 'signup' && Array.from(password).length < MIN_SIGNUP_PASSWORD_LENGTH) {
+      setError('비밀번호는 15자 이상 입력해 주세요.');
+      return;
+    }
+    setLoading(true);
 
     try {
       const { error: authError } =
@@ -173,7 +180,7 @@ export const LoginModal: React.FC = () => {
           }}
         >
           <button
-            onClick={() => setMode('signin')}
+            onClick={() => { setMode('signin'); setError(null); }}
             style={{
               flex: 1,
               padding: '8px 4px',
@@ -192,7 +199,7 @@ export const LoginModal: React.FC = () => {
             로그인
           </button>
           <button
-            onClick={() => setMode('signup')}
+            onClick={() => { setMode('signup'); setError(null); }}
             style={{
               flex: 1,
               padding: '8px 4px',
@@ -215,6 +222,7 @@ export const LoginModal: React.FC = () => {
         {/* 에러 메시지 */}
         {error && (
           <div
+            role="alert"
             style={{
               backgroundColor: isDark ? 'rgba(255, 0, 61, 0.2)' : '#FEE2E2',
               color: isDark ? theme.status.critical : '#991B1B',
@@ -256,7 +264,9 @@ export const LoginModal: React.FC = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={mode === 'signup' ? MIN_SIGNUP_PASSWORD_LENGTH : undefined}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            aria-describedby={mode === 'signup' ? 'golden-signup-password-guidance' : undefined}
             style={{
               width: '100%',
               padding: '14px',
@@ -270,6 +280,11 @@ export const LoginModal: React.FC = () => {
               transition: 'all 0.3s ease',
             }}
           />
+          {mode === 'signup' && (
+            <p id="golden-signup-password-guidance" style={{ margin: '0 0 16px', fontSize: '13px', color: theme.text.secondary }}>
+              15자 이상으로 입력해 주세요. 공백을 포함한 긴 문장도 사용할 수 있습니다.
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading}
