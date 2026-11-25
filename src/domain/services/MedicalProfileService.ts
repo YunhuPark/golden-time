@@ -1,8 +1,10 @@
 /**
  * MedicalProfileService
- * 사용자의 의료 정보를 암호화하여 Supabase에 안전하게 저장/조회
+ * 사용자의 의료 정보를 브라우저에서 AES-GCM 으로 암호화한 뒤 Supabase에 저장/조회
  *
- * CRITICAL: 모든 의료 정보는 암호화 후 저장 (Ironclad Law #3: Security)
+ * 주의: 암호화 키는 `VITE_ENCRYPTION_KEY` 로 클라이언트 번들에 포함됩니다.
+ * 따라서 이 암호화는 서버 비밀키 수준의 보호가 아니며, 실제 접근 제어는
+ * 로그인 세션과 Supabase RLS 가 담당합니다.
  */
 
 import { supabase } from '../../infrastructure/supabase/supabaseClient';
