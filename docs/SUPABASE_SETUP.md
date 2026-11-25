@@ -73,7 +73,10 @@ CREATE INDEX reviews_created_at_idx ON reviews(created_at DESC);
 CREATE INDEX reviews_rating_idx ON reviews(rating);
 ```
 
-### 🏥 medical_profiles 테이블 (의료 정보 - 암호화 저장)
+### 🏥 medical_profiles 테이블 (의료 정보 - 브라우저 암호화 저장)
+
+> 암호화는 브라우저에서 `VITE_ENCRYPTION_KEY` 로 수행되며 이 키는 앱 번들에 포함됩니다.
+> 따라서 실제 접근 제어는 아래 RLS 정책이 담당합니다. RLS 를 끄면 암호문도 함께 노출되는 것으로 보세요.
 
 ```sql
 -- medical_profiles 테이블 생성

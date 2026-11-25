@@ -129,7 +129,7 @@ export const MedicalProfileForm: React.FC = () => {
           🔒 로그인이 필요합니다
         </h3>
         <p style={{ fontSize: '14px', color: '#78350F', marginBottom: '16px' }}>
-          의료 정보를 암호화하여 안전하게 저장하려면 로그인해주세요.
+          의료 정보는 로그인한 본인만 저장·열람할 수 있습니다. 로그인해주세요.
         </p>
         <button
           onClick={() => openLoginModal('의료 정보')}
@@ -500,7 +500,7 @@ export const MedicalProfileForm: React.FC = () => {
         marginBottom: 0,
         lineHeight: '1.4',
       }}>
-        🔐 모든 의료 정보는 암호화되어 안전하게 저장됩니다
+        🔐 의료 정보는 로그인한 본인만 열람할 수 있습니다
       </p>
 
       {/* 응급 QR 생성 모달 */}
